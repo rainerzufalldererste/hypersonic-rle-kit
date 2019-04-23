@@ -3,6 +3,8 @@
 
 #include "CL/cl.h"
 
+#include <string.h>
+
 #define ENABLE_LOGGING
 #define MAX_SUB_SECTION_COUNT 1024
 
@@ -23,6 +25,7 @@ cl_mem gpu_in_symbolToCount = NULL;
 cl_mem gpu_in_startOffsets = NULL;
 cl_program program = NULL;
 cl_kernel decompressKernel = NULL;
+cl_kernel decompressSingleKernel = NULL;
 
 size_t _initialized_inputDataSize;
 size_t _initialized_outputDataSize;
@@ -132,6 +135,11 @@ bool rle8m_opencl_init(const size_t inputDataSize, const size_t outputDataSize, 
   if (ret != CL_SUCCESS || decompressKernel == NULL)
     goto epilogue;
 
+  decompressSingleKernel = clCreateKernel(program, "rle8_decompress_single", &ret);
+
+  if (ret != CL_SUCCESS || decompressSingleKernel == NULL)
+    goto epilogue;
+
   initialized = true;
   success = true;
   _initialized_inputDataSize = inputDataSize;
@@ -157,7 +165,13 @@ void rle8m_opencl_destroy()
   if (decompressKernel)
   {
     clReleaseKernel(decompressKernel);
-    program = NULL;
+    decompressKernel = NULL;
+  }
+
+  if (decompressSingleKernel)
+  {
+    clReleaseKernel(decompressSingleKernel);
+    decompressSingleKernel = NULL;
   }
 
   if (program)
@@ -252,6 +266,21 @@ uint32_t rle8m_opencl_decompress(IN const uint8_t *pIn, const uint32_t inSize, O
 
   subSectionOffsets[subSections] = (uint32_t)expectedInSize - (uint32_t)index;
 
+  uint8_t rleSymbolCount = 0;
+  uint8_t symbol;
+
+  for (size_t i = 0; i < 256; i++)
+  {
+    if (decompressInfo.rle[i])
+    {
+      rleSymbolCount++;
+      symbol = (uint8_t)i;
+
+      if (rleSymbolCount > 1)
+        break;
+    }
+  }
+
   cl_int ret = CL_SUCCESS;
   size_t localSize[2] = { 1, 1 };
   size_t globalSize[2] = { 1, 1 };
@@ -270,12 +299,15 @@ uint32_t rle8m_opencl_decompress(IN const uint8_t *pIn, const uint32_t inSize, O
 #ifdef ENABLE_LOGGING
   time = clock();
 #endif
-
+  
   if (CL_SUCCESS != (ret = clEnqueueWriteBuffer(commandQueue, gpu_in_buffer, CL_FALSE, 0, inSize - index, pIn + index, 0, NULL, NULL)))
     goto epilogue;
 
-  if (CL_SUCCESS != (ret = clEnqueueWriteBuffer(commandQueue, gpu_in_rle, CL_FALSE, 0, 256, decompressInfo.rle, 0, NULL, NULL)))
-    goto epilogue;
+  if (rleSymbolCount != 1)
+  {
+    if (CL_SUCCESS != (ret = clEnqueueWriteBuffer(commandQueue, gpu_in_rle, CL_FALSE, 0, 256, decompressInfo.rle, 0, NULL, NULL)))
+      goto epilogue;
+  }
 
   if (CL_SUCCESS != (ret = clEnqueueWriteBuffer(commandQueue, gpu_in_symbolToCount, CL_FALSE, 0, 256, decompressInfo.symbolToCount, 0, NULL, NULL)))
     goto epilogue;
@@ -283,26 +315,53 @@ uint32_t rle8m_opencl_decompress(IN const uint8_t *pIn, const uint32_t inSize, O
   if (CL_SUCCESS != (ret = clEnqueueWriteBuffer(commandQueue, gpu_in_startOffsets, CL_FALSE, 0, sizeof(cl_uint) * (subSections + 1), subSectionOffsets, 0, NULL, NULL)))
     goto epilogue;
 
-  if (CL_SUCCESS != (ret = clSetKernelArg(decompressKernel, 0, sizeof(cl_mem), (void *)&gpu_out_buffer)))
-    goto epilogue;
 
-  if (CL_SUCCESS != (ret = clSetKernelArg(decompressKernel, 1, sizeof(cl_mem), (void *)&gpu_in_buffer)))
-    goto epilogue;
+  if (rleSymbolCount != 1)
+  {
+    if (CL_SUCCESS != (ret = clSetKernelArg(decompressKernel, 0, sizeof(cl_mem), (void *)&gpu_out_buffer)))
+      goto epilogue;
 
-  if (CL_SUCCESS != (ret = clSetKernelArg(decompressKernel, 2, sizeof(cl_mem), (void *)&gpu_in_rle)))
-    goto epilogue;
+    if (CL_SUCCESS != (ret = clSetKernelArg(decompressKernel, 1, sizeof(cl_mem), (void *)&gpu_in_buffer)))
+      goto epilogue;
 
-  if (CL_SUCCESS != (ret = clSetKernelArg(decompressKernel, 3, sizeof(cl_mem), (void *)&gpu_in_symbolToCount)))
-    goto epilogue;
+    if (CL_SUCCESS != (ret = clSetKernelArg(decompressKernel, 2, sizeof(cl_mem), (void *)&gpu_in_rle)))
+      goto epilogue;
 
-  if (CL_SUCCESS != (ret = clSetKernelArg(decompressKernel, 4, sizeof(cl_mem), (void *)&gpu_in_startOffsets)))
-    goto epilogue;
+    if (CL_SUCCESS != (ret = clSetKernelArg(decompressKernel, 3, sizeof(cl_mem), (void *)&gpu_in_symbolToCount)))
+      goto epilogue;
 
-  if (CL_SUCCESS != (ret = clSetKernelArg(decompressKernel, 5, sizeof(cl_uint), (void *)&subSectionSize)))
-    goto epilogue;
+    if (CL_SUCCESS != (ret = clSetKernelArg(decompressKernel, 4, sizeof(cl_mem), (void *)&gpu_in_startOffsets)))
+      goto epilogue;
 
-  if (CL_SUCCESS != (ret = clEnqueueNDRangeKernel(commandQueue, decompressKernel, 1, NULL, globalSize, localSize, 0, NULL, NULL)))
-    goto epilogue;
+    if (CL_SUCCESS != (ret = clSetKernelArg(decompressKernel, 5, sizeof(cl_uint), (void *)&subSectionSize)))
+      goto epilogue;
+
+    if (CL_SUCCESS != (ret = clEnqueueNDRangeKernel(commandQueue, decompressKernel, 1, NULL, globalSize, localSize, 0, NULL, NULL)))
+      goto epilogue;
+  }
+  else
+  {
+    if (CL_SUCCESS != (ret = clSetKernelArg(decompressSingleKernel, 0, sizeof(cl_mem), (void *)&gpu_out_buffer)))
+      goto epilogue;
+
+    if (CL_SUCCESS != (ret = clSetKernelArg(decompressSingleKernel, 1, sizeof(cl_mem), (void *)&gpu_in_buffer)))
+      goto epilogue;
+
+    if (CL_SUCCESS != (ret = clSetKernelArg(decompressSingleKernel, 2, sizeof(cl_uchar), (void *)&symbol)))
+      goto epilogue;
+
+    if (CL_SUCCESS != (ret = clSetKernelArg(decompressSingleKernel, 3, sizeof(cl_mem), (void *)&gpu_in_symbolToCount)))
+      goto epilogue;
+
+    if (CL_SUCCESS != (ret = clSetKernelArg(decompressSingleKernel, 4, sizeof(cl_mem), (void *)&gpu_in_startOffsets)))
+      goto epilogue;
+
+    if (CL_SUCCESS != (ret = clSetKernelArg(decompressSingleKernel, 5, sizeof(cl_uint), (void *)&subSectionSize)))
+      goto epilogue;
+
+    if (CL_SUCCESS != (ret = clEnqueueNDRangeKernel(commandQueue, decompressSingleKernel, 1, NULL, globalSize, localSize, 0, NULL, NULL)))
+      goto epilogue;
+  }
 
 #ifdef ENABLE_LOGGING
   clFinish(commandQueue);
