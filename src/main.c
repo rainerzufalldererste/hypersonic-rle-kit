@@ -7,6 +7,8 @@ const char ArgumentTo[] = "-to";
 
 //////////////////////////////////////////////////////////////////////////
 
+#include <windows.h>
+
 int main(int argc, char **pArgv)
 {
   if (argc <= 1)

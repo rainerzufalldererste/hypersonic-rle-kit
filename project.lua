@@ -33,6 +33,13 @@ project(ProjectName)
     ignoredefaultlibraries { "libcmt" }
   filter { }
 
+  filter { "system:linux" }
+    libdirs { "3rdParty/OpenCL/lib/x64/" }
+    links { "opencl" }
+
+  filter { "system:windows" }
+    links { "3rdParty/OpenCL/lib/x64/OpenCL.lib" }
+
   filter {}
   
   targetname(ProjectName)
