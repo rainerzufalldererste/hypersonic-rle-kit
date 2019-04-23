@@ -7,8 +7,6 @@ const char ArgumentTo[] = "-to";
 
 //////////////////////////////////////////////////////////////////////////
 
-#include <windows.h>
-
 int main(int argc, char **pArgv)
 {
   if (argc <= 1)
@@ -101,7 +99,7 @@ int main(int argc, char **pArgv)
       goto epilogue;
     }
 
-    printf("Compressed %" PRIi32 " bytes -> %" PRIu32 " bytes (%f %%) in %" PRIu64 " ms.\n", size, compressedSize, (double)compressedSize / (double)size * 100.0, (uint64_t)time);
+    printf("Compressed %" PRIi32 " bytes -> %" PRIu32 " bytes (%f %%) in %f ms.\n", size, compressedSize, (double)compressedSize / (double)size * 100.0, time / (double)CLOCKS_PER_SEC * 1000.0);
 
     if (outputFileName)
     {
@@ -136,7 +134,7 @@ int main(int argc, char **pArgv)
       goto epilogue;
     }
     
-    printf("Decompressed in %" PRIu64 " ms.\n", (uint64_t)time);
+    printf("Decompressed in %f ms.\n", time / (double)CLOCKS_PER_SEC * 1000.0);
 
     if (memcmp(pUncompressedData, pDecompressedData, (size_t)size) != 0)
     {
