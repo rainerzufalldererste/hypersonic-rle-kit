@@ -167,6 +167,37 @@ int main(int argc, char **pArgv)
       puts("Validation Failed.");
       goto epilogue;
     }
+
+    if (subSections > 0)
+    {
+      if (!rle8m_opencl_init(size, compressedSize, subSections))
+      {
+        puts("Initialization Failed (OpenCL).");
+        goto epilogue;
+      }
+
+      time = clock();
+
+      decompressedSize = rle8m_opencl_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)size);
+
+      time = clock() - time;
+
+      rle8m_opencl_destroy();
+
+      if ((uint32_t)size != decompressedSize)
+      {
+        puts("Failed to decompress file (OpenCL).");
+        goto epilogue;
+      }
+
+      printf("Decompressed in %f ms (OpenCL).\n", time / (double)CLOCKS_PER_SEC * 1000.0);
+
+      if (memcmp(pUncompressedData, pDecompressedData, (size_t)size) != 0)
+      {
+        puts("Validation Failed. (OpenCL)");
+        goto epilogue;
+      }
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////
