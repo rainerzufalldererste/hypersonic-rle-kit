@@ -2,8 +2,10 @@
 
 #include <time.h>
 #include <string.h>
+#include <stdlib.h>
 
 const char ArgumentTo[] = "-to";
+const char ArgumentSubSections[] = "-s";
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -11,11 +13,12 @@ int main(int argc, char **pArgv)
 {
   if (argc <= 1)
   {
-    printf("Usage: rle8 <InputFileName> [%s <OutputFileName>]\n", ArgumentTo);
+    printf("Usage: rle8 <InputFileName> [%s <OutputFileName>][%s <SubSectionCount>]\n", ArgumentTo, ArgumentSubSections);
     return 1;
   }
 
   const char *outputFileName = NULL;
+  int32_t subSections = 0;
 
   if (argc > 2)
   {
@@ -27,6 +30,19 @@ int main(int argc, char **pArgv)
       if (argsRemaining >= 2 && strncmp(pArgv[argIndex], ArgumentTo, sizeof(ArgumentTo)) == 0)
       {
         outputFileName = pArgv[argIndex + 1];
+        argIndex += 2;
+        argsRemaining -= 2;
+      }
+      else if (argsRemaining >= 2 && strncmp(pArgv[argIndex], ArgumentSubSections, sizeof(ArgumentSubSections)) == 0)
+      {
+        subSections = atoi(pArgv[argIndex + 1]);
+
+        if (subSections <= 0)
+        {
+          puts("Invalid Parameter.");
+          return 1;
+        }
+
         argIndex += 2;
         argsRemaining -= 2;
       }
@@ -63,7 +79,10 @@ int main(int argc, char **pArgv)
 
   fseek(pFile, 0, SEEK_SET);
 
-  compressedBufferSize = rle8_compress_bounds((uint32_t)size);
+  if (subSections == 0)
+    compressedBufferSize = rle8_compress_bounds((uint32_t)size);
+  else
+    compressedBufferSize = rle8m_compress_bounds((uint32_t)subSections, (uint32_t)size);
 
   pUncompressedData = (uint8_t *)malloc((size_t)size);
   pDecompressedData = (uint8_t *)malloc((size_t)size);
@@ -86,10 +105,14 @@ int main(int argc, char **pArgv)
   // Compress.
   {
     uint32_t decompressedSize = 0;
+    uint32_t compressedSize = 0;
 
     clock_t time = clock();
 
-    const uint32_t compressedSize = rle8_compress(pUncompressedData, (uint32_t)size, pCompressedData, compressedBufferSize);
+    if (subSections == 0)
+      compressedSize = rle8_compress(pUncompressedData, (uint32_t)size, pCompressedData, compressedBufferSize);
+    else
+      compressedSize = rle8m_compress((uint32_t)subSections, pUncompressedData, (uint32_t)size, pCompressedData, compressedBufferSize);
 
     time = clock() - time;
 
@@ -124,7 +147,10 @@ int main(int argc, char **pArgv)
 
     time = clock();
 
-    decompressedSize = rle8_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)size);
+    if (subSections == 0)
+      decompressedSize = rle8_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)size);
+    else
+      decompressedSize = rle8m_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)size);
 
     time = clock() - time;
 

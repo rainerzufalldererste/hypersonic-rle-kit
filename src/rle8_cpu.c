@@ -10,7 +10,7 @@
 // #define AVX2 1
 
 #ifdef _MSC_VER
-#define DO_NOT_OPTIMIZE_DECODER
+//#define DO_NOT_OPTIMIZE_DECODER
 #define ALIGN(a) __declspec(align(a))
 #else
 #define ALIGN(a) __attribute__((aligned(a)))
@@ -95,6 +95,136 @@ uint32_t rle8_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8
 
   return rle8_decompress_with_info(pIn, pEnd, &decompressInfo, pOut, (uint32_t)expectedOutSize);
 }
+
+//////////////////////////////////////////////////////////////////////////
+
+uint32_t rle8m_compress_bounds(const uint32_t subSections, const uint32_t inSize)
+{
+  return inSize + (256 / 8) + 1 + 256 + sizeof(uint32_t) * (2 + subSections - 1 + 1);
+}
+
+uint32_t rle8m_compress(const uint32_t subSections, IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
+{
+  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8m_compress_bounds(subSections, inSize) || subSections == 0)
+    return 0;
+
+  rle8_compress_info_t compressInfo;
+
+  if (!rle8_get_compress_info(pIn, inSize, &compressInfo))
+    return 0;
+
+  size_t index = sizeof(uint32_t); // Expected Input Size for the Decoder.
+
+  *((uint32_t *)(&pOut[index])) = inSize;
+  index += sizeof(uint32_t);
+
+  *((uint32_t *)(&pOut[index])) = subSections;
+  index += sizeof(uint32_t);
+
+  const size_t subSectionIndex = index;
+  index += sizeof(uint32_t) * (subSections - 1);
+
+  // Write Info.
+  {
+    const uint32_t size = rle8_write_compress_info(&compressInfo, &pOut[index], outSize);
+
+    if (size == 0)
+      return 0;
+
+    index += size;
+  }
+
+  const uint32_t subSectionSize = inSize / subSections;
+
+  for (uint32_t i = 0; i < subSections - 1; i++)
+  {
+    const uint32_t size = rle8_compress_with_info(pIn + subSectionSize * i, subSectionSize, &compressInfo, pOut + index, (uint32_t)(outSize - index));
+
+    if (size == 0)
+      return 0;
+
+    index += size;
+
+    ((uint32_t *)(&pOut[subSectionIndex]))[i] = index;
+  }
+
+  const size_t remainingSize = inSize - subSectionSize * (subSections - 1);
+
+  // Compress last block.
+  {
+    const uint32_t size = rle8_compress_with_info(pIn + subSectionSize * (subSections - 1), (uint32_t)remainingSize, &compressInfo, pOut + index, (uint32_t)(outSize - index));
+
+    if (size == 0)
+      return 0;
+
+    index += size;
+  }
+
+  ((uint32_t *)pOut)[0] = (uint32_t)index;
+
+  return (uint32_t)index;
+}
+
+uint32_t rle8m_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
+{
+  if (pIn == NULL || pOut == NULL || inSize == 0 || outSize == 0)
+    return 0;
+
+  const size_t expectedInSize = ((uint32_t *)pIn)[0];
+  const size_t expectedOutSize = ((uint32_t *)pIn)[1];
+
+  if (expectedOutSize > outSize || expectedInSize > inSize)
+    return 0;
+
+  size_t index = 2 * sizeof(uint32_t);
+
+  const uint32_t subSections = *((uint32_t *)(&pIn[index]));
+  index += sizeof(uint32_t);
+
+  if (subSections == 0)
+    return 0;
+
+  const size_t subSectionIndex = index;
+  index += (subSections - 1) * sizeof(uint32_t);
+
+  rle8_decompress_info_t decompressInfo;
+
+  index += rle8_read_decompress_info(&pIn[index], inSize, &decompressInfo);
+
+  const uint32_t subSectionSize = (uint32_t)(expectedOutSize / subSections);
+
+  const uint8_t *pCIn = pIn + index;
+
+  for (size_t i = 0; i < subSections - 1; i++)
+  {
+    const uint32_t sectionCompressedOffset = ((uint32_t *)(&pIn[subSectionIndex]))[i];
+    const uint8_t *pEnd = pIn + sectionCompressedOffset;
+
+    const uint32_t size = rle8_decompress_with_info(pCIn, pEnd, &decompressInfo, pOut, subSectionSize);
+
+    if (size != subSectionSize)
+      return 0;
+
+    pCIn = pEnd;
+    pOut += subSectionSize;
+  }
+
+  const size_t remainingSize = expectedOutSize - subSectionSize * (subSections - 1);
+
+  // Decode last section.
+  {
+    const uint8_t *pEnd = pIn + inSize;
+
+    const uint32_t size = rle8_decompress_with_info(pCIn, pEnd, &decompressInfo, pOut, (uint32_t)remainingSize);
+
+    if (size != remainingSize)
+      return 0;
+  }
+
+  return (uint32_t)expectedOutSize;
+}
+
+//////////////////////////////////////////////////////////////////////////
 
 bool rle8_get_compress_info(IN const uint8_t *pIn, const uint32_t inSize, OUT rle8_compress_info_t *pCompressInfo)
 {
@@ -181,8 +311,6 @@ bool rle8_get_compress_info(IN const uint8_t *pIn, const uint32_t inSize, OUT rl
 
   return true;
 }
-
-//////////////////////////////////////////////////////////////////////////
 
 uint32_t rle8_write_compress_info(IN rle8_compress_info_t *pCompressInfo, OUT uint8_t *pOut, const uint32_t outSize)
 {
@@ -402,7 +530,6 @@ uint32_t rle8_decompress_with_info(IN const uint8_t *pIn, IN const uint8_t *pEnd
 
     while (pIn < pPreEnd)
     {
-
       ALIGN(SIMD_SIZE) const simd_t data =
 #ifndef AVX2
         _mm_loadu_si128((const simd_t *)pIn);
@@ -497,6 +624,8 @@ uint32_t rle8_decompress_with_info(IN const uint8_t *pIn, IN const uint8_t *pEnd
               }
 #endif
             }
+
+            break;
           }
         }
       }

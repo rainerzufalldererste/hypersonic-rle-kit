@@ -25,6 +25,14 @@ uint32_t rle8_decompressed_size(IN const uint8_t *pIn, const uint32_t inSize);
 uint32_t rle8_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 uint32_t rle8_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
+//////////////////////////////////////////////////////////////////////////
+
+uint32_t rle8m_compress_bounds(const uint32_t subSections, const uint32_t inSize);
+uint32_t rle8m_compress(const uint32_t subSections, IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8m_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+//////////////////////////////////////////////////////////////////////////
+
 typedef struct rle8_compress_info_t
 {
   bool rle[256];
