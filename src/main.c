@@ -6,6 +6,7 @@
 
 const char ArgumentTo[] = "-to";
 const char ArgumentSubSections[] = "-s";
+const char ArgumentRuns[] = "-r";
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -13,12 +14,13 @@ int main(int argc, char **pArgv)
 {
   if (argc <= 1)
   {
-    printf("Usage: rle8 <InputFileName> [%s <OutputFileName>][%s <SubSectionCount>]\n", ArgumentTo, ArgumentSubSections);
+    printf("Usage: rle8 <InputFileName> [%s <Output File Name>][%s <Sub Section Count>][%s <Run Count>]\n", ArgumentTo, ArgumentSubSections, ArgumentRuns);
     return 1;
   }
 
   const char *outputFileName = NULL;
   int32_t subSections = 0;
+  int32_t runs = 1;
 
   if (argc > 2)
   {
@@ -46,6 +48,19 @@ int main(int argc, char **pArgv)
         argIndex += 2;
         argsRemaining -= 2;
       }
+      else if (argsRemaining >= 2 && strncmp(pArgv[argIndex], ArgumentRuns, sizeof(ArgumentRuns)) == 0)
+      {
+        runs = atoi(pArgv[argIndex + 1]);
+
+        if (runs <= 0)
+        {
+          puts("Invalid Parameter.");
+          return 1;
+        }
+
+        argIndex += 2;
+        argsRemaining -= 2;
+      }
       else
       {
         puts("Invalid Parameter.");
@@ -54,7 +69,7 @@ int main(int argc, char **pArgv)
     }
   }
 
-  int32_t size = 0;
+  int32_t fileSize = 0;
   uint32_t compressedBufferSize = 0;
   uint8_t *pUncompressedData = NULL;
   uint8_t *pDecompressedData = NULL;
@@ -69,9 +84,9 @@ int main(int argc, char **pArgv)
   }
 
   fseek(pFile, 0, SEEK_END);
-  size = ftell(pFile);
+  fileSize = ftell(pFile);
 
-  if (size <= 0)
+  if (fileSize <= 0)
   {
     puts("Invalid File size / failed to read file.");
     goto epilogue;
@@ -80,12 +95,12 @@ int main(int argc, char **pArgv)
   fseek(pFile, 0, SEEK_SET);
 
   if (subSections == 0)
-    compressedBufferSize = rle8_compress_bounds((uint32_t)size);
+    compressedBufferSize = rle8_compress_bounds((uint32_t)fileSize);
   else
-    compressedBufferSize = rle8m_compress_bounds((uint32_t)subSections, (uint32_t)size);
+    compressedBufferSize = rle8m_compress_bounds((uint32_t)subSections, (uint32_t)fileSize);
 
-  pUncompressedData = (uint8_t *)malloc((size_t)size);
-  pDecompressedData = (uint8_t *)malloc((size_t)size);
+  pUncompressedData = (uint8_t *)malloc((size_t)fileSize);
+  pDecompressedData = (uint8_t *)malloc((size_t)fileSize);
   pCompressedData = (uint8_t *)malloc((size_t)compressedBufferSize);
 
   if (!pUncompressedData || !pDecompressedData || !pCompressedData)
@@ -94,7 +109,7 @@ int main(int argc, char **pArgv)
     goto epilogue;
   }
 
-  if (size != fread(pUncompressedData, 1, (size_t)size, pFile))
+  if (fileSize != fread(pUncompressedData, 1, (size_t)fileSize, pFile))
   {
     puts("Failed to read file.");
     goto epilogue;
@@ -109,10 +124,13 @@ int main(int argc, char **pArgv)
 
     clock_t time = clock();
 
-    if (subSections == 0)
-      compressedSize = rle8_compress(pUncompressedData, (uint32_t)size, pCompressedData, compressedBufferSize);
-    else
-      compressedSize = rle8m_compress((uint32_t)subSections, pUncompressedData, (uint32_t)size, pCompressedData, compressedBufferSize);
+    for (int32_t i = 0; i < runs; i++)
+    {
+      if (subSections == 0)
+        compressedSize = rle8_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+      else
+        compressedSize = rle8m_compress((uint32_t)subSections, pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+    }
 
     time = clock() - time;
 
@@ -122,7 +140,7 @@ int main(int argc, char **pArgv)
       goto epilogue;
     }
 
-    printf("Compressed %" PRIi32 " bytes -> %" PRIu32 " bytes (%f %%) in %f ms.\n", size, compressedSize, (double)compressedSize / (double)size * 100.0, time / (double)CLOCKS_PER_SEC * 1000.0);
+    printf("Compressed %" PRIi32 " bytes -> %" PRIu32 " bytes (%f %%) in %f ms.\n", fileSize, compressedSize, (double)compressedSize / (double)fileSize * 100.0, time / (double)runs / (double)CLOCKS_PER_SEC * 1000.0);
 
     if (outputFileName)
     {
@@ -147,30 +165,35 @@ int main(int argc, char **pArgv)
 
     time = clock();
 
-    if (subSections == 0)
-      decompressedSize = rle8_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)size);
-    else
-      decompressedSize = rle8m_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)size);
+    for (int32_t i = 0; i < runs; i++)
+    {
+      if (subSections == 0)
+        decompressedSize = rle8_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+      else
+        decompressedSize = rle8m_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+    }
 
     time = clock() - time;
 
-    if ((uint32_t)size != decompressedSize)
+    if ((uint32_t)fileSize != decompressedSize)
     {
       puts("Failed to decompress file.");
       goto epilogue;
     }
     
-    printf("Decompressed in %f ms.\n", time / (double)CLOCKS_PER_SEC * 1000.0);
+    printf("Decompressed in %f ms.\n", time / (double)runs / (double)CLOCKS_PER_SEC * 1000.0);
 
-    if (memcmp(pUncompressedData, pDecompressedData, (size_t)size) != 0)
+    if (memcmp(pUncompressedData, pDecompressedData, (size_t)fileSize) != 0)
     {
       puts("Validation Failed.");
       goto epilogue;
     }
 
+    memset(pDecompressedData, 0, fileSize);
+
     if (subSections > 0)
     {
-      if (!rle8m_opencl_init(size, compressedSize, subSections))
+      if (!rle8m_opencl_init(fileSize, compressedSize, subSections))
       {
         puts("Initialization Failed (OpenCL).");
         goto epilogue;
@@ -178,21 +201,22 @@ int main(int argc, char **pArgv)
 
       time = clock();
 
-      decompressedSize = rle8m_opencl_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)size);
+      for (int32_t i = 0; i < runs; i++)
+        decompressedSize = rle8m_opencl_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
 
       time = clock() - time;
 
       rle8m_opencl_destroy();
 
-      if ((uint32_t)size != decompressedSize)
+      if ((uint32_t)fileSize != decompressedSize)
       {
         puts("Failed to decompress file (OpenCL).");
         goto epilogue;
       }
 
-      printf("Decompressed in %f ms (OpenCL).\n", time / (double)CLOCKS_PER_SEC * 1000.0);
+      printf("Decompressed in %f ms (OpenCL).\n", time / (double)runs / (double)CLOCKS_PER_SEC * 1000.0);
 
-      if (memcmp(pUncompressedData, pDecompressedData, (size_t)size) != 0)
+      if (memcmp(pUncompressedData, pDecompressedData, (size_t)fileSize) != 0)
       {
         puts("Validation Failed. (OpenCL)");
         goto epilogue;

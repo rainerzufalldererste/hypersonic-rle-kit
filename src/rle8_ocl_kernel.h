@@ -9,7 +9,6 @@ const char *kernelsource = STRINGIFY(
   void rle8_decompress(global uchar *pOut, global uchar *pIn, global uchar *pRle, global uchar *pSymbolToCount, global uint *pStartOffsets, uint subSectionSize)
   {
     uint subSectionIndex = get_group_id(0);
-    uint subSections = get_global_size(0);
   
     global uchar *pStart = pIn + pStartOffsets[subSectionIndex];
     global uchar *pEnd = pIn + pStartOffsets[subSectionIndex + 1];
@@ -27,9 +26,9 @@ const char *kernelsource = STRINGIFY(
     while (pStart < pEnd)
     {
       uchar b = *pStart;
-      *pEnd = b;
+      *pOut = b;
       pStart++;
-      pEnd++;
+      pOut++;
   
       if (rle[b])
       {
@@ -38,8 +37,8 @@ const char *kernelsource = STRINGIFY(
   
         for (uchar i = 0; i < count; i++)
         {
-          *pEnd = b;
-          pEnd++;
+          *pOut = b;
+          pOut++;
         }
       }
     }
@@ -49,11 +48,9 @@ const char *kernelsource = STRINGIFY(
   void rle8_decompress_single(global uchar *pOut, global uchar *pIn, uchar symbol, global uchar *pSymbolToCount, global uint *pStartOffsets, uint subSectionSize)
   {
     uint subSectionIndex = get_group_id(0);
-    uint subSections = get_global_size(0);
   
     global uchar *pStart = pIn + pStartOffsets[subSectionIndex];
     global uchar *pEnd = pIn + pStartOffsets[subSectionIndex + 1];
-    global uchar *pPreEnd = pEnd - 256;
   
     uchar symbolToCount[256];
     pOut += subSectionIndex * subSectionSize;
@@ -61,55 +58,12 @@ const char *kernelsource = STRINGIFY(
     for (uint i = 0; i < 256; i++)
       symbolToCount[i] = pSymbolToCount[i];
   
-    const uint sym = symbol | (symbol << 8) | (symbol << 16) | (symbol << 24);
-  
-    while (pStart < pPreEnd)
-    {
-      uint b = *(global uint *)pStart;
-      *(global uint *)pEnd = b;
-  
-      uint mask = b ^ sym;
-      uint contained = ((uint)((mask)-(uint)0x01010101) & ~(mask) & (uint)0x80808080);
-  
-      if (contained == 0)
-      {
-        pStart += sizeof(uint);
-        pOut += sizeof(uint);
-      }
-      else
-      {
-        for (uint i = 0; i < sizeof(uint); i++)
-        {
-          uchar s = (b & 0xFF);
-  
-          if (s == symbol)
-          {
-            pStart += i + 1;
-            pOut += i + 1;
-  
-            uchar count = symbolToCount[*pStart];
-            pStart++;
-  
-            for (uchar i = 0; i < count; i += sizeof(uint))
-            {
-              *(global uint *)pEnd = sym;
-              pEnd += sizeof(uint);
-            }
-  
-            break;
-          }
-  
-          b >>= 8;
-        }
-      }
-    }
-  
     while (pStart < pEnd)
     {
       uchar b = *pStart;
-      *pEnd = b;
+      *pOut = b;
       pStart++;
-      pEnd++;
+      pOut++;
   
       if (b == symbol)
       {
@@ -118,8 +72,8 @@ const char *kernelsource = STRINGIFY(
   
         for (uchar i = 0; i < count; i++)
         {
-          *pEnd = b;
-          pEnd++;
+          *pOut = b;
+          pOut++;
         }
       }
     }

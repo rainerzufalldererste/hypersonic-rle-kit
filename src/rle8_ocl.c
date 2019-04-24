@@ -1,12 +1,31 @@
 #include "rle8.h"
 #include "rle8_ocl_kernel.h"
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4201)
+#endif
+#define CL_USE_DEPRECATED_OPENCL_1_0_APIS
+#define CL_USE_DEPRECATED_OPENCL_1_1_APIS
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+#define CL_USE_DEPRECATED_OPENCL_2_0_APIS
+
+#define NVCL_SUPPRESS_USE_DEPRECATED_OPENCL_1_0_APIS_WARNING
+#define NVCL_SUPPRESS_USE_DEPRECATED_OPENCL_1_1_APIS_WARNING
+#define NVCL_SUPPRESS_USE_DEPRECATED_OPENCL_1_2_APIS_WARNING
+#define NVCL_SUPPRESS_USE_DEPRECATED_OPENCL_2_0_APIS_WARNING
+#ifdef __APPLE__
+#include <OpenCL/opencl.h>
+#else
 #include "CL/cl.h"
+#endif
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 #include <string.h>
 
 #define ENABLE_LOGGING
-#define MAX_SUB_SECTION_COUNT 1024
 
 #ifdef ENABLE_LOGGING
 #include <time.h>
@@ -26,6 +45,7 @@ cl_mem gpu_in_startOffsets = NULL;
 cl_program program = NULL;
 cl_kernel decompressKernel = NULL;
 cl_kernel decompressSingleKernel = NULL;
+cl_uint *pSubSectionOffsets = NULL;
 
 size_t _initialized_inputDataSize;
 size_t _initialized_outputDataSize;
@@ -45,6 +65,11 @@ bool rle8m_opencl_init(const size_t inputDataSize, const size_t outputDataSize, 
   cl_int ret = CL_SUCCESS;
   cl_uint platformCount;
   const size_t kernelSourceLength = strlen(kernelsource);
+
+  pSubSectionOffsets = malloc(sizeof(cl_uint) * (maxSubsectionCount + 1));
+
+  if (pSubSectionOffsets == NULL)
+    goto epilogue;
 
   if (CL_SUCCESS != (ret = clGetPlatformIDs(0, NULL, &platformCount)) || platformCount == 0)
     goto epilogue;
@@ -227,6 +252,12 @@ void rle8m_opencl_destroy()
     clReleaseContext(context);
     context = NULL;
   }
+
+  if (pSubSectionOffsets)
+  {
+    free(pSubSectionOffsets);
+    pSubSectionOffsets = NULL;
+  }
 }
 
 uint32_t rle8m_opencl_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
@@ -245,7 +276,7 @@ uint32_t rle8m_opencl_decompress(IN const uint8_t *pIn, const uint32_t inSize, O
   const uint32_t subSections = *((uint32_t *)(&pIn[index]));
   index += sizeof(uint32_t);
 
-  if (subSections == 0 || subSections > MAX_SUB_SECTION_COUNT)
+  if (subSections == 0)
     return 0;
 
   const size_t subSectionIndex = index;
@@ -257,14 +288,12 @@ uint32_t rle8m_opencl_decompress(IN const uint8_t *pIn, const uint32_t inSize, O
 
   const uint32_t subSectionSize = (uint32_t)(expectedOutSize / subSections);
 
-  cl_uint subSectionOffsets[MAX_SUB_SECTION_COUNT + 1];
-
-  subSectionOffsets[0] = 0;
+  pSubSectionOffsets[0] = 0;
 
   for (size_t i = 1; i < subSections; i++)
-    subSectionOffsets[i] = ((uint32_t *)(&pIn[subSectionIndex]))[i - 1] - (uint32_t)index;
+    pSubSectionOffsets[i] = ((uint32_t *)(&pIn[subSectionIndex]))[i - 1] - (uint32_t)index;
 
-  subSectionOffsets[subSections] = (uint32_t)expectedInSize - (uint32_t)index;
+  pSubSectionOffsets[subSections] = (uint32_t)expectedInSize - (uint32_t)index;
 
   uint8_t rleSymbolCount = 0;
   uint8_t symbol;
@@ -284,23 +313,24 @@ uint32_t rle8m_opencl_decompress(IN const uint8_t *pIn, const uint32_t inSize, O
   cl_int ret = CL_SUCCESS;
   size_t localSize[2] = { 1, 1 };
   size_t globalSize[2] = { 1, 1 };
+  globalSize[0] = subSections;
 
 #ifdef ENABLE_LOGGING
   clock_t time;
 #endif
-
-  globalSize[0] = subSections;
   
   bool success = rle8m_opencl_init(expectedInSize - index, expectedOutSize, subSections);
 
   if (!success)
     goto epilogue;
 
+  success = false;
+
 #ifdef ENABLE_LOGGING
   time = clock();
 #endif
   
-  if (CL_SUCCESS != (ret = clEnqueueWriteBuffer(commandQueue, gpu_in_buffer, CL_FALSE, 0, inSize - index, pIn + index, 0, NULL, NULL)))
+  if (CL_SUCCESS != (ret = clEnqueueWriteBuffer(commandQueue, gpu_in_buffer, CL_FALSE, 0, expectedInSize - index, pIn + index, 0, NULL, NULL)))
     goto epilogue;
 
   if (rleSymbolCount != 1)
@@ -312,7 +342,7 @@ uint32_t rle8m_opencl_decompress(IN const uint8_t *pIn, const uint32_t inSize, O
   if (CL_SUCCESS != (ret = clEnqueueWriteBuffer(commandQueue, gpu_in_symbolToCount, CL_FALSE, 0, 256, decompressInfo.symbolToCount, 0, NULL, NULL)))
     goto epilogue;
 
-  if (CL_SUCCESS != (ret = clEnqueueWriteBuffer(commandQueue, gpu_in_startOffsets, CL_FALSE, 0, sizeof(cl_uint) * (subSections + 1), subSectionOffsets, 0, NULL, NULL)))
+  if (CL_SUCCESS != (ret = clEnqueueWriteBuffer(commandQueue, gpu_in_startOffsets, CL_FALSE, 0, sizeof(cl_uint) * (subSections + 1), pSubSectionOffsets, 0, NULL, NULL)))
     goto epilogue;
 
 
