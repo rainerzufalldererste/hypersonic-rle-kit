@@ -900,11 +900,11 @@ uint32_t rle8_decompress_with_info(IN const uint8_t *pIn, IN const uint8_t *pEnd
   }
   else
   {
-#if !defined(_MSC_VER) || !defined(_DEBUG)
+//#if !defined(_MSC_VER) || !defined(_DEBUG)
     if (avxSupported)
       pIn = rle8_decompress_multi_avx(pIn, pPreEnd, pOut, rle, symbolToCount, &pOut);
     else
-#endif
+//#endif
       pIn = rle8_decompress_multi_sse(pIn, pPreEnd, pOut, rle, symbolToCount, &pOut);
   }
 
