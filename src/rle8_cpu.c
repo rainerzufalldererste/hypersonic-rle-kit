@@ -65,6 +65,47 @@ uint32_t rle8_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t
   return (uint32_t)index;
 }
 
+uint32_t rle8_compress_only_max_frequency(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
+{
+  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_compress_bounds(inSize))
+    return 0;
+
+  rle8_compress_info_t compressInfo;
+
+  if (!rle8_get_compress_info_only_max_frequency(pIn, inSize, &compressInfo))
+    return 0;
+
+  size_t index = sizeof(uint32_t); // to make room for the uint32_t length as the first value.
+
+  // Store required information.
+  {
+    *((uint32_t *)&pOut[index]) = inSize;
+    index += sizeof(uint32_t);
+
+    const uint32_t size = rle8_write_compress_info(&compressInfo, &pOut[index], outSize);
+
+    if (size == 0)
+      return 0;
+
+    index += size;
+  }
+
+  // Compress.
+  {
+    const uint32_t size = rle8_compress_with_info(pIn, inSize, &compressInfo, &pOut[index], outSize - (uint32_t)index);
+
+    if (size == 0)
+      return 0;
+
+    index += size;
+  }
+
+  // Store compressed length.
+  ((uint32_t *)pOut)[0] = (uint32_t)index;
+
+  return (uint32_t)index;
+}
+
 uint32_t rle8_decompressed_size(IN const uint8_t *pIn, const uint32_t inSize)
 {
   if (pIn == NULL || inSize < sizeof(uint32_t) * 2)
@@ -354,6 +395,107 @@ bool rle8_get_compress_info(IN const uint8_t *pIn, const uint32_t inSize, OUT rl
         rle[i] = (prob[i] / pcount[i]) >= 2;
       else
         rle[i] = false;
+
+    for (int64_t i = 255; i >= 0; i--)
+    {
+      if (pcount[i] == 0)
+      {
+        consumed[i] = true;
+        remaining--;
+        symbolsByProb[remaining] = (uint8_t)i;
+      }
+    }
+
+    for (size_t index = 0; index < remaining; index++)
+    {
+      uint32_t max = 0;
+      size_t maxIndex = 0;
+
+      for (size_t i = 0; i < 256; i++)
+      {
+        if (!consumed[i] && pcount[i] > max)
+        {
+          max = pcount[i];
+          maxIndex = i;
+        }
+      }
+
+      symbolsByProb[index] = (uint8_t)maxIndex;
+      consumed[maxIndex] = true;
+    }
+  }
+
+  pCompressInfo->symbolCount = (uint8_t)remaining;
+  memcpy(pCompressInfo->symbolsByProb, symbolsByProb, sizeof(symbolsByProb));
+  memcpy(pCompressInfo->rle, rle, sizeof(rle));
+
+  return true;
+}
+
+bool rle8_get_compress_info_only_max_frequency(IN const uint8_t * pIn, const uint32_t inSize, OUT rle8_compress_info_t * pCompressInfo)
+{
+  if (pIn == NULL || inSize == 0 || pCompressInfo == NULL)
+    return false;
+
+  uint8_t symbolsByProb[256];
+  bool rle[256];
+  memset(rle, 0, sizeof(rle));
+
+  uint32_t remaining = 256;
+
+  // Get Probabilities.
+  {
+    uint32_t prob[256];
+    uint32_t pcount[256];
+    bool consumed[256];
+
+    memset(prob, 0, sizeof(prob));
+    memset(pcount, 0, sizeof(pcount));
+    memset(consumed, 0, sizeof(consumed));
+
+    uint8_t lastSymbol = 0;
+    uint32_t count = 0;
+
+    if (pIn[0] != lastSymbol)
+      pcount[lastSymbol] = (uint32_t)-1;
+
+    for (size_t i = 0; i < inSize; i++)
+    {
+      if (pIn[i] == lastSymbol)
+      {
+        count++;
+      }
+      else
+      {
+        prob[lastSymbol] += count;
+        pcount[lastSymbol]++;
+        count = 1;
+        lastSymbol = pIn[i];
+      }
+    }
+
+    prob[lastSymbol] += count;
+    pcount[lastSymbol]++;
+
+    size_t maxBytesSaved = 0;
+    size_t maxBytesSavedIndexIndex = 0;
+
+    for (size_t i = 0; i < 256; i++)
+    {
+      if (pcount[i] > 0 && prob[i] / pcount[i] > 2)
+      {
+        const size_t saved = prob[i] - (pcount[i] * 2);
+
+        if (saved > maxBytesSaved)
+        {
+          maxBytesSaved = saved;
+          maxBytesSavedIndexIndex = i;
+        }
+      }
+    }
+
+    if (maxBytesSaved > 0)
+      rle[maxBytesSavedIndexIndex] = true;
 
     for (int64_t i = 255; i >= 0; i--)
     {
@@ -758,7 +900,7 @@ const uint8_t * rle8_decompress_multi_sse(IN const uint8_t *pIn, IN const uint8_
           }
           else
           {
-            size_t unaligned = ((size_t)pOut & (sizeof(__m128i) - 1));
+            size_t unaligned = ((size_t)pOut & (sizeof(simd_t) - 1));
             const uint8_t *pCOut = pOut;
 
             if (unaligned != 0)
@@ -795,6 +937,8 @@ const uint8_t * rle8_decompress_multi_sse(IN const uint8_t *pIn, IN const uint8_
 
 #ifndef _MSC_VER
 __attribute__((target("avx")))
+#else
+__declspec(noinline)
 #endif
 const uint8_t * rle8_decompress_multi_avx(IN const uint8_t *pIn, IN const uint8_t *pPreEnd, OUT uint8_t *pOut, const bool rle[256], const uint8_t symbolToCount[256], OUT uint8_t **ppOut)
 {
@@ -824,7 +968,11 @@ const uint8_t * rle8_decompress_multi_avx(IN const uint8_t *pIn, IN const uint8_
 
         if (count)
         {
+#if !defined(_DEBUG) && defined(_MSC_VER) && _MSC_VER <= 1900
+          const simd_t bb = _mm256_set1_epi16(dataA[i] | (dataA[i] << 8));
+#else
           const simd_t bb = _mm256_set1_epi8((char)dataA[i]);
+#endif
 
           if (count <= sizeof(simd_t))
           {
@@ -899,11 +1047,11 @@ uint32_t rle8_decompress_with_info(IN const uint8_t *pIn, IN const uint8_t *pEnd
   }
   else
   {
-//#if !defined(_MSC_VER) || !defined(_DEBUG)
+    _DetectCPUFeatures();
+
     if (avxSupported)
       pIn = rle8_decompress_multi_avx(pIn, pPreEnd, pOut, rle, symbolToCount, &pOut);
     else
-//#endif
       pIn = rle8_decompress_multi_sse(pIn, pPreEnd, pOut, rle, symbolToCount, &pOut);
   }
 

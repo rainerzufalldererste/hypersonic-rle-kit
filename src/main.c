@@ -7,6 +7,7 @@
 const char ArgumentTo[] = "-to";
 const char ArgumentSubSections[] = "-s";
 const char ArgumentRuns[] = "-r";
+const char ArgumentSingle[] = "--single";
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -14,13 +15,14 @@ int main(int argc, char **pArgv)
 {
   if (argc <= 1)
   {
-    printf("Usage: rle8 <InputFileName> [%s <Output File Name>][%s <Sub Section Count>][%s <Run Count>]\n", ArgumentTo, ArgumentSubSections, ArgumentRuns);
+    printf("Usage: rle8 <InputFileName> [%s <Output File Name>][%s <Sub Section Count>][%s <Run Count>][%s (only rle most frequent symbol)]\n", ArgumentTo, ArgumentSubSections, ArgumentRuns, ArgumentSingle);
     return 1;
   }
 
   const char *outputFileName = NULL;
   int32_t subSections = 0;
   int32_t runs = 1;
+  bool singleSymbol = false;
 
   if (argc > 2)
   {
@@ -61,12 +63,24 @@ int main(int argc, char **pArgv)
         argIndex += 2;
         argsRemaining -= 2;
       }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentSingle, sizeof(ArgumentSingle)) == 0)
+      {
+        singleSymbol = true;
+        argIndex += 1;
+        argsRemaining -= 1;
+      }
       else
       {
         puts("Invalid Parameter.");
         return 1;
       }
     }
+  }
+
+  if (singleSymbol && subSections != 0)
+  {
+    puts("Single Symbol Encoding is only available without sub sections.");
+    return 1;
   }
 
   int32_t fileSize = 0;
@@ -127,9 +141,16 @@ int main(int argc, char **pArgv)
     for (int32_t i = 0; i < runs; i++)
     {
       if (subSections == 0)
-        compressedSize = rle8_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+      {
+        if (singleSymbol)
+          compressedSize = rle8_compress_only_max_frequency(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+        else
+          compressedSize = rle8_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+      }
       else
+      {
         compressedSize = rle8m_compress((uint32_t)subSections, pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+      }
     }
 
     time = clock() - time;
@@ -186,13 +207,23 @@ int main(int argc, char **pArgv)
     if (memcmp(pUncompressedData, pDecompressedData, (size_t)fileSize) != 0)
     {
       puts("Validation Failed.");
+
+      for (size_t i = 0; i < fileSize; i++)
+      {
+        if (pUncompressedData[i] != pDecompressedData[i])
+        {
+          printf("First invalid char at %" PRIu64 " (%0x" PRIx8 " != 0x%" PRIx8 ").\n", i, pUncompressedData[i], pDecompressedData[i]);
+          break;
+        }
+      }
+
       goto epilogue;
     }
 
-    memset(pDecompressedData, 0, fileSize);
-
     if (subSections > 0)
     {
+      memset(pDecompressedData, 0, fileSize);
+
       if (!rle8m_opencl_init(fileSize, compressedSize, subSections))
       {
         puts("Initialization Failed (OpenCL).");
