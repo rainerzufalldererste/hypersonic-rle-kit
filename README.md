@@ -10,68 +10,43 @@
 
 ### Benchmark
  - Single-Threaded
- - Running on an `Intel(R) Core(TM) i5-3470S CPU @ 2.90GHz` / `Intel(R) Core(TM) i7-8809G CPU @ 3.10GHz` on Windows 10.
- - Compiled with the `Visual Studio 2015` toolset in `Visual Studio 2017`.
+ - Running on an `Intel(R) Xeon(R) CPU E5-1680 v3 @ 3.20GHz` on Windows 10.
+ - Compiled with `Visual Studio 2015`.
+ - 32 Test runs in rle8
+ - Compared to [TurboRLE](https://github.com/powturbo/TurboRLE) (includes to non-8 bit run length encodings)
 
-##### `video_frame.raw` (DCTs of an encoded heavily quantized raw YUV video frame)
-- Multiple Run Length Encodable Symbols
+#### File with single run length encodable symbol. (Contains longer regions containing the same char) [132.002.960 Bytes]
+| Mode | Compressed File Size | Compression Rate | Compression Speed | Decompression Speed | Compression rate of result (using `rans_static_32x16`) |
+| -- | -- | -- | -- | -- | -- |
+| - | 132.002.960 Bytes | 100 % | - | - | 33.838 % |
+| rle8 Normal | 74.804.293 Bytes | 56.669 % | 235.125 ms / **528.593 MB/s** | 24.563 ms / **5125.2 MB/s** | 41.538 % |
+| rle8 Ultra | 74.804.293 Bytes | 56.669 % | 241.25 ms / **507.868 MB/s** | 24.625 ms / **5112.2 MB/s** | 42.400 % |
+| trle | 73.804.815 Bytes | 55.9 % | - / 307.96 MB/s | - / 2327.31 MB/s | - |
+| srle 0 | 74.573.601 Bytes | 56.5 % | - / 306.58 MB/s | - / 4975.80 MB/s | - |
+| srle 8 | 74.573.600 Bytes | 56.5 % | - / 354.67 MB/s | - / 4983.12 MB/s | - |
+| srle 16 | 768.800.00 Bytes | 58.2 % | - / 383.60 MB/s | - / 7022.18 MB/s | - |
+| srle 32 | 81.262.160 Bytes | 61.6% | - / 762.91  MB/s | - / 7710.45 MB/s | - |
+| srle 64 | 89.565.200 Bytes | 67.9% | - / 1427.06  MB/s | - / 7621.42 MB/s | - |
+| mrle | 74.804.272 Bytes | 56.7% | - / 135.02 MB/s | - / 1837.48 MB/s | - |
+| memcpy | 132.002.960 Bytes | 100.0% | - / 7680.84 MB/s | - / 7680.84 MB/s | - |
 
-`Intel(R) Core(TM) i5-3470S CPU @ 2.90GHz`: AVX Variant
-```
-Compressed 88473600 bytes -> 7802546 bytes (8.819067 %) in 210.656250 ms.
-Decompressed in 40.343750 ms.
-```
+#### File with multiple run length encodable symbols. (Heavily quantized DCTs of a video frame) [88.473.600 Bytes]
+| Mode | Compressed File Size | Compression Rate | Compression Speed | Decompression Speed | Compression rate of result (using `rans_static_32x16`) |
+| -- | -- | -- | -- | -- | -- |
+| - | 88.473.600 Bytes | 100 % | - | - | 12.861 %
+| rle8 Normal (Single Symbol Mode) | 17.657.837 Bytes | 19.958 % | 189.813 ms / 444.518 MB/s | 37.313 ms / 2261.307 MB/s | 46.088 % |
+| rle8 Ultra (Single Symbol Mode) | 17.657.837 Bytes | 19.958 % | 189.969 ms / 444.152 MB/s | 36.219 ms / 2329.594 MB/s | 53.556 % |
+| rle8 Normal | 17.630.322 Bytes | 19.927 % | 189.031 ms / 446.355 MB/s | 57.281 ms / 1472.995 MB/s | 45.944 % |
+| rle8 Ultra | 17.630.322 Bytes | 19.927 % | 189.625 ms / 444.957 MB/s | 57.875 ms / 1457.883 MB/s | 53.428 % |
+trle | 15.244.992 Bytes | 17.2 % | - / 699.13 MB/s | - / 1707.79 MB/s | - |
+srle 0 | 16.555.350 Bytes | 18.7 % | - / 686.07 MB/s | - / 2522.70 MB/s | - |
+srle 8 | 16.555.349 Bytes | 18.7 % | - / 983.68 MB/s | - / 2420.88 MB/s | - |
+srle 16 | 18.868.388 Bytes | 21.3 % | - / 965.81 MB/s | - / 4149.60 MB/s | - |
+srle 32 | 21.390.380 Bytes | 24.2 % | - / 1656.93 MB/s | - / 7370.96 MB/s | - |
+srle 64 | 24.311.530 Bytes | 27.5 % | - / 2839.15 MB/s | - / 8882.89 MB/s | - |
+mrle | 17.420.113 Bytes | 19.7 % | - / 208.05 MB/s | - / 1261.91 MB/s | - |
+memcpy | 88.473.600 Bytes | 100.0 % | - / 7572.85 MB/s | - / 7572.85 MB/s | - |
 
-`Intel(R) Core(TM) i7-8809G CPU @ 3.10GHz`: AVX Variant
-```
-Compressed 88473600 bytes -> 7802546 bytes (8.819067 %) in 129.437500 ms.
-Decompressed in 28.375000 ms.
-```
-
-##### `data.txt` (Text file with one symbol that is worth being run length encoded)
-- Single Run Length Encodable Symbol.
-
-`Intel(R) Core(TM) i5-3470S CPU @ 2.90GHz`: SSE2 Variant
-```
-Compressed 133436430 bytes -> 17700604 bytes (13.265196 %) in 301.468750 ms.
-Decompressed in 21.875000 ms.
-```
-
-`Intel(R) Core(TM) i7-8809G CPU @ 3.10GHz`: AVX2 Variant
-```
-Compressed 133436430 bytes -> 17700604 bytes (13.265196 %) in 141.562500 ms.
-Decompressed in 14.187500 ms.
-```
-
-##### `non-compressible.txt` (Text file with lots of random characters and very few repeating symbols)
-- Multiple Run Length Encodable Symbols
-
-`Intel(R) Core(TM) i5-3470S CPU @ 2.90GHz`: AVX Variant
-```
-Compressed 223722720 bytes -> 213763765 bytes (95.548528 %) in 623.555556 ms.
-Decompressed in 243.777778 ms.
-```
-
-`Intel(R) Core(TM) i7-8809G CPU @ 3.10GHz`: AVX Variant
-```
-Compressed 223722720 bytes -> 213763765 bytes (95.548528 %) in 399.312500 ms.
-Decompressed in 117.562500 ms.
-```
-
-##### `non-compressible-single.txt` (Text file with lots of random characters and one repeating symbol)
-- Single Run Length Encodable Symbol.
-
-`Intel(R) Core(TM) i5-3470S CPU @ 2.90GHz`: SSE2 Variant
-```
-Compressed 67679040 bytes -> 44772338 bytes (66.153920 %) in 187.050000 ms.
-Decompressed in 52.150000 ms.
-```
-
-`Intel(R) Core(TM) i7-8809G CPU @ 3.10GHz`: AVX2 Variant
-```
-Compressed 67679040 bytes -> 44772338 bytes (66.153920 %) in 99.562500 ms.
-Decompressed in 29.375000 ms.
-```
 
 ### Setup
 ``` bash

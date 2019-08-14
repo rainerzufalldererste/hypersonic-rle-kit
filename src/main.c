@@ -8,6 +8,7 @@ const char ArgumentTo[] = "-to";
 const char ArgumentSubSections[] = "-s";
 const char ArgumentRuns[] = "-r";
 const char ArgumentSingle[] = "--single";
+const char ArgumentUltra[] = "--ultra";
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -15,7 +16,7 @@ int main(int argc, char **pArgv)
 {
   if (argc <= 1)
   {
-    printf("Usage: rle8 <InputFileName> [%s <Output File Name>][%s <Sub Section Count>][%s <Run Count>][%s (only rle most frequent symbol)]\n", ArgumentTo, ArgumentSubSections, ArgumentRuns, ArgumentSingle);
+    printf("Usage: rle8 <InputFileName> [%s <Output File Name>][%s <Sub Section Count>][%s <Run Count>][%s (only rle most frequent symbol)][%s (compressed result is less compressible)]\n", ArgumentTo, ArgumentSubSections, ArgumentRuns, ArgumentSingle, ArgumentUltra);
     return 1;
   }
 
@@ -23,6 +24,7 @@ int main(int argc, char **pArgv)
   int32_t subSections = 0;
   int32_t runs = 1;
   bool singleSymbol = false;
+  bool ultraMode = false;
 
   if (argc > 2)
   {
@@ -69,6 +71,12 @@ int main(int argc, char **pArgv)
         argIndex += 1;
         argsRemaining -= 1;
       }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentUltra, sizeof(ArgumentUltra)) == 0)
+      {
+        ultraMode = true;
+        argIndex += 1;
+        argsRemaining -= 1;
+      }
       else
       {
         puts("Invalid Parameter.");
@@ -80,6 +88,12 @@ int main(int argc, char **pArgv)
   if (singleSymbol && subSections != 0)
   {
     puts("Single Symbol Encoding is only available without sub sections.");
+    return 1;
+  }
+
+  if (ultraMode && subSections != 0)
+  {
+    puts("Ultra Mode Encoding is only available without sub sections.");
     return 1;
   }
 
@@ -142,10 +156,20 @@ int main(int argc, char **pArgv)
     {
       if (subSections == 0)
       {
-        if (singleSymbol)
-          compressedSize = rle8_compress_only_max_frequency(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+        if (!ultraMode)
+        {
+          if (singleSymbol)
+            compressedSize = rle8_compress_only_max_frequency(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+          else
+            compressedSize = rle8_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+        }
         else
-          compressedSize = rle8_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+        {
+          if (singleSymbol)
+            compressedSize = rle8_ultra_compress_only_max_frequency(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+          else
+            compressedSize = rle8_ultra_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+        }
       }
       else
       {
@@ -161,7 +185,7 @@ int main(int argc, char **pArgv)
       goto epilogue;
     }
 
-    printf("Compressed %" PRIi32 " bytes -> %" PRIu32 " bytes (%f %%) in %f ms.\n", fileSize, compressedSize, (double)compressedSize / (double)fileSize * 100.0, time / (double)runs / (double)CLOCKS_PER_SEC * 1000.0);
+    printf("Compressed %" PRIi32 " bytes -> %" PRIu32 " bytes (%f %%) in %f ms. (=> %f MB/s)\n", fileSize, compressedSize, (double)compressedSize / (double)fileSize * 100.0, time / (double)runs / (double)CLOCKS_PER_SEC * 1000.0, (fileSize / (1024.0 * 1024.0)) / (time / (double)runs / (double)CLOCKS_PER_SEC));
 
     if (outputFileName)
     {
@@ -189,9 +213,16 @@ int main(int argc, char **pArgv)
     for (int32_t i = 0; i < runs; i++)
     {
       if (subSections == 0)
-        decompressedSize = rle8_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+      {
+        if (!ultraMode)
+          decompressedSize = rle8_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+        else
+          decompressedSize = rle8_ultra_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+      }
       else
+      {
         decompressedSize = rle8m_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+      }
     }
 
     time = clock() - time;
@@ -202,7 +233,7 @@ int main(int argc, char **pArgv)
       goto epilogue;
     }
     
-    printf("Decompressed in %f ms.\n", time / (double)runs / (double)CLOCKS_PER_SEC * 1000.0);
+    printf("Decompressed in %f ms. (=> %f MB/s)\n", time / (double)runs / (double)CLOCKS_PER_SEC * 1000.0, (fileSize / (1024.0 * 1024.0)) / (time / (double)runs / (double)CLOCKS_PER_SEC));
 
     if (memcmp(pUncompressedData, pDecompressedData, (size_t)fileSize) != 0)
     {
@@ -212,7 +243,7 @@ int main(int argc, char **pArgv)
       {
         if (pUncompressedData[i] != pDecompressedData[i])
         {
-          printf("First invalid char at %" PRIu64 " (%0x" PRIx8 " != 0x%" PRIx8 ").\n", i, pUncompressedData[i], pDecompressedData[i]);
+          printf("First invalid char at %" PRIu64 " (0x%" PRIx8 " != 0x%" PRIx8 ").\n", i, pUncompressedData[i], pDecompressedData[i]);
           break;
         }
       }

@@ -6,9 +6,6 @@
 #include <x86intrin.h>
 #endif
 
-#define AVX 1
-// #define AVX2 1
-
 #ifdef _MSC_VER
 //#define DO_NOT_OPTIMIZE_DECODER
 #define ALIGN(a) __declspec(align(a))
@@ -728,45 +725,44 @@ const uint8_t * rle8_decompress_single_sse(IN const uint8_t *pIn, IN const uint8
       ALIGN(SIMD_SIZE) uint8_t dataA[sizeof(simd_t)];
       _mm_store_si128((simd_t *)dataA, data);
 
-      for (size_t i = 0; i < sizeof(simd_t); i++)
+#ifdef _MSC_VER
+      uint32_t index;
+      _BitScanForward(&index, contains);
+#else
+      const uint32_t index = __builtin_ctz(contains);
+#endif
+
+      pIn += index + 1;
+      pOut += index + 1;
+
+      const uint8_t count = symbolToCount[*pIn];
+      pIn++;
+
+      if (count)
       {
-        if (rle[dataA[i]])
+        if (count <= sizeof(simd_t))
         {
-          pIn += i + 1;
-          pOut += i + 1;
+          _mm_storeu_si128((simd_t *)pOut, interestingSymbol);
+          pOut += count;
+        }
+        else
+        {
+          size_t unaligned = ((size_t)pOut & (sizeof(simd_t) - 1));
+          const uint8_t *pCOut = pOut;
 
-          const uint8_t count = symbolToCount[*pIn];
-          pIn++;
-
-          if (count)
+          if (unaligned != 0)
           {
-            if (count <= sizeof(simd_t))
-            {
-              _mm_storeu_si128((simd_t *)pOut, interestingSymbol);
-              pOut += count;
-            }
-            else
-            {
-              size_t unaligned = ((size_t)pOut & (sizeof(simd_t) - 1));
-              const uint8_t *pCOut = pOut;
-
-              if (unaligned != 0)
-              {
-                _mm_storeu_si128((simd_t *)pCOut, interestingSymbol);
-                pCOut = (uint8_t *)((size_t)pCOut & ~(size_t)(sizeof(simd_t) - 1)) + sizeof(simd_t);
-              }
-
-              pOut += count;
-
-              while (pCOut < pOut)
-              {
-                _mm_store_si128((simd_t *)pCOut, interestingSymbol);
-                pCOut += sizeof(simd_t);
-              }
-            }
+            _mm_storeu_si128((simd_t *)pCOut, interestingSymbol);
+            pCOut = (uint8_t *)((size_t)pCOut & ~(size_t)(sizeof(simd_t) - 1)) + sizeof(simd_t);
           }
 
-          break;
+          pOut += count;
+
+          while (pCOut < pOut)
+          {
+            _mm_store_si128((simd_t *)pCOut, interestingSymbol);
+            pCOut += sizeof(simd_t);
+          }
         }
       }
     }
@@ -814,45 +810,44 @@ const uint8_t * rle8_decompress_single_avx2(IN const uint8_t *pIn, IN const uint
       ALIGN(SIMD_SIZE) uint8_t dataA[sizeof(simd_t)];
       _mm256_store_si256((simd_t *)dataA, data);
 
-      for (size_t i = 0; i < sizeof(simd_t); i++)
+#ifdef _MSC_VER
+      uint32_t index;
+      _BitScanForward(&index, contains);
+#else
+      const uint32_t index = __builtin_ctz(contains);
+#endif
+
+      pIn += index + 1;
+      pOut += index + 1;
+
+      const uint8_t count = symbolToCount[*pIn];
+      pIn++;
+
+      if (count)
       {
-        if (rle[dataA[i]])
+        if (count <= sizeof(simd_t))
         {
-          pIn += i + 1;
-          pOut += i + 1;
+          _mm256_storeu_si256((simd_t *)pOut, interestingSymbol);
+          pOut += count;
+        }
+        else
+        {
+          size_t unaligned = ((size_t)pOut & (sizeof(simd_t) - 1));
+          const uint8_t *pCOut = pOut;
 
-          const uint8_t count = symbolToCount[*pIn];
-          pIn++;
-
-          if (count)
+          if (unaligned != 0)
           {
-            if (count <= sizeof(simd_t))
-            {
-              _mm256_storeu_si256((simd_t *)pOut, interestingSymbol);
-              pOut += count;
-            }
-            else
-            {
-              size_t unaligned = ((size_t)pOut & (sizeof(simd_t) - 1));
-              const uint8_t *pCOut = pOut;
-
-              if (unaligned != 0)
-              {
-                _mm256_storeu_si256((simd_t *)pCOut, interestingSymbol);
-                pCOut = (uint8_t *)((size_t)pCOut & ~(size_t)(sizeof(simd_t) - 1)) + sizeof(simd_t);
-              }
-
-              pOut += count;
-
-              while (pCOut < pOut)
-              {
-                _mm256_store_si256((simd_t *)pCOut, interestingSymbol);
-                pCOut += sizeof(simd_t);
-              }
-            }
+            _mm256_storeu_si256((simd_t *)pCOut, interestingSymbol);
+            pCOut = (uint8_t *)((size_t)pCOut & ~(size_t)(sizeof(simd_t) - 1)) + sizeof(simd_t);
           }
 
-          break;
+          pOut += count;
+
+          while (pCOut < pOut)
+          {
+            _mm256_store_si256((simd_t *)pCOut, interestingSymbol);
+            pCOut += sizeof(simd_t);
+          }
         }
       }
     }
