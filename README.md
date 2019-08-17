@@ -12,7 +12,7 @@
  - Single-Threaded
  - Running on an `Intel(R) Xeon(R) CPU E5-1680 v3 @ 3.20GHz` on Windows 10.
  - Compiled with `Visual Studio 2015`.
- - 32 Test runs in rle8
+ - 32 Test runs in rle8 (`-r 32`)
  - Compared to [TurboRLE](https://github.com/powturbo/TurboRLE) (includes to non-8 bit run length encodings)
 
 #### File with single run length encodable symbol. (Contains longer regions containing the same char) [132.002.960 Bytes]
@@ -20,7 +20,7 @@
 | -- | -- | -- | -- | -- | -- |
 | - | 132.002.960 Bytes | 100 % | - | - | 33.838 % |
 | rle8 Normal | 74.804.293 Bytes | 56.669 % | 235.125 ms / **528.593 MB/s** | 24.563 ms / **5125.2 MB/s** | 41.538 % |
-| rle8 Ultra | 74.804.293 Bytes | 56.669 % | 241.25 ms / **507.868 MB/s** | 24.625 ms / **5112.2 MB/s** | 42.400 % |
+| rle8 Ultra | 77.725.733 Bytes | 58.882 % | 248.563 ms / **506.463 MB/s** | 28.25 ms / 4417.117 MB/s | 43.64 % |
 | trle | 73.804.815 Bytes | 55.9 % | - / 307.96 MB/s | - / 2327.31 MB/s | - |
 | srle 0 | 74.573.601 Bytes | 56.5 % | - / 306.58 MB/s | - / 4975.80 MB/s | - |
 | srle 8 | 74.573.600 Bytes | 56.5 % | - / 354.67 MB/s | - / 4983.12 MB/s | - |
@@ -35,9 +35,9 @@
 | -- | -- | -- | -- | -- | -- |
 | - | 88.473.600 Bytes | 100 % | - | - | 12.861 %
 | rle8 Normal (Single Symbol Mode) | 17.657.837 Bytes | 19.958 % | 189.813 ms / 444.518 MB/s | 37.313 ms / 2261.307 MB/s | 46.088 % |
-| rle8 Ultra (Single Symbol Mode) | 17.657.837 Bytes | 19.958 % | 189.969 ms / 444.152 MB/s | 36.219 ms / 2329.594 MB/s | 53.556 % |
+| rle8 Ultra (Single Symbol Mode) | 21.306.466 Bytes | 24.082 % | 198.656 ms / 424.728 MB/s |  32.906 ms / **2564.103 MB/s** | 43.793 % |
 | rle8 Normal | 17.630.322 Bytes | 19.927 % | 189.031 ms / 446.355 MB/s | 57.281 ms / 1472.995 MB/s | 45.944 % |
-| rle8 Ultra | 17.630.322 Bytes | 19.927 % | 189.625 ms / 444.957 MB/s | 57.875 ms / 1457.883 MB/s | 53.428 % |
+| rle8 Ultra | 21.306.466 Bytes | 24.082 % | 198.438 ms / 425.197 MB/s | 54.094 ms / 1559.792 MB/s | 43.681 % |
 trle | 15.244.992 Bytes | 17.2 % | - / 699.13 MB/s | - / 1707.79 MB/s | - |
 srle 0 | 16.555.350 Bytes | 18.7 % | - / 686.07 MB/s | - / 2522.70 MB/s | - |
 srle 8 | 16.555.349 Bytes | 18.7 % | - / 983.68 MB/s | - / 2420.88 MB/s | - |
@@ -46,7 +46,6 @@ srle 32 | 21.390.380 Bytes | 24.2 % | - / 1656.93 MB/s | - / 7370.96 MB/s | - |
 srle 64 | 24.311.530 Bytes | 27.5 % | - / 2839.15 MB/s | - / 8882.89 MB/s | - |
 mrle | 17.420.113 Bytes | 19.7 % | - / 208.05 MB/s | - / 1261.91 MB/s | - |
 memcpy | 88.473.600 Bytes | 100.0 % | - / 7572.85 MB/s | - / 7572.85 MB/s | - |
-
 
 ### Setup
 ``` bash

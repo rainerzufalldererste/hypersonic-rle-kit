@@ -151,7 +151,7 @@ uint32_t rle8_ultra_compress_with_info(IN const uint8_t *pIn, const uint32_t inS
 
     if (pCompressInfo->rle[b])
     {
-      const uint8_t range = 255;
+      const uint8_t range = 32;
       uint8_t count = 0;
 
       int j = 1;
@@ -164,7 +164,7 @@ uint32_t rle8_ultra_compress_with_info(IN const uint8_t *pIn, const uint32_t inS
 
       i += j - 1;
 
-      pOut[index] = count;
+      pOut[index] = pCompressInfo->symbolsByProb[count];
       index++;
     }
   }
@@ -178,7 +178,7 @@ uint32_t rle8_ultra_compress_with_info(IN const uint8_t *pIn, const uint32_t inS
 
     if (pCompressInfo->rle[b])
     {
-      const uint8_t range = (uint8_t)min(inSize - i - 1, 255);
+      const uint8_t range = (uint8_t)min(inSize - i - 1, 32);
 
       uint8_t count = 0;
       size_t j = 1;
@@ -191,7 +191,7 @@ uint32_t rle8_ultra_compress_with_info(IN const uint8_t *pIn, const uint32_t inS
 
       i += j - 1;
 
-      pOut[index] = count;
+      pOut[index] = pCompressInfo->symbolsByProb[count];
       index++;
     }
   }
@@ -201,7 +201,7 @@ uint32_t rle8_ultra_compress_with_info(IN const uint8_t *pIn, const uint32_t inS
 
 //////////////////////////////////////////////////////////////////////////
 
-const uint8_t * rle8_ultra_decompress_single_sse(IN const uint8_t *pIn, IN const uint8_t *pPreEnd, OUT uint8_t *pOut, const bool rle[256], OUT uint8_t **ppOut)
+const uint8_t * rle8_ultra_decompress_single_sse(IN const uint8_t *pIn, IN const uint8_t *pPreEnd, OUT uint8_t *pOut, const bool rle[256], const uint8_t symbolToCount[256], OUT uint8_t **ppOut)
 {
   typedef __m128i simd_t;
 #define SIMD_SIZE 16
@@ -245,36 +245,12 @@ const uint8_t * rle8_ultra_decompress_single_sse(IN const uint8_t *pIn, IN const
       pIn += index + 1;
       pOut += index + 1;
 
-      const uint8_t count = *pIn;
+      const uint8_t count = symbolToCount[*pIn];
       pIn++;
 
-      if (count)
-      {
-        if (count <= sizeof(simd_t))
-        {
-          _mm_storeu_si128((simd_t *)pOut, interestingSymbol);
-          pOut += count;
-        }
-        else
-        {
-          size_t unaligned = ((size_t)pOut & (sizeof(simd_t) - 1));
-          const uint8_t *pCOut = pOut;
-
-          if (unaligned != 0)
-          {
-            _mm_storeu_si128((simd_t *)pCOut, interestingSymbol);
-            pCOut = (uint8_t *)((size_t)pCOut & ~(size_t)(sizeof(simd_t) - 1)) + sizeof(simd_t);
-          }
-
-          pOut += count;
-
-          while (pCOut < pOut)
-          {
-            _mm_store_si128((simd_t *)pCOut, interestingSymbol);
-            pCOut += sizeof(simd_t);
-          }
-        }
-      }
+      _mm_storeu_si128((simd_t *)pOut, interestingSymbol);
+      _mm_storeu_si128(((simd_t *)pOut) + 1, interestingSymbol);
+      pOut += count;
     }
   }
 
@@ -286,7 +262,7 @@ const uint8_t * rle8_ultra_decompress_single_sse(IN const uint8_t *pIn, IN const
 #ifndef _MSC_VER
 __attribute__((target("avx2")))
 #endif
-const uint8_t * rle8_ultra_decompress_single_avx2(IN const uint8_t *pIn, IN const uint8_t *pPreEnd, OUT uint8_t *pOut, const bool rle[256], OUT uint8_t **ppOut)
+const uint8_t * rle8_ultra_decompress_single_avx2(IN const uint8_t *pIn, IN const uint8_t *pPreEnd, OUT uint8_t *pOut, const bool rle[256], const uint8_t symbolToCount[256], OUT uint8_t **ppOut)
 {
   typedef __m256i simd_t;
 #define SIMD_SIZE 32
@@ -330,36 +306,11 @@ const uint8_t * rle8_ultra_decompress_single_avx2(IN const uint8_t *pIn, IN cons
       pIn += index + 1;
       pOut += index + 1;
 
-      const uint8_t count = *pIn;
+      const uint8_t count = symbolToCount[*pIn];
       pIn++;
 
-      if (count)
-      {
-        if (count <= sizeof(simd_t))
-        {
-          _mm256_storeu_si256((simd_t *)pOut, interestingSymbol);
-          pOut += count;
-        }
-        else
-        {
-          size_t unaligned = ((size_t)pOut & (sizeof(simd_t) - 1));
-          const uint8_t *pCOut = pOut;
-
-          if (unaligned != 0)
-          {
-            _mm256_storeu_si256((simd_t *)pCOut, interestingSymbol);
-            pCOut = (uint8_t *)((size_t)pCOut & ~(size_t)(sizeof(simd_t) - 1)) + sizeof(simd_t);
-          }
-
-          pOut += count;
-
-          while (pCOut < pOut)
-          {
-            _mm256_store_si256((simd_t *)pCOut, interestingSymbol);
-            pCOut += sizeof(simd_t);
-          }
-        }
-      }
+      _mm256_storeu_si256((simd_t *)pOut, interestingSymbol);
+      pOut += count;
     }
   }
 
@@ -368,7 +319,7 @@ const uint8_t * rle8_ultra_decompress_single_avx2(IN const uint8_t *pIn, IN cons
 #undef SIMD_SIZE
 }
 
-const uint8_t * rle8_ultra_decompress_multi_sse(IN const uint8_t *pIn, IN const uint8_t *pPreEnd, OUT uint8_t *pOut, const bool rle[256], OUT uint8_t **ppOut)
+const uint8_t * rle8_ultra_decompress_multi_sse(IN const uint8_t *pIn, IN const uint8_t *pPreEnd, OUT uint8_t *pOut, const bool rle[256], const uint8_t symbolToCount[256], OUT uint8_t **ppOut)
 {
   while (pIn < pPreEnd)
   {
@@ -391,37 +342,16 @@ const uint8_t * rle8_ultra_decompress_multi_sse(IN const uint8_t *pIn, IN const 
         pIn += i + 1;
         pOut += i + 1;
 
-        const uint8_t count = *pIn;
+        const uint8_t count = symbolToCount[*pIn];
         pIn++;
 
         if (count)
         {
           const simd_t bb = _mm_set1_epi8((char)dataA[i]);
 
-          if (count <= sizeof(simd_t))
-          {
-            _mm_storeu_si128((simd_t *)pOut, bb);
-            pOut += count;
-          }
-          else
-          {
-            size_t unaligned = ((size_t)pOut & (sizeof(simd_t) - 1));
-            const uint8_t *pCOut = pOut;
-
-            if (unaligned != 0)
-            {
-              _mm_storeu_si128((simd_t *)pCOut, bb);
-              pCOut = (uint8_t *)((size_t)pCOut & ~(size_t)(sizeof(simd_t) - 1)) + sizeof(simd_t);
-            }
-
-            pOut += count;
-
-            while (pCOut < pOut)
-            {
-              _mm_store_si128((simd_t *)pCOut, bb);
-              pCOut += sizeof(simd_t);
-            }
-          }
+          _mm_storeu_si128((simd_t *)pOut, bb);
+          _mm_storeu_si128(((simd_t *)pOut) + 1, bb);
+          pOut += count;
         }
 
         goto symbol_found;
@@ -445,7 +375,7 @@ __attribute__((target("avx")))
 #else
 __declspec(noinline)
 #endif
-const uint8_t * rle8_ultra_decompress_multi_avx(IN const uint8_t *pIn, IN const uint8_t *pPreEnd, OUT uint8_t *pOut, const bool rle[256], OUT uint8_t **ppOut)
+const uint8_t * rle8_ultra_decompress_multi_avx(IN const uint8_t *pIn, IN const uint8_t *pPreEnd, OUT uint8_t *pOut, const bool rle[256], const uint8_t symbolToCount[256], OUT uint8_t **ppOut)
 {
   while (pIn < pPreEnd)
   {
@@ -468,42 +398,16 @@ const uint8_t * rle8_ultra_decompress_multi_avx(IN const uint8_t *pIn, IN const 
         pIn += i + 1;
         pOut += i + 1;
 
-        const uint8_t count = *pIn;
+        const uint8_t count = symbolToCount[*pIn];
         pIn++;
 
-        if (count)
-        {
 #if !defined(_DEBUG) && defined(_MSC_VER) && _MSC_VER <= 1900
-          const simd_t bb = _mm256_set1_epi16(dataA[i] | (dataA[i] << 8));
+        const simd_t bb = _mm256_set1_epi16(dataA[i] | (dataA[i] << 8));
 #else
-          const simd_t bb = _mm256_set1_epi8((char)dataA[i]);
+        const simd_t bb = _mm256_set1_epi8((char)dataA[i]);
 #endif
-
-          if (count <= sizeof(simd_t))
-          {
-            _mm256_storeu_si256((simd_t *)pOut, bb);
-            pOut += count;
-          }
-          else
-          {
-            size_t unaligned = ((size_t)pOut & (sizeof(simd_t) - 1));
-            const uint8_t *pCOut = pOut;
-
-            if (unaligned != 0)
-            {
-              _mm256_storeu_si256((simd_t *)pCOut, bb);
-              pCOut = (uint8_t *)((size_t)pCOut & ~(size_t)(sizeof(simd_t) - 1)) + sizeof(simd_t);
-            }
-
-            pOut += count;
-
-            while (pCOut < pOut)
-            {
-              _mm256_store_si256((simd_t *)pCOut, bb);
-              pCOut += sizeof(simd_t);
-            }
-          }
-        }
+        _mm256_storeu_si256((simd_t *)pOut, bb);
+        pOut += count;
 
         goto symbol_found;
       }
@@ -540,8 +444,10 @@ void _DetectCPUFeatures();
 uint32_t rle8_ultra_decompress_with_info(IN const uint8_t *pIn, IN const uint8_t *pEnd, IN const rle8_decompress_info_t *pDecompressInfo, OUT uint8_t *pOut, const uint32_t expectedOutSize)
 {
   bool rle[256];
+  uint8_t symbolToCount[256];
 
   memcpy(rle, pDecompressInfo->rle, sizeof(rle));
+  memcpy(symbolToCount, pDecompressInfo->symbolToCount, sizeof(symbolToCount));
 
   const uint8_t *pPreEnd = pEnd - 256;
 
@@ -560,18 +466,18 @@ uint32_t rle8_ultra_decompress_with_info(IN const uint8_t *pIn, IN const uint8_t
     _DetectCPUFeatures();
 
     if (avx2Supported)
-      pIn = rle8_ultra_decompress_single_avx2(pIn, pPreEnd, pOut, rle, &pOut);
+      pIn = rle8_ultra_decompress_single_avx2(pIn, pPreEnd, pOut, rle, symbolToCount, &pOut);
     else
-      pIn = rle8_ultra_decompress_single_sse(pIn, pPreEnd, pOut, rle, &pOut);
+      pIn = rle8_ultra_decompress_single_sse(pIn, pPreEnd, pOut, rle, symbolToCount, &pOut);
   }
   else
   {
     _DetectCPUFeatures();
 
     if (avxSupported)
-      pIn = rle8_ultra_decompress_multi_avx(pIn, pPreEnd, pOut, rle, &pOut);
+      pIn = rle8_ultra_decompress_multi_avx(pIn, pPreEnd, pOut, rle, symbolToCount, &pOut);
     else
-      pIn = rle8_ultra_decompress_multi_sse(pIn, pPreEnd, pOut, rle, &pOut);
+      pIn = rle8_ultra_decompress_multi_sse(pIn, pPreEnd, pOut, rle, symbolToCount, &pOut);
   }
 
   while (pIn < pEnd)
@@ -582,7 +488,7 @@ uint32_t rle8_ultra_decompress_with_info(IN const uint8_t *pIn, IN const uint8_t
 
     if (rle[b])
     {
-      const uint8_t count = *pIn;
+      const uint8_t count = symbolToCount[*pIn];
       pIn++;
 
       if (count)
