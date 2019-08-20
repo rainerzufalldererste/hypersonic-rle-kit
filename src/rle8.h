@@ -20,6 +20,11 @@
 #define OPTIONAL
 #endif
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 uint32_t rle8_compress_bounds(const uint32_t inSize);
 uint32_t rle8_decompressed_size(IN const uint8_t *pIn, const uint32_t inSize);
 uint32_t rle8_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
@@ -67,8 +72,19 @@ uint32_t rle8_ultra_decompress_with_info(IN const uint8_t *pIn, IN const uint8_t
 
 //////////////////////////////////////////////////////////////////////////
 
+uint32_t rle8_extreme_compress_bounds(const uint32_t inSize);
+uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_extreme_single_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+//////////////////////////////////////////////////////////////////////////
+
 bool rle8m_opencl_init(const size_t inputDataSize, const size_t outputDataSize, const size_t maxSubsectionCount);
 void rle8m_opencl_destroy();
 uint32_t rle8m_opencl_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // rle8_h__

@@ -7,7 +7,6 @@
 #endif
 
 #ifdef _MSC_VER
-//#define DO_NOT_OPTIMIZE_DECODER
 #define ALIGN(a) __declspec(align(a))
 #else
 #define ALIGN(a) __attribute__((aligned(a)))
