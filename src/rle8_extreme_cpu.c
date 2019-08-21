@@ -1,5 +1,7 @@
 #include "rle8.h"
 
+//#define PREFER_UNALIGNED
+
 #ifdef _MSC_VER
 #include <intrin.h>
 #else
@@ -496,6 +498,165 @@ uint32_t rle8_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, O
 
 //////////////////////////////////////////////////////////////////////////
 
+
+#ifndef PREFER_UNALIGNED
+#define MEMCPY_SSE \
+if (offset <= sizeof(symbol)) \
+{ _mm_storeu_si128((__m128i *)pOut, _mm_loadu_si128((__m128i *)pInStart)); \
+  pOut += offset; \
+  pInStart += offset; \
+} \
+else \
+{ size_t unaligned = ((size_t)pInStart & (sizeof(__m128i) - 1)); \
+  const uint8_t *pCIn = pInStart; \
+  uint8_t *pCOut = pOut; \
+\
+  if (unaligned != 0) \
+  { _mm_storeu_si128((__m128i *)pCOut, _mm_loadu_si128((__m128i *)pCIn)); \
+    pCIn = (uint8_t *)((size_t)pCIn & ~(size_t)(sizeof(__m128i) - 1)) + sizeof(__m128i); \
+    pCOut += (pCIn - pInStart); \
+  } \
+\
+  pOut += offset; \
+  pInStart += offset; \
+\
+  while (pCOut < pOut) \
+  { _mm_storeu_si128((__m128i *)pCOut, _mm_load_si128((__m128i *)pCIn)); \
+    pCIn += sizeof(__m128i); \
+    pCOut += sizeof(__m128i); \
+  } \
+}
+
+#define MEMSET_SSE \
+if (symbolCount <= sizeof(symbol)) \
+{ _mm_storeu_si128((__m128i *)pOut, symbol); \
+  pOut += symbolCount; \
+} \
+else \
+{ \
+  size_t unaligned = ((size_t)pOut & (sizeof(__m128i) - 1)); \
+  uint8_t *pCOut = pOut; \
+\
+  if (unaligned != 0) \
+  { _mm_storeu_si128((__m128i *)pCOut, symbol); \
+    pCOut = (uint8_t *)((size_t)pCOut & ~(size_t)(sizeof(__m128i) - 1)) + sizeof(__m128i); \
+  } \
+\
+  pOut += symbolCount; \
+\
+  while (pCOut < pOut) \
+  { _mm_store_si128((__m128i *)pCOut, symbol); \
+    pCOut += sizeof(__m128i); \
+  } \
+}
+
+#define MEMCPY_AVX \
+if (offset <= sizeof(symbol)) \
+{ _mm256_storeu_si256((__m256i *)pOut, _mm256_loadu_si256((__m256i *)pInStart)); \
+  pOut += offset; \
+  pInStart += offset; \
+} \
+else \
+{ size_t unaligned = ((size_t)pInStart & (sizeof(__m256i) - 1)); \
+  const uint8_t *pCIn = pInStart; \
+  uint8_t *pCOut = pOut; \
+\
+  if (unaligned != 0) \
+  { _mm256_storeu_si256((__m256i *)pCOut, _mm256_loadu_si256((__m256i *)pCIn)); \
+    pCIn = (uint8_t *)((size_t)pCIn & ~(size_t)(sizeof(__m256i) - 1)) + sizeof(__m256i); \
+    pCOut += (pCIn - pInStart); \
+  } \
+\
+  pOut += offset; \
+  pInStart += offset; \
+\
+  while (pCOut < pOut) \
+  { _mm256_storeu_si256((__m256i *)pCOut, _mm256_load_si256((__m256i *)pCIn)); \
+    pCIn += sizeof(__m256i); \
+    pCOut += sizeof(__m256i); \
+  } \
+}
+
+#define MEMSET_AVX \
+if (symbolCount <= sizeof(symbol)) \
+{ _mm256_storeu_si256((__m256i *)pOut, symbol); \
+  pOut += symbolCount; \
+} \
+else \
+{ size_t unaligned = ((size_t)pOut & (sizeof(__m256i) - 1)); \
+  uint8_t *pCOut = pOut; \
+\
+  if (unaligned != 0) \
+  { _mm256_storeu_si256((__m256i *)pCOut, symbol); \
+    pCOut = (uint8_t *)((size_t)pCOut & ~(size_t)(sizeof(__m256i) - 1)) + sizeof(__m256i); \
+  } \
+\
+  pOut += symbolCount; \
+\
+  while (pCOut < pOut) \
+  { _mm256_store_si256((__m256i *)pCOut, symbol); \
+    pCOut += sizeof(__m256i); \
+  } \
+}
+
+#else
+#define MEMCPY_SSE \
+{ const uint8_t *pCIn = pInStart; \
+  uint8_t *pCOut = pOut; \
+  const uint8_t *pCInEnd = pInStart + offset; \
+\
+  while (pCIn < pCInEnd) \
+  { _mm_storeu_si128((__m128i *)pCOut, _mm_loadu_si128((__m128i *)pCIn)); \
+    pCIn += sizeof(symbol); \
+    pCOut += sizeof(symbol); \
+  } \
+\
+  pOut += offset; \
+  pInStart = pCInEnd; \
+}
+
+#define MEMSET_SSE \
+{ \
+  uint8_t *pCOut = pOut; \
+  uint8_t *pCOutEnd = pOut + symbolCount; \
+\
+  while (pCOut < pCOutEnd) \
+  { _mm_storeu_si128((__m128i *)pCOut, symbol); \
+    pCOut += sizeof(symbol); \
+  } \
+\
+  pOut = pCOutEnd; \
+}
+
+#define MEMCPY_AVX \
+{ const uint8_t *pCIn = pInStart; \
+  uint8_t *pCOut = pOut; \
+  const uint8_t *pCInEnd = pInStart + offset; \
+\
+  while (pCIn < pCInEnd) \
+  { _mm256_storeu_si256((__m256i *)pCOut, _mm256_loadu_si256((__m256i *)pCIn)); \
+    pCIn += sizeof(symbol); \
+    pCOut += sizeof(symbol); \
+  } \
+\
+  pOut += offset; \
+  pInStart = pCInEnd; \
+}
+
+#define MEMSET_AVX \
+{ uint8_t *pCOut = pOut; \
+  uint8_t *pCOutEnd = pOut + symbolCount; \
+\
+  while (pCOut < pCOutEnd) \
+  { _mm256_storeu_si256((__m256i *)pCOut, symbol); \
+    pCOut += sizeof(symbol); \
+  } \
+\
+  pOut = pCOutEnd; \
+}
+
+#endif
+
 void rle_extreme_decompress_multi_sse(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
@@ -527,35 +688,7 @@ void rle_extreme_decompress_multi_sse(IN const uint8_t *pInStart, OUT uint8_t *p
     offset--;
 
     // memcpy.
-    if (offset <= sizeof(symbol))
-    {
-      _mm_storeu_si128((__m128i *)pOut, _mm_loadu_si128((__m128i *)pInStart));
-      pOut += offset;
-      pInStart += offset;
-    }
-    else
-    {
-      size_t unaligned = ((size_t)pInStart & (sizeof(__m128i) - 1));
-      const uint8_t *pCIn = pInStart;
-      const uint8_t *pCOut = pOut;
-
-      if (unaligned != 0)
-      {
-        _mm_storeu_si128((__m128i *)pCOut, _mm_loadu_si128((__m128i *)pCIn));
-        pCIn = (uint8_t *)((size_t)pCIn & ~(size_t)(sizeof(__m128i) - 1)) + sizeof(__m128i);
-        pCOut += (pCIn - pInStart);
-      }
-
-      pOut += offset;
-      pInStart += offset;
-
-      while (pCOut < pOut)
-      {
-        _mm_storeu_si128((__m128i *)pCOut, _mm_load_si128((__m128i *)pCIn));
-        pCIn += sizeof(__m128i);
-        pCOut += sizeof(__m128i);
-      }
-    }
+    MEMCPY_SSE
 
     if (!symbolCount)
       return;
@@ -563,30 +696,7 @@ void rle_extreme_decompress_multi_sse(IN const uint8_t *pInStart, OUT uint8_t *p
     symbolCount += (RLE8_EXTREME_MULTI_MIN_RANGE_SHORT - 1);
 
     // memset.
-    if (symbolCount <= sizeof(symbol))
-    {
-      _mm_storeu_si128((__m128i *)pOut, symbol);
-      pOut += symbolCount;
-    }
-    else
-    {
-      size_t unaligned = ((size_t)pOut & (sizeof(__m128i) - 1));
-      const uint8_t *pCOut = pOut;
-
-      if (unaligned != 0)
-      {
-        _mm_storeu_si128((__m128i *)pCOut, symbol);
-        pCOut = (uint8_t *)((size_t)pCOut & ~(size_t)(sizeof(__m128i) - 1)) + sizeof(__m128i);
-      }
-
-      pOut += symbolCount;
-
-      while (pCOut < pOut)
-      {
-        _mm_store_si128((__m128i *)pCOut, symbol);
-        pCOut += sizeof(__m128i);
-      }
-    }
+    MEMSET_SSE
   }
 }
 
@@ -621,35 +731,7 @@ void rle_extreme_decompress_multi_avx(IN const uint8_t *pInStart, OUT uint8_t *p
     offset--;
 
     // memcpy.
-    if (offset <= sizeof(symbol))
-    {
-      _mm256_storeu_si256((__m256i *)pOut, _mm256_loadu_si256((__m256i *)pInStart));
-      pOut += offset;
-      pInStart += offset;
-    }
-    else
-    {
-      size_t unaligned = ((size_t)pInStart & (sizeof(__m256i) - 1));
-      const uint8_t *pCIn = pInStart;
-      const uint8_t *pCOut = pOut;
-
-      if (unaligned != 0)
-      {
-        _mm256_storeu_si256((__m256i *)pCOut, _mm256_loadu_si256((__m256i *)pCIn));
-        pCIn = (uint8_t *)((size_t)pCIn & ~(size_t)(sizeof(__m256i) - 1)) + sizeof(__m256i);
-        pCOut += (pCIn - pInStart);
-      }
-
-      pOut += offset;
-      pInStart += offset;
-
-      while (pCOut < pOut)
-      {
-        _mm256_storeu_si256((__m256i *)pCOut, _mm256_load_si256((__m256i *)pCIn));
-        pCIn += sizeof(__m256i);
-        pCOut += sizeof(__m256i);
-      }
-    }
+    MEMCPY_AVX
 
     if (!symbolCount)
       return;
@@ -657,30 +739,7 @@ void rle_extreme_decompress_multi_avx(IN const uint8_t *pInStart, OUT uint8_t *p
     symbolCount += (RLE8_EXTREME_MULTI_MIN_RANGE_SHORT - 1);
 
     // memset.
-    if (symbolCount <= sizeof(symbol))
-    {
-      _mm256_storeu_si256((__m256i *)pOut, symbol);
-      pOut += symbolCount;
-    }
-    else
-    {
-      size_t unaligned = ((size_t)pOut & (sizeof(__m256i) - 1));
-      const uint8_t *pCOut = pOut;
-
-      if (unaligned != 0)
-      {
-        _mm256_storeu_si256((__m256i *)pCOut, symbol);
-        pCOut = (uint8_t *)((size_t)pCOut & ~(size_t)(sizeof(__m256i) - 1)) + sizeof(__m256i);
-      }
-
-      pOut += symbolCount;
-
-      while (pCOut < pOut)
-      {
-        _mm256_store_si256((__m256i *)pCOut, symbol);
-        pCOut += sizeof(__m256i);
-      }
-    }
+    MEMSET_AVX
   }
 }
 
@@ -713,35 +772,7 @@ void rle_extreme_decompress_single_sse(IN const uint8_t *pInStart, OUT uint8_t *
     offset--;
 
     // memcpy.
-    if (offset <= sizeof(symbol))
-    {
-      _mm_storeu_si128((__m128i *)pOut, _mm_loadu_si128((__m128i *)pInStart));
-      pOut += offset;
-      pInStart += offset;
-    }
-    else
-    {
-      size_t unaligned = ((size_t)pInStart & (sizeof(__m128i) - 1));
-      const uint8_t *pCIn = pInStart;
-      const uint8_t *pCOut = pOut;
-
-      if (unaligned != 0)
-      {
-        _mm_storeu_si128((__m128i *)pCOut, _mm_loadu_si128((__m128i *)pCIn));
-        pCIn = (uint8_t *)((size_t)pCIn & ~(size_t)(sizeof(__m128i) - 1)) + sizeof(__m128i);
-        pCOut += (pCIn - pInStart);
-      }
-
-      pOut += offset;
-      pInStart += offset;
-
-      while (pCOut < pOut)
-      {
-        _mm_storeu_si128((__m128i *)pCOut, _mm_load_si128((__m128i *)pCIn));
-        pCIn += sizeof(__m128i);
-        pCOut += sizeof(__m128i);
-      }
-    }
+    MEMCPY_SSE
 
     if (!symbolCount)
       return;
@@ -749,30 +780,7 @@ void rle_extreme_decompress_single_sse(IN const uint8_t *pInStart, OUT uint8_t *
     symbolCount += (RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT - 1);
 
     // memset.
-    if (symbolCount <= sizeof(symbol))
-    {
-      _mm_storeu_si128((__m128i *)pOut, symbol);
-      pOut += symbolCount;
-    }
-    else
-    {
-      size_t unaligned = ((size_t)pOut & (sizeof(__m128i) - 1));
-      const uint8_t *pCOut = pOut;
-
-      if (unaligned != 0)
-      {
-        _mm_storeu_si128((__m128i *)pCOut, symbol);
-        pCOut = (uint8_t *)((size_t)pCOut & ~(size_t)(sizeof(__m128i) - 1)) + sizeof(__m128i);
-      }
-
-      pOut += symbolCount;
-
-      while (pCOut < pOut)
-      {
-        _mm_store_si128((__m128i *)pCOut, symbol);
-        pCOut += sizeof(__m128i);
-      }
-    }
+    MEMSET_SSE
   }
 }
 
@@ -805,35 +813,7 @@ void rle_extreme_decompress_single_avx(IN const uint8_t *pInStart, OUT uint8_t *
     offset--;
 
     // memcpy.
-    if (offset <= sizeof(symbol))
-    {
-      _mm256_storeu_si256((__m256i *)pOut, _mm256_loadu_si256((__m256i *)pInStart));
-      pOut += offset;
-      pInStart += offset;
-    }
-    else
-    {
-      size_t unaligned = ((size_t)pInStart & (sizeof(__m256i) - 1));
-      const uint8_t *pCIn = pInStart;
-      const uint8_t *pCOut = pOut;
-
-      if (unaligned != 0)
-      {
-        _mm256_storeu_si256((__m256i *)pCOut, _mm256_loadu_si256((__m256i *)pCIn));
-        pCIn = (uint8_t *)((size_t)pCIn & ~(size_t)(sizeof(__m256i) - 1)) + sizeof(__m256i);
-        pCOut += (pCIn - pInStart);
-      }
-
-      pOut += offset;
-      pInStart += offset;
-
-      while (pCOut < pOut)
-      {
-        _mm256_storeu_si256((__m256i *)pCOut, _mm256_load_si256((__m256i *)pCIn));
-        pCIn += sizeof(__m256i);
-        pCOut += sizeof(__m256i);
-      }
-    }
+    MEMCPY_AVX
 
     if (!symbolCount)
       return;
@@ -841,29 +821,6 @@ void rle_extreme_decompress_single_avx(IN const uint8_t *pInStart, OUT uint8_t *
     symbolCount += (RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT - 1);
 
     // memset.
-    if (symbolCount <= sizeof(symbol))
-    {
-      _mm256_storeu_si256((__m256i *)pOut, symbol);
-      pOut += symbolCount;
-    }
-    else
-    {
-      size_t unaligned = ((size_t)pOut & (sizeof(__m256i) - 1));
-      const uint8_t *pCOut = pOut;
-
-      if (unaligned != 0)
-      {
-        _mm256_storeu_si256((__m256i *)pCOut, symbol);
-        pCOut = (uint8_t *)((size_t)pCOut & ~(size_t)(sizeof(__m256i) - 1)) + sizeof(__m256i);
-      }
-
-      pOut += symbolCount;
-
-      while (pCOut < pOut)
-      {
-        _mm256_store_si256((__m256i *)pCOut, symbol);
-        pCOut += sizeof(__m256i);
-      }
-    }
+    MEMSET_AVX
   }
 }
