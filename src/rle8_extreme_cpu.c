@@ -94,6 +94,11 @@ uint32_t rle8_extreme_compress_bounds(const uint32_t inSize)
   return inSize + max(RLE8_EXTREME_MULTI_MAX_SIZE_OF_SYMBOL_HEADER, RLE8_EXTREME_SINGLE_MAX_SIZE_OF_SYMBOL_HEADER) * 2 + sizeof(rle_extreme_t) + 1;
 }
 
+uint32_t rle8_extreme_decompress_additional_size()
+{
+  return 64; // just to be on the safe side.
+}
+
 uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
   if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_extreme_compress_bounds(inSize))
@@ -121,7 +126,7 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
     else
     {
       {
-        const int64_t range = i - lastRLE - count;
+        const int64_t range = i - lastRLE - count + 1;
 
         if (range <= 255 && count >= RLE8_EXTREME_MULTI_MIN_RANGE_SHORT)
         {
@@ -165,7 +170,7 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
   }
 
   {
-    const int64_t range = i - lastRLE - count;
+    const int64_t range = i - lastRLE - count + 1;
 
     if (range <= 255 && count >= RLE8_EXTREME_MULTI_MIN_RANGE_SHORT)
     {
@@ -330,7 +335,7 @@ uint32_t rle8_extreme_single_compress(IN const uint8_t *pIn, const uint32_t inSi
     else
     {
       {
-        const int64_t range = i - lastRLE - count;
+        const int64_t range = i - lastRLE - count + 1;
 
         if (range <= 255 && count >= RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT)
         {
@@ -369,7 +374,7 @@ uint32_t rle8_extreme_single_compress(IN const uint8_t *pIn, const uint32_t inSi
   }
 
   {
-    const int64_t range = i - lastRLE - count;
+    const int64_t range = i - lastRLE - count + 1;
 
     if (range <= 255 && count >= RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT)
     {
@@ -519,6 +524,8 @@ void rle_extreme_decompress_multi_sse(IN const uint8_t *pInStart, OUT uint8_t *p
         return;
     }
 
+    offset--;
+
     // memcpy.
     if (offset <= sizeof(symbol))
     {
@@ -611,6 +618,8 @@ void rle_extreme_decompress_multi_avx(IN const uint8_t *pInStart, OUT uint8_t *p
         return;
     }
 
+    offset--;
+
     // memcpy.
     if (offset <= sizeof(symbol))
     {
@@ -701,6 +710,8 @@ void rle_extreme_decompress_single_sse(IN const uint8_t *pInStart, OUT uint8_t *
         return;
     }
 
+    offset--;
+
     // memcpy.
     if (offset <= sizeof(symbol))
     {
@@ -790,6 +801,8 @@ void rle_extreme_decompress_single_avx(IN const uint8_t *pInStart, OUT uint8_t *
       if (offset == 0)
         return;
     }
+
+    offset--;
 
     // memcpy.
     if (offset <= sizeof(symbol))

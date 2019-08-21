@@ -155,8 +155,8 @@ int main(int argc, char **pArgv)
   }
 
   pUncompressedData = (uint8_t *)malloc((size_t)fileSize);
-  pDecompressedData = (uint8_t *)malloc((size_t)fileSize + 64);
-  pCompressedData = (uint8_t *)malloc((size_t)compressedBufferSize + 64);
+  pDecompressedData = (uint8_t *)malloc((size_t)fileSize + rle8_extreme_decompress_additional_size());
+  pCompressedData = (uint8_t *)malloc((size_t)compressedBufferSize + rle8_extreme_decompress_additional_size());
 
   if (!pUncompressedData || !pDecompressedData || !pCompressedData)
   {
