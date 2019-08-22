@@ -14,6 +14,7 @@ const char ArgumentRuns[] = "-r";
 const char ArgumentSingle[] = "--single";
 const char ArgumentUltra[] = "--ultra";
 const char ArgumentExtreme[] = "--extreme";
+const char ArgumentExtremeSize[] = "--x-size";
 
 uint64_t GetCurrentTimeNs();
 
@@ -23,7 +24,7 @@ int main(int argc, char **pArgv)
 {
   if (argc <= 1)
   {
-    printf("Usage: rle8 <InputFileName> [%s <Output File Name>][%s <Sub Section Count>][%s <Run Count>][%s (only rle most frequent symbol)][%s (for shorter strings of rle-symbols) | %s (for very fast decoding)]\n", ArgumentTo, ArgumentSubSections, ArgumentRuns, ArgumentSingle, ArgumentUltra, ArgumentExtreme);
+    printf("Usage: rle8 <InputFileName>\n\t[%s <Output File Name>]\n\t[%s <Sub Section Count>]\n\t[%s <Run Count>]\n\t[%s (only rle most frequent symbol)]\n\t[%s (for shorter strings of rle-symbols)]\n\t[%s (for very fast decoding)]\n\tif '%s': [%s (8 | 16 | 32 | 64)] (symbol size)\n", ArgumentTo, ArgumentSubSections, ArgumentRuns, ArgumentSingle, ArgumentUltra, ArgumentExtreme, ArgumentExtreme, ArgumentExtremeSize);
     return 1;
   }
 
@@ -40,6 +41,7 @@ int main(int argc, char **pArgv)
   bool singleSymbol = false;
   bool ultraMode = false;
   bool extremeMode = false;
+  uint8_t extremeSize = 8;
 
   if (argc > 2)
   {
@@ -98,6 +100,32 @@ int main(int argc, char **pArgv)
         argIndex += 1;
         argsRemaining -= 1;
       }
+      else if (argsRemaining >= 2 && strncmp(pArgv[argIndex], ArgumentExtremeSize, sizeof(ArgumentExtremeSize)) == 0)
+      {
+        extremeMode = true;
+        
+        switch (pArgv[argIndex + 1][0])
+        {
+        case '8':
+          extremeSize = 8;
+          break;
+        case '1':
+          extremeSize = 16;
+          break;
+        case '3':
+          extremeSize = 32;
+          break;
+        case '6':
+          extremeSize = 64;
+          break;
+        default:
+          puts("Invalid Parameter.");
+          return 1;
+        }
+
+        argIndex += 2;
+        argsRemaining -= 2;
+      }
       else
       {
         puts("Invalid Parameter.");
@@ -128,6 +156,32 @@ int main(int argc, char **pArgv)
   {
     puts("Extreme Mode and Ultra Mode cannot be used at the same time.");
     return 1;
+  }
+
+  if (extremeMode && singleSymbol && extremeSize != 8)
+  {
+    puts("Single Symbol in Extreme Mode is only supported for symbol size 8.");
+    return 1;
+  }
+
+  // Print Codec Description.
+  {
+    printf("Mode: rle8 ");
+
+    if (!extremeMode && !ultraMode)
+      fputs("Normal ", stdout);
+    else if (extremeMode)
+      fputs("Extreme ", stdout);
+    else
+      fputs("Ultra ", stdout);
+
+    if ((!extremeMode || extremeSize == 8) && singleSymbol)
+      fputs("Single-Symbol-Mode ", stdout);
+
+    if (extremeMode)
+      printf("with %" PRIu8 " Bit Symbols ", extremeSize);
+
+    puts("\n");
   }
 
   size_t fileSize = 0;
@@ -218,9 +272,31 @@ int main(int argc, char **pArgv)
         else if (extremeMode)
         {
           if (singleSymbol)
+          {
             compressedSize = rle8_extreme_single_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+          }
           else
-            compressedSize = rle8_extreme_multi_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+          {
+            switch (extremeSize)
+            {
+            case 8:
+            default:
+              compressedSize = rle8_extreme_multi_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+              break;
+
+            case 16:
+              compressedSize = rle16_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+              break;
+
+            case 32:
+              compressedSize = rle32_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+              break;
+
+            case 64:
+              compressedSize = rle64_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+              break;
+            }
+          }
         }
       }
       else
@@ -283,11 +359,35 @@ int main(int argc, char **pArgv)
       if (subSections == 0)
       {
         if (!ultraMode && !extremeMode)
+        {
           decompressedSize = rle8_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+        }
         else if (!extremeMode)
+        {
           decompressedSize = rle8_ultra_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+        }
         else
-          decompressedSize = rle8_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+        {
+          switch (extremeSize)
+          {
+          case 8:
+          default:
+            decompressedSize = rle8_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+            break;
+
+          case 16:
+            decompressedSize = rle16_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+            break;
+
+          case 32:
+            decompressedSize = rle32_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+            break;
+
+          case 64:
+            decompressedSize = rle64_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+            break;
+          }
+        }
       }
       else
       {
