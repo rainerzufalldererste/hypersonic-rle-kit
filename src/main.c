@@ -4,12 +4,18 @@
 #include <string.h>
 #include <stdlib.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 const char ArgumentTo[] = "-to";
 const char ArgumentSubSections[] = "-s";
 const char ArgumentRuns[] = "-r";
 const char ArgumentSingle[] = "--single";
 const char ArgumentUltra[] = "--ultra";
 const char ArgumentExtreme[] = "--extreme";
+
+uint64_t GetCurrentTimeNs();
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -20,6 +26,13 @@ int main(int argc, char **pArgv)
     printf("Usage: rle8 <InputFileName> [%s <Output File Name>][%s <Sub Section Count>][%s <Run Count>][%s (only rle most frequent symbol)][%s (for shorter strings of rle-symbols) | %s (for very fast decoding)]\n", ArgumentTo, ArgumentSubSections, ArgumentRuns, ArgumentSingle, ArgumentUltra, ArgumentExtreme);
     return 1;
   }
+
+#ifdef _WIN32
+  // For more consistent benchmarking results.
+  HANDLE thread = GetCurrentThread();
+  SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+  SetThreadAffinityMask(thread, 1);
+#endif
 
   const char *outputFileName = NULL;
   int32_t subSections = 0;
@@ -177,7 +190,7 @@ int main(int argc, char **pArgv)
     uint32_t decompressedSize = 0;
     uint32_t compressedSize = 0;
 
-    clock_t time = clock();
+    uint64_t time = GetCurrentTimeNs();
 
     for (int32_t i = 0; i < runs; i++)
     {
@@ -211,7 +224,7 @@ int main(int argc, char **pArgv)
       }
     }
 
-    time = clock() - time;
+    time = GetCurrentTimeNs() - time;
 
     if (0 == compressedSize)
     {
@@ -219,7 +232,7 @@ int main(int argc, char **pArgv)
       goto epilogue;
     }
 
-    printf("Compressed %" PRIi32 " bytes -> %" PRIu32 " bytes (%f %%) in %f ms. (=> %f MB/s)\n", fileSize, compressedSize, (double)compressedSize / (double)fileSize * 100.0, time / (double)runs / (double)CLOCKS_PER_SEC * 1000.0, (fileSize / (1024.0 * 1024.0)) / (time / (double)runs / (double)CLOCKS_PER_SEC));
+    printf("Compressed %" PRIi32 " bytes -> %" PRIu32 " bytes (%f %%) in %f ms. (=> %f MB/s)\n", fileSize, compressedSize, (double)compressedSize / (double)fileSize * 100.0, time / (double)runs / 1000000.0, (fileSize / (1024.0 * 1024.0)) / (time / (double)runs / 1000000000.0));
 
     if (outputFileName)
     {
@@ -242,7 +255,7 @@ int main(int argc, char **pArgv)
       fclose(pCompressed);
     }
 
-    time = clock();
+    time = GetCurrentTimeNs();
 
     for (int32_t i = 0; i < runs; i++)
     {
@@ -261,7 +274,7 @@ int main(int argc, char **pArgv)
       }
     }
 
-    time = clock() - time;
+    time = GetCurrentTimeNs() - time;
 
     if ((uint32_t)fileSize != decompressedSize)
     {
@@ -269,7 +282,7 @@ int main(int argc, char **pArgv)
       goto epilogue;
     }
     
-    printf("Decompressed in %f ms. (=> %f MB/s)\n", time / (double)runs / (double)CLOCKS_PER_SEC * 1000.0, (fileSize / (1024.0 * 1024.0)) / (time / (double)runs / (double)CLOCKS_PER_SEC));
+    printf("Decompressed in %f ms. (=> %f MB/s)\n", time / (double)runs / 1000000.0, (fileSize / (1024.0 * 1024.0)) / (time / (double)runs / 1000000000.0));
 
     if (memcmp(pUncompressedData, pDecompressedData, (size_t)fileSize) != 0)
     {
@@ -297,12 +310,12 @@ int main(int argc, char **pArgv)
         goto epilogue;
       }
 
-      time = clock();
+      time = GetCurrentTimeNs();
 
       for (int32_t i = 0; i < runs; i++)
         decompressedSize = rle8m_opencl_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
 
-      time = clock() - time;
+      time = GetCurrentTimeNs() - time;
 
       rle8m_opencl_destroy();
 
@@ -312,7 +325,7 @@ int main(int argc, char **pArgv)
         goto epilogue;
       }
 
-      printf("Decompressed in %f ms (OpenCL).\n", time / (double)runs / (double)CLOCKS_PER_SEC * 1000.0);
+      printf("Decompressed in %f ms (OpenCL).\n", time / (double)runs / 1000000.0);
 
       if (memcmp(pUncompressedData, pDecompressedData, (size_t)fileSize) != 0)
       {
@@ -333,4 +346,21 @@ epilogue:
   free(pCompressedData);
 
   return 0;
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+uint64_t GetCurrentTimeNs()
+{
+#ifdef WIN32
+  FILETIME time;
+  GetSystemTimePreciseAsFileTime(&time);
+
+  return ((uint64_t)time.dwLowDateTime | ((uint64_t)time.dwHighDateTime << 32)) * 100;
+#else
+  struct timespec time;
+  clock_gettime(CLOCK_REALTIME, &time);
+
+  return (uint64_t)time.tv_sec * 1000000000 + (uint64_t)time.tv_nsec;
+#endif
 }

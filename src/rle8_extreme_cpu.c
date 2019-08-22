@@ -19,12 +19,12 @@
 #define max(a, b) ((a > b) ? (a) : (b))
 
 #define RLE8_EXTREME_MULTI_SIZE_OF_SYMBOL_HEADER (1 + 1 + 1)
-#define RLE8_EXTREME_MULTI_MAX_SIZE_OF_SYMBOL_HEADER (1 + 1 + 1 + 4)
+#define RLE8_EXTREME_MULTI_MAX_SIZE_OF_SYMBOL_HEADER (1 + 1 + 4 + 1 + 4)
 #define RLE8_EXTREME_MULTI_MIN_RANGE_SHORT (6)
 #define RLE8_EXTREME_MULTI_MIN_RANGE_LONG (9)
 
 #define RLE8_EXTREME_SINGLE_SIZE_OF_SYMBOL_HEADER (1 + 1)
-#define RLE8_EXTREME_SINGLE_MAX_SIZE_OF_SYMBOL_HEADER (1 + 1 + 4)
+#define RLE8_EXTREME_SINGLE_MAX_SIZE_OF_SYMBOL_HEADER (1 + 4 + 1 + 4)
 #define RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT (4)
 #define RLE8_EXTREME_SINGLE_MIN_RANGE_LONG (8)
 
@@ -121,7 +121,7 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
 
   for (; i < inSize; i++)
   {
-    if (pIn[i] == symbol && count < 255 + RLE8_EXTREME_MULTI_MIN_RANGE_SHORT - 1)
+    if (pIn[i] == symbol)
     {
       count++;
     }
@@ -134,8 +134,22 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
         {
           pOut[index] = symbol;
           index++;
-          pOut[index] = (uint8_t)(count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1);
-          index++;
+
+          const int64_t storedCount = count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1;
+
+          if (storedCount <= 255)
+          {
+            pOut[index] = (uint8_t)storedCount;
+            index++;
+          }
+          else
+          {
+            pOut[index] = 0;
+            index++;
+            *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+            index += sizeof(uint32_t);
+          }
+
           pOut[index] = (uint8_t)range;
           index++;
 
@@ -150,8 +164,22 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
         {
           pOut[index] = symbol;
           index++;
-          pOut[index] = (uint8_t)(count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1);
-          index++;
+
+          const int64_t storedCount = count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1;
+
+          if (storedCount <= 255)
+          {
+            pOut[index] = (uint8_t)storedCount;
+            index++;
+          }
+          else
+          {
+            pOut[index] = 0;
+            index++;
+            *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+            index += sizeof(uint32_t);
+          }
+
           pOut[index] = 0;
           index++;
           *((uint32_t *)&pOut[index]) = (uint32_t)range;
@@ -178,8 +206,22 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
     {
       pOut[index] = symbol;
       index++;
-      pOut[index] = (uint8_t)(count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1);
-      index++;
+
+      const int64_t storedCount = count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1;
+
+      if (storedCount <= 255)
+      {
+        pOut[index] = (uint8_t)storedCount;
+        index++;
+      }
+      else
+      {
+        pOut[index] = 0;
+        index++;
+        *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+        index += sizeof(uint32_t);
+      }
+
       pOut[index] = (uint8_t)range;
       index++;
 
@@ -192,6 +234,8 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
       index++;
       pOut[index] = 0;
       index++;
+      *((uint32_t *)&pOut[index]) = 0;
+      index += sizeof(uint32_t);
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = 0;
@@ -203,8 +247,22 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
     {
       pOut[index] = symbol;
       index++;
-      pOut[index] = (uint8_t)(count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1);
-      index++;
+
+      const int64_t storedCount = count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1;
+
+      if (storedCount <= 255)
+      {
+        pOut[index] = (uint8_t)storedCount;
+        index++;
+      }
+      else
+      {
+        pOut[index] = 0;
+        index++;
+        *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+        index += sizeof(uint32_t);
+      }
+
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = (uint32_t)range;
@@ -219,6 +277,8 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
       index++;
       pOut[index] = 0;
       index++;
+      *((uint32_t *)&pOut[index]) = 0;
+      index += sizeof(uint32_t);
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = 0;
@@ -232,6 +292,8 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
       index++;
       pOut[index] = 0;
       index++;
+      *((uint32_t *)&pOut[index]) = 0;
+      index += sizeof(uint32_t);
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = (uint32_t)range;
@@ -330,7 +392,7 @@ uint32_t rle8_extreme_single_compress(IN const uint8_t *pIn, const uint32_t inSi
   // TODO: This can be improved by using sse / avx2 memchr equivalents.
   for (; i < inSize; i++)
   {
-    if (pIn[i] == maxFreqSymbol && count < 255 + RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT - 1)
+    if (pIn[i] == maxFreqSymbol)
     {
       count++;
     }
@@ -341,8 +403,21 @@ uint32_t rle8_extreme_single_compress(IN const uint8_t *pIn, const uint32_t inSi
 
         if (range <= 255 && count >= RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT)
         {
-          pOut[index] = (uint8_t)(count - RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT + 1);
-          index++;
+          const int64_t storedCount = count - RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT + 1;
+        
+          if (storedCount <= 255)
+          {
+            pOut[index] = (uint8_t)storedCount;
+            index++;
+          }
+          else
+          {
+            pOut[index] = 0;
+            index++;
+            *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+            index += sizeof(uint32_t);
+          }
+        
           pOut[index] = (uint8_t)range;
           index++;
 
@@ -355,8 +430,21 @@ uint32_t rle8_extreme_single_compress(IN const uint8_t *pIn, const uint32_t inSi
         }
         else if (count >= RLE8_EXTREME_SINGLE_MIN_RANGE_LONG)
         {
-          pOut[index] = (uint8_t)(count - RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT + 1);
-          index++;
+          const int64_t storedCount = count - RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT + 1;
+
+          if (storedCount <= 255)
+          {
+            pOut[index] = (uint8_t)storedCount;
+            index++;
+          }
+          else
+          {
+            pOut[index] = 0;
+            index++;
+            *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+            index += sizeof(uint32_t);
+          }
+
           pOut[index] = 0;
           index++;
           *((uint32_t *)&pOut[index]) = (uint32_t)range;
@@ -380,8 +468,21 @@ uint32_t rle8_extreme_single_compress(IN const uint8_t *pIn, const uint32_t inSi
 
     if (range <= 255 && count >= RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT)
     {
-      pOut[index] = (uint8_t)(count - RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT + 1);
-      index++;
+      const int64_t storedCount = count - RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT + 1;
+
+      if (storedCount <= 255)
+      {
+        pOut[index] = (uint8_t)storedCount;
+        index++;
+      }
+      else
+      {
+        pOut[index] = 0;
+        index++;
+        *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+        index += sizeof(uint32_t);
+      }
+
       pOut[index] = (uint8_t)range;
       index++;
 
@@ -392,6 +493,8 @@ uint32_t rle8_extreme_single_compress(IN const uint8_t *pIn, const uint32_t inSi
 
       pOut[index] = 0;
       index++;
+      *((uint32_t *)&pOut[index]) = 0;
+      index += sizeof(uint32_t);
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = 0;
@@ -401,8 +504,21 @@ uint32_t rle8_extreme_single_compress(IN const uint8_t *pIn, const uint32_t inSi
     }
     else if (count >= RLE8_EXTREME_SINGLE_MIN_RANGE_LONG)
     {
-      pOut[index] = (uint8_t)(count - RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT + 1);
-      index++;
+      const int64_t storedCount = count - RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT + 1;
+
+      if (storedCount <= 255)
+      {
+        pOut[index] = (uint8_t)storedCount;
+        index++;
+      }
+      else
+      {
+        pOut[index] = 0;
+        index++;
+        *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+        index += sizeof(uint32_t);
+      }
+
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = (uint32_t)range;
@@ -415,6 +531,8 @@ uint32_t rle8_extreme_single_compress(IN const uint8_t *pIn, const uint32_t inSi
 
       pOut[index] = 0;
       index++;
+      *((uint32_t *)&pOut[index]) = 0;
+      index += sizeof(uint32_t);
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = 0;
@@ -426,6 +544,8 @@ uint32_t rle8_extreme_single_compress(IN const uint8_t *pIn, const uint32_t inSi
     {
       pOut[index] = 0;
       index++;
+      *((uint32_t *)&pOut[index]) = 0;
+      index += sizeof(uint32_t);
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = (uint32_t)(range + count);
@@ -524,6 +644,7 @@ else \
   { _mm_storeu_si128((__m128i *)pCOut, _mm_load_si128((__m128i *)pCIn)); \
     pCIn += sizeof(__m128i); \
     pCOut += sizeof(__m128i); \
+    _mm_prefetch(pCIn + 128, _MM_HINT_T0); \
   } \
 }
 
@@ -574,6 +695,7 @@ else \
   { _mm256_storeu_si256((__m256i *)pCOut, _mm256_load_si256((__m256i *)pCIn)); \
     pCIn += sizeof(__m256i); \
     pCOut += sizeof(__m256i); \
+    _mm_prefetch(pCIn + 256, _MM_HINT_T0); \
   } \
 }
 
@@ -609,6 +731,7 @@ else \
   { _mm_storeu_si128((__m128i *)pCOut, _mm_loadu_si128((__m128i *)pCIn)); \
     pCIn += sizeof(symbol); \
     pCOut += sizeof(symbol); \
+    _mm_prefetch(pCIn + 128, _MM_HINT_T0); \
   } \
 \
   pOut += offset; \
@@ -637,6 +760,7 @@ else \
   { _mm256_storeu_si256((__m256i *)pCOut, _mm256_loadu_si256((__m256i *)pCIn)); \
     pCIn += sizeof(symbol); \
     pCOut += sizeof(symbol); \
+    _mm_prefetch(pCIn + 256, _MM_HINT_T0); \
   } \
 \
   pOut += offset; \
@@ -673,6 +797,13 @@ void rle_extreme_decompress_multi_sse(IN const uint8_t *pInStart, OUT uint8_t *p
     pInStart++;
     symbolCount = (size_t)*pInStart;
     pInStart++;
+
+    if (symbolCount == 0)
+    {
+      symbolCount = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+    }
+
     offset = (size_t)*pInStart;
     pInStart++;
 
@@ -700,6 +831,9 @@ void rle_extreme_decompress_multi_sse(IN const uint8_t *pInStart, OUT uint8_t *p
   }
 }
 
+#ifndef _MSC_VER
+__attribute__((target("avx")))
+#endif
 void rle_extreme_decompress_multi_avx(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
@@ -716,6 +850,13 @@ void rle_extreme_decompress_multi_avx(IN const uint8_t *pInStart, OUT uint8_t *p
     pInStart++;
     symbolCount = (size_t)*pInStart;
     pInStart++;
+
+    if (symbolCount == 0)
+    {
+      symbolCount = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+    }
+
     offset = (size_t)*pInStart;
     pInStart++;
 
@@ -757,6 +898,13 @@ void rle_extreme_decompress_single_sse(IN const uint8_t *pInStart, OUT uint8_t *
 
     symbolCount = (size_t)*pInStart;
     pInStart++;
+
+    if (symbolCount == 0)
+    {
+      symbolCount = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+    }
+
     offset = (size_t)*pInStart;
     pInStart++;
 
@@ -784,6 +932,9 @@ void rle_extreme_decompress_single_sse(IN const uint8_t *pInStart, OUT uint8_t *
   }
 }
 
+#ifndef _MSC_VER
+__attribute__((target("avx")))
+#endif
 void rle_extreme_decompress_single_avx(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t singleSymbol)
 {
   size_t offset, symbolCount;
@@ -798,6 +949,13 @@ void rle_extreme_decompress_single_avx(IN const uint8_t *pInStart, OUT uint8_t *
 
     symbolCount = (size_t)*pInStart;
     pInStart++;
+
+    if (symbolCount == 0)
+    {
+      symbolCount = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+    }
+
     offset = (size_t)*pInStart;
     pInStart++;
 
