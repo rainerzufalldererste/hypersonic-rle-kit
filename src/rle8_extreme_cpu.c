@@ -33,10 +33,11 @@
 
 #ifdef _MSC_VER
 #pragma pack(1)
+typedef struct
 #else
+typedef struct
 __attribute__((packed))
 #endif
-typedef struct
 {
   uint32_t uncompressedLength, compressedLength;
   uint8_t mode;
@@ -44,10 +45,11 @@ typedef struct
 
 #ifdef _MSC_VER
 #pragma pack(1)
+typedef struct
 #else
+typedef struct
 __attribute__((packed))
 #endif
-typedef struct
 {
   uint8_t symbol;
   uint8_t count; // + RLE8_EXTREME_MULTI_MIN_RANGE_SHORT
@@ -57,10 +59,11 @@ typedef struct
 
 #ifdef _MSC_VER
 #pragma pack(1)
+typedef struct
 #else
+typedef struct
 __attribute__((packed))
 #endif
-typedef struct
 {
   uint8_t count; // + RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT
   uint8_t offset;
@@ -618,6 +621,12 @@ uint32_t rle8_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, O
 
 //////////////////////////////////////////////////////////////////////////
 
+#define SSE_PREFETCH_BYTES 128
+#define AVX_PREFETCH_BYTES 256
+
+#define PREFETCH_TYPE _MM_HINT_T0
+
+#define MULTI(a) {a}
 
 #ifndef PREFER_UNALIGNED
 #define MEMCPY_SSE \
@@ -641,10 +650,10 @@ else \
   pInStart += offset; \
 \
   while (pCOut < pOut) \
-  { _mm_storeu_si128((__m128i *)pCOut, _mm_load_si128((__m128i *)pCIn)); \
+  { MULTI(_mm_storeu_si128((__m128i *)pCOut, _mm_load_si128((__m128i *)pCIn)); \
     pCIn += sizeof(__m128i); \
-    pCOut += sizeof(__m128i); \
-    _mm_prefetch(pCIn + 128, _MM_HINT_T0); \
+    pCOut += sizeof(__m128i);) \
+    _mm_prefetch(pCIn + SSE_PREFETCH_BYTES, PREFETCH_TYPE); \
   } \
 }
 
@@ -666,8 +675,8 @@ else \
   pOut += symbolCount; \
 \
   while (pCOut < pOut) \
-  { _mm_store_si128((__m128i *)pCOut, symbol); \
-    pCOut += sizeof(__m128i); \
+  { MULTI(_mm_store_si128((__m128i *)pCOut, symbol); \
+    pCOut += sizeof(__m128i);) \
   } \
 }
 
@@ -692,10 +701,10 @@ else \
   pInStart += offset; \
 \
   while (pCOut < pOut) \
-  { _mm256_storeu_si256((__m256i *)pCOut, _mm256_load_si256((__m256i *)pCIn)); \
+  { MULTI(_mm256_storeu_si256((__m256i *)pCOut, _mm256_load_si256((__m256i *)pCIn)); \
     pCIn += sizeof(__m256i); \
-    pCOut += sizeof(__m256i); \
-    _mm_prefetch(pCIn + 256, _MM_HINT_T0); \
+    pCOut += sizeof(__m256i);) \
+    _mm_prefetch(pCIn + AVX_PREFETCH_BYTES, PREFETCH_TYPE); \
   } \
 }
 
@@ -716,8 +725,8 @@ else \
   pOut += symbolCount; \
 \
   while (pCOut < pOut) \
-  { _mm256_store_si256((__m256i *)pCOut, symbol); \
-    pCOut += sizeof(__m256i); \
+  { MULTI(_mm256_store_si256((__m256i *)pCOut, symbol); \
+    pCOut += sizeof(__m256i);) \
   } \
 }
 
@@ -728,10 +737,10 @@ else \
   const uint8_t *pCInEnd = pInStart + offset; \
 \
   while (pCIn < pCInEnd) \
-  { _mm_storeu_si128((__m128i *)pCOut, _mm_loadu_si128((__m128i *)pCIn)); \
+  { MULTI(_mm_storeu_si128((__m128i *)pCOut, _mm_loadu_si128((__m128i *)pCIn)); \
     pCIn += sizeof(symbol); \
-    pCOut += sizeof(symbol); \
-    _mm_prefetch(pCIn + 128, _MM_HINT_T0); \
+    pCOut += sizeof(symbol);) \
+    _mm_prefetch(pCIn + SSE_PREFETCH_BYTES, PREFETCH_TYPE); \
   } \
 \
   pOut += offset; \
@@ -744,8 +753,8 @@ else \
   uint8_t *pCOutEnd = pOut + symbolCount; \
 \
   while (pCOut < pCOutEnd) \
-  { _mm_storeu_si128((__m128i *)pCOut, symbol); \
-    pCOut += sizeof(symbol); \
+  { MULTI(_mm_storeu_si128((__m128i *)pCOut, symbol); \
+    pCOut += sizeof(symbol);) \
   } \
 \
   pOut = pCOutEnd; \
@@ -757,10 +766,10 @@ else \
   const uint8_t *pCInEnd = pInStart + offset; \
 \
   while (pCIn < pCInEnd) \
-  { _mm256_storeu_si256((__m256i *)pCOut, _mm256_loadu_si256((__m256i *)pCIn)); \
+  { MULTI(_mm256_storeu_si256((__m256i *)pCOut, _mm256_loadu_si256((__m256i *)pCIn)); \
     pCIn += sizeof(symbol); \
-    pCOut += sizeof(symbol); \
-    _mm_prefetch(pCIn + 256, _MM_HINT_T0); \
+    pCOut += sizeof(symbol);) \
+    _mm_prefetch(pCIn + AVX_PREFETCH_BYTES, PREFETCH_TYPE); \
   } \
 \
   pOut += offset; \
@@ -772,8 +781,8 @@ else \
   uint8_t *pCOutEnd = pOut + symbolCount; \
 \
   while (pCOut < pCOutEnd) \
-  { _mm256_storeu_si256((__m256i *)pCOut, symbol); \
-    pCOut += sizeof(symbol); \
+  { MULTI(_mm256_storeu_si256((__m256i *)pCOut, symbol); \
+    pCOut += sizeof(symbol);) \
   } \
 \
   pOut = pCOutEnd; \

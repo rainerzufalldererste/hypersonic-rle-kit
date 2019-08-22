@@ -130,7 +130,7 @@ int main(int argc, char **pArgv)
     return 1;
   }
 
-  int32_t fileSize = 0;
+  size_t fileSize = 0;
   uint32_t compressedBufferSize = 0;
   uint8_t *pUncompressedData = NULL;
   uint8_t *pDecompressedData = NULL;
@@ -167,9 +167,9 @@ int main(int argc, char **pArgv)
     compressedBufferSize = rle8m_compress_bounds((uint32_t)subSections, (uint32_t)fileSize);
   }
 
-  pUncompressedData = (uint8_t *)malloc((size_t)fileSize);
-  pDecompressedData = (uint8_t *)malloc((size_t)fileSize + rle8_extreme_decompress_additional_size());
-  pCompressedData = (uint8_t *)malloc((size_t)compressedBufferSize + rle8_extreme_decompress_additional_size());
+  pUncompressedData = (uint8_t *)malloc(fileSize);
+  pDecompressedData = (uint8_t *)malloc(fileSize + rle8_extreme_decompress_additional_size());
+  pCompressedData = (uint8_t *)malloc(compressedBufferSize + rle8_extreme_decompress_additional_size());
 
   if (!pUncompressedData || !pDecompressedData || !pCompressedData)
   {
@@ -190,10 +190,15 @@ int main(int argc, char **pArgv)
     uint32_t decompressedSize = 0;
     uint32_t compressedSize = 0;
 
+    uint64_t subTimeMin = UINT64_MAX;
+    uint64_t subTimeMax = 0;
+
     uint64_t time = GetCurrentTimeNs();
 
     for (int32_t i = 0; i < runs; i++)
     {
+      uint64_t subTime = GetCurrentTimeNs();
+
       if (subSections == 0)
       {
         if (!ultraMode && !extremeMode)
@@ -222,6 +227,14 @@ int main(int argc, char **pArgv)
       {
         compressedSize = rle8m_compress((uint32_t)subSections, pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
       }
+
+      subTime = GetCurrentTimeNs() - subTime;
+
+      if (subTime < subTimeMin)
+        subTimeMin = subTime;
+
+      if (subTime > subTimeMax)
+        subTimeMax = subTime;
     }
 
     time = GetCurrentTimeNs() - time;
@@ -232,7 +245,10 @@ int main(int argc, char **pArgv)
       goto epilogue;
     }
 
-    printf("Compressed %" PRIi32 " bytes -> %" PRIu32 " bytes (%f %%) in %f ms. (=> %f MB/s)\n", fileSize, compressedSize, (double)compressedSize / (double)fileSize * 100.0, time / (double)runs / 1000000.0, (fileSize / (1024.0 * 1024.0)) / (time / (double)runs / 1000000000.0));
+    printf("Compressed %" PRIu64 " bytes -> %" PRIu32 " bytes (%f %%) in %f ms. (=> %f MB/s)\n", fileSize, compressedSize, (double)compressedSize / (double)fileSize * 100.0, time / (double)runs / 1000000.0, (fileSize / (1024.0 * 1024.0)) / (time / (double)runs / 1000000000.0));
+
+    if (runs > 1)
+      printf(" [%f ms .. %f ms | %f MB/s .. %f MB/s]\n\n", subTimeMin / 1000000.0, subTimeMax / 1000000.0, (fileSize / (1024.0 * 1024.0)) / (subTimeMax / 1000000000.0), (fileSize / (1024.0 * 1024.0)) / (subTimeMin / 1000000000.0));
 
     if (outputFileName)
     {
@@ -255,10 +271,15 @@ int main(int argc, char **pArgv)
       fclose(pCompressed);
     }
 
+    subTimeMin = UINT64_MAX;
+    subTimeMax = 0;
+
     time = GetCurrentTimeNs();
 
     for (int32_t i = 0; i < runs; i++)
     {
+      uint64_t subTime = GetCurrentTimeNs();
+
       if (subSections == 0)
       {
         if (!ultraMode && !extremeMode)
@@ -272,6 +293,14 @@ int main(int argc, char **pArgv)
       {
         decompressedSize = rle8m_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
       }
+
+      subTime = GetCurrentTimeNs() - subTime;
+
+      if (subTime < subTimeMin)
+        subTimeMin = subTime;
+
+      if (subTime > subTimeMax)
+        subTimeMax = subTime;
     }
 
     time = GetCurrentTimeNs() - time;
@@ -283,6 +312,9 @@ int main(int argc, char **pArgv)
     }
     
     printf("Decompressed in %f ms. (=> %f MB/s)\n", time / (double)runs / 1000000.0, (fileSize / (1024.0 * 1024.0)) / (time / (double)runs / 1000000000.0));
+
+    if (runs > 1)
+      printf(" [%f ms .. %f ms | %f MB/s .. %f MB/s]\n\n", subTimeMin / 1000000.0, subTimeMax / 1000000.0, (fileSize / (1024.0 * 1024.0)) / (subTimeMax / 1000000000.0), (fileSize / (1024.0 * 1024.0)) / (subTimeMin / 1000000000.0));
 
     if (memcmp(pUncompressedData, pDecompressedData, (size_t)fileSize) != 0)
     {
