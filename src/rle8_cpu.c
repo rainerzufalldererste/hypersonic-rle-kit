@@ -550,10 +550,15 @@ uint32_t rle8_write_compress_info(IN rle8_compress_info_t *pCompressInfo, OUT ui
   pOut[index] = pCompressInfo->symbolCount;
   index++;
 
-  for (size_t i = 0; i < pCompressInfo->symbolCount; i++)
+  size_t symbolCount = pCompressInfo->symbolCount;
+  
+  if (!symbolCount)
+    symbolCount = 255;
+
+  for (size_t i = 0; i < symbolCount; i++)
     pOut[index + i] = pCompressInfo->symbolsByProb[i];
 
-  index += pCompressInfo->symbolCount;
+  index += symbolCount;
 
   return index;
 }
@@ -657,8 +662,11 @@ uint32_t rle8_read_decompress_info(IN const uint8_t *pIn, const uint32_t inSize,
   {
     uint8_t symbolsByProb[256];
 
-    const uint8_t symbolsWithProb = pIn[index];
+    size_t symbolsWithProb = pIn[index];
     index++;
+
+    if (!symbolsWithProb)
+      symbolsWithProb = 255;
 
     for (uint8_t i = 0; i < symbolsWithProb; i++)
     {
