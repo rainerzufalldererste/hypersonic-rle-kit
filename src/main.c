@@ -432,6 +432,7 @@ int main(int argc, char **pArgv)
       goto epilogue;
     }
 
+#ifdef BUILD_WITH_OPENCL
     if (subSections > 0)
     {
       memset(pDecompressedData, 0, fileSize);
@@ -465,6 +466,7 @@ int main(int argc, char **pArgv)
         goto epilogue;
       }
     }
+#endif
   }
 
   //////////////////////////////////////////////////////////////////////////

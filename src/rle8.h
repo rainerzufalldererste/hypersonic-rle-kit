@@ -2,11 +2,14 @@
 #define rle8_h__
 
 #include <stdint.h>
-#include <stdbool.h>
 #include <inttypes.h>
 #include <malloc.h>
 #include <stdio.h>
 #include <memory.h>
+
+#ifndef __cplusplus
+#include <stdbool.h>
+#endif
 
 #ifndef IN
 #define IN
@@ -90,9 +93,13 @@ uint32_t rle64_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, 
 
 //////////////////////////////////////////////////////////////////////////
 
+#ifdef BUILD_WITH_OPENCL
+
 bool rle8m_opencl_init(const size_t inputDataSize, const size_t outputDataSize, const size_t maxSubsectionCount);
 void rle8m_opencl_destroy();
 uint32_t rle8m_opencl_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+#endif
 
 #ifdef __cplusplus
 }

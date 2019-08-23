@@ -42,6 +42,8 @@ project(ProjectName)
 
   filter {}
   
+  defines { "BUILD_WITH_OPENCL" }
+  
   targetname(ProjectName)
   targetdir "builds/bin"
   debugdir "builds/bin"

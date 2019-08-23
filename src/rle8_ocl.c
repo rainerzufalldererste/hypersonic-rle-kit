@@ -1,3 +1,5 @@
+#ifdef BUILD_WITH_OPENCL
+
 #include "rle8.h"
 #include "rle8_ocl_kernel.h"
 
@@ -409,3 +411,5 @@ uint32_t rle8m_opencl_decompress(IN const uint8_t *pIn, const uint32_t inSize, O
 epilogue:
   return success ? (uint32_t)expectedOutSize : 0;
 }
+
+#endif
