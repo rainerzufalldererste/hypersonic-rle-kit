@@ -730,6 +730,31 @@ else \
   } \
 }
 
+#define MEMSET_SSE_MULTI \
+{ \
+  uint8_t *pCOut = pOut; \
+  uint8_t *pCOutEnd = pOut + symbolCount; \
+\
+  while (pCOut < pCOutEnd) \
+  { MULTI(_mm_storeu_si128((__m128i *)pCOut, symbol); \
+    pCOut += sizeof(symbol);) \
+  } \
+\
+  pOut = pCOutEnd; \
+}
+
+#define MEMSET_AVX_MULTI \
+{ uint8_t *pCOut = pOut; \
+  uint8_t *pCOutEnd = pOut + symbolCount; \
+\
+  while (pCOut < pCOutEnd) \
+  { MULTI(_mm256_storeu_si256((__m256i *)pCOut, symbol); \
+    pCOut += sizeof(symbol);) \
+  } \
+\
+  pOut = pCOutEnd; \
+}
+
 #else
 #define MEMCPY_SSE \
 { const uint8_t *pCIn = pInStart; \
@@ -787,6 +812,9 @@ else \
 \
   pOut = pCOutEnd; \
 }
+
+#define MEMSET_SSE_MULTI MEMSET_SSE
+#define MEMSET_AVX_MULTI MEMSET_AVX
 
 #endif
 

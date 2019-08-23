@@ -37,7 +37,7 @@ int main(int argc, char **pArgv)
 
   const char *outputFileName = NULL;
   int32_t subSections = 0;
-  int32_t runs = 1;
+  int32_t runs = 8;
   bool singleSymbol = false;
   bool ultraMode = false;
   bool extremeMode = false;
@@ -181,7 +181,7 @@ int main(int argc, char **pArgv)
     if (extremeMode)
       printf("with %" PRIu8 " Bit Symbols ", extremeSize);
 
-    puts("\n");
+    printf("(%" PRIi32 " Run%s)\n\n", runs, runs > 1 ? "s" : "");
   }
 
   size_t fileSize = 0;
@@ -425,6 +425,74 @@ int main(int argc, char **pArgv)
         if (pUncompressedData[i] != pDecompressedData[i])
         {
           printf("First invalid char at %" PRIu64 " (0x%" PRIx8 " != 0x%" PRIx8 ").\n", i, pUncompressedData[i], pDecompressedData[i]);
+
+          const int64_t start = max(0, (int64_t)i - 64);
+          const int64_t end = min(fileSize, (int64_t)i + 64);
+
+          printf("\nContext: (%" PRIi64 " to %" PRIi64 ")\n", start, end);
+          
+          for (int64_t context = start; context < end; context += 8)
+          {
+            const int64_t context_end = min(end, context + 8);
+
+            bool different = false;
+
+            for (int64_t j = context; j < context_end; j++)
+            {
+              if (pUncompressedData[j] != pDecompressedData[j])
+              {
+                different = true;
+                break;
+              }
+            }
+
+            if (different)
+              fputs("!! ", stdout);
+            else
+              fputs("   ", stdout);
+
+            for (int64_t j = context; j < context_end; j++)
+              printf("%02" PRIX8 " ", pUncompressedData[j]);
+
+            for (int64_t j = context_end; j < context + 8; j++)
+              fputs("   ", stdout);
+
+            fputs(" |  ", stdout);
+
+            for (int64_t j = context; j < context_end; j++)
+              printf("%02" PRIX8 " ", pDecompressedData[j]);
+
+            puts("");
+
+            if (different)
+            {
+              fputs("   ", stdout);
+
+              for (int64_t j = context; j < context_end; j++)
+              {
+                if (pUncompressedData[j] != pDecompressedData[j])
+                  fputs("~~ ", stdout);
+                else
+                  fputs("   ", stdout);
+              }
+
+              for (int64_t j = context_end; j < context + 8; j++)
+                fputs("    ", stdout);
+
+              fputs("    ", stdout);
+
+              for (int64_t j = context; j < context_end; j++)
+              {
+                if (pUncompressedData[j] != pDecompressedData[j])
+                  fputs("~~ ", stdout);
+                else
+                  fputs("   ", stdout);
+              }
+            }
+
+            puts("");
+          }
+
           break;
         }
       }
@@ -474,7 +542,9 @@ int main(int argc, char **pArgv)
   goto epilogue;
 
 epilogue:
-  fclose(pFile);
+  if (pFile)
+    fclose(pFile);
+  
   free(pUncompressedData);
   free(pDecompressedData);
   free(pCompressedData);

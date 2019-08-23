@@ -584,7 +584,7 @@ uint32_t rle8_compress_with_info(IN const uint8_t *pIn, const uint32_t inSize, I
       const uint8_t range = 255;
       uint8_t count = 0;
 
-      int j = 1;
+      int32_t j = 1;
 
       for (; j < range; j++)
         if (pIn[j + i] == b)
