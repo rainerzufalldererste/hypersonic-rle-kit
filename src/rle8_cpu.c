@@ -14,8 +14,6 @@
 #define _STATIC_ASSERT(expr) typedef char __static_assert_t[(expr) != 0]
 #endif
 
-#define min(a, b) ((a < b) ? (a) : (b))
-
 uint32_t rle8_compress_bounds(const uint32_t inSize)
 {
   return inSize + (256 / 8) + 1 + 256 + sizeof(uint32_t) * 2;

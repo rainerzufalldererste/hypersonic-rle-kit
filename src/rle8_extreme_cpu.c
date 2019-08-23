@@ -15,9 +15,6 @@
 #define _STATIC_ASSERT(expr) typedef char __static_assert_t[(expr) != 0]
 #endif
 
-#define min(a, b) ((a < b) ? (a) : (b))
-#define max(a, b) ((a > b) ? (a) : (b))
-
 #define RLE8_EXTREME_MULTI_SIZE_OF_SYMBOL_HEADER (1 + 1 + 1)
 #define RLE8_EXTREME_MULTI_MAX_SIZE_OF_SYMBOL_HEADER (1 + 1 + 4 + 1 + 4)
 #define RLE8_EXTREME_MULTI_MIN_RANGE_SHORT (6)
