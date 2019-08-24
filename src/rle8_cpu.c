@@ -6,15 +6,7 @@
 #include <x86intrin.h>
 #endif
 
-#ifdef _MSC_VER
 //#define DO_NOT_OPTIMIZE_DECODER
-#define ALIGN(a) __declspec(align(a))
-#else
-#define ALIGN(a) __attribute__((aligned(a)))
-#define _STATIC_ASSERT(expr) typedef char __static_assert_t[(expr) != 0]
-#endif
-
-#define min(a, b) ((a < b) ? (a) : (b))
 
 uint32_t rle8_compress_bounds(const uint32_t inSize)
 {
@@ -550,10 +542,15 @@ uint32_t rle8_write_compress_info(IN rle8_compress_info_t *pCompressInfo, OUT ui
   pOut[index] = pCompressInfo->symbolCount;
   index++;
 
-  for (size_t i = 0; i < pCompressInfo->symbolCount; i++)
+  size_t symbolCount = pCompressInfo->symbolCount;
+  
+  if (!symbolCount)
+    symbolCount = 255;
+
+  for (size_t i = 0; i < symbolCount; i++)
     pOut[index + i] = pCompressInfo->symbolsByProb[i];
 
-  index += pCompressInfo->symbolCount;
+  index += (uint32_t)symbolCount;
 
   return index;
 }
@@ -584,7 +581,7 @@ uint32_t rle8_compress_with_info(IN const uint8_t *pIn, const uint32_t inSize, I
       const uint8_t range = 255;
       uint8_t count = 0;
 
-      int j = 1;
+      int32_t j = 1;
 
       for (; j < range; j++)
         if (pIn[j + i] == b)
@@ -657,8 +654,11 @@ uint32_t rle8_read_decompress_info(IN const uint8_t *pIn, const uint32_t inSize,
   {
     uint8_t symbolsByProb[256];
 
-    const uint8_t symbolsWithProb = pIn[index];
+    size_t symbolsWithProb = pIn[index];
     index++;
+
+    if (!symbolsWithProb)
+      symbolsWithProb = 255;
 
     for (uint8_t i = 0; i < symbolsWithProb; i++)
     {
@@ -667,7 +667,7 @@ uint32_t rle8_read_decompress_info(IN const uint8_t *pIn, const uint32_t inSize,
       symbolToCount[symbolsByProb[i]] = i;
     }
 
-    uint8_t nextSymbol = symbolsWithProb;
+    uint8_t nextSymbol = (uint8_t)symbolsWithProb;
 
     for (size_t i = 0; i < 256; i++)
     {
@@ -726,7 +726,7 @@ const uint8_t * rle8_decompress_single_sse(IN const uint8_t *pIn, IN const uint8
       _mm_store_si128((simd_t *)dataA, data);
 
 #ifdef _MSC_VER
-      uint32_t index;
+      unsigned long index;
       _BitScanForward(&index, contains);
 #else
       const uint32_t index = __builtin_ctz(contains);
@@ -811,7 +811,7 @@ const uint8_t * rle8_decompress_single_avx2(IN const uint8_t *pIn, IN const uint
       _mm256_store_si256((simd_t *)dataA, data);
 
 #ifdef _MSC_VER
-      uint32_t index;
+      unsigned long index;
       _BitScanForward(&index, contains);
 #else
       const uint32_t index = __builtin_ctz(contains);

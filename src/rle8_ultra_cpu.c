@@ -6,15 +6,6 @@
 #include <x86intrin.h>
 #endif
 
-#ifdef _MSC_VER
-#define ALIGN(a) __declspec(align(a))
-#else
-#define ALIGN(a) __attribute__((aligned(a)))
-#define _STATIC_ASSERT(expr) typedef char __static_assert_t[(expr) != 0]
-#endif
-
-#define min(a, b) ((a < b) ? (a) : (b))
-
 uint32_t rle8_ultra_compress_bounds(const uint32_t inSize)
 {
   return inSize + (256 / 8) + 1 + 256 + sizeof(uint32_t) * 2;
@@ -235,7 +226,7 @@ const uint8_t * rle8_ultra_decompress_single_sse(IN const uint8_t *pIn, IN const
       _mm_store_si128((simd_t *)dataA, data);
 
 #ifdef _MSC_VER
-      uint32_t index;
+      unsigned long index;
       _BitScanForward(&index, contains);
 #else
       const uint32_t index = __builtin_ctz(contains);
@@ -296,7 +287,7 @@ const uint8_t * rle8_ultra_decompress_single_avx2(IN const uint8_t *pIn, IN cons
       _mm256_store_si256((simd_t *)dataA, data);
 
 #ifdef _MSC_VER
-      uint32_t index;
+      unsigned long index;
       _BitScanForward(&index, contains);
 #else
       const uint32_t index = __builtin_ctz(contains);

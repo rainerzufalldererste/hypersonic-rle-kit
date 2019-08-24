@@ -8,16 +8,6 @@
 #include <x86intrin.h>
 #endif
 
-#ifdef _MSC_VER
-#define ALIGN(a) __declspec(align(a))
-#else
-#define ALIGN(a) __attribute__((aligned(a)))
-#define _STATIC_ASSERT(expr) typedef char __static_assert_t[(expr) != 0]
-#endif
-
-#define min(a, b) ((a < b) ? (a) : (b))
-#define max(a, b) ((a > b) ? (a) : (b))
-
 #define RLE8_EXTREME_MULTI_SIZE_OF_SYMBOL_HEADER (1 + 1 + 1)
 #define RLE8_EXTREME_MULTI_MAX_SIZE_OF_SYMBOL_HEADER (1 + 1 + 4 + 1 + 4)
 #define RLE8_EXTREME_MULTI_MIN_RANGE_SHORT (6)
@@ -654,7 +644,7 @@ else \
   { MULTI(_mm_storeu_si128((__m128i *)pCOut, _mm_load_si128((__m128i *)pCIn)); \
     pCIn += sizeof(__m128i); \
     pCOut += sizeof(__m128i);) \
-    _mm_prefetch(pCIn + SSE_PREFETCH_BYTES, PREFETCH_TYPE); \
+    _mm_prefetch((const char *)pCIn + SSE_PREFETCH_BYTES, PREFETCH_TYPE); \
   } \
 }
 
@@ -705,7 +695,7 @@ else \
   { MULTI(_mm256_storeu_si256((__m256i *)pCOut, _mm256_load_si256((__m256i *)pCIn)); \
     pCIn += sizeof(__m256i); \
     pCOut += sizeof(__m256i);) \
-    _mm_prefetch(pCIn + AVX_PREFETCH_BYTES, PREFETCH_TYPE); \
+    _mm_prefetch((const char *)pCIn + AVX_PREFETCH_BYTES, PREFETCH_TYPE); \
   } \
 }
 
@@ -731,79 +721,33 @@ else \
   } \
 }
 
-#define MEMCPY_SSE_LARGE MEMCPY_SSE
-
-#define MEMSET_SSE_LARGE MEMSET_SSE
-
-#define MEMCPY_AVX_LARGE \
-{ _mm256_storeu_si256((__m256i *)pOut, _mm256_loadu_si256((__m256i *)pInStart)); \
-  const uint8_t *pCIn = pInStart; \
+#define MEMSET_SSE_MULTI \
+{ \
   uint8_t *pCOut = pOut; \
-  pOut += offset; \
-  pInStart += offset; \
+  uint8_t *pCOutEnd = pOut + symbolCount; \
 \
-  if (offset > sizeof(symbol)) \
-  { { pCIn = (uint8_t *)((size_t)pCIn & ~(size_t)(sizeof(__m256i) - 1)) + sizeof(__m256i); \
-      pCOut += (pCIn - pInStart); \
-    } \
-\
-    while (pCOut < pOut) \
-    { MULTI_LARGE(_mm256_storeu_si256((__m256i *)pCOut, _mm256_load_si256((__m256i *)pCIn)); \
-      pCIn += sizeof(__m256i); \
-      pCOut += sizeof(__m256i);) \
-      _mm_prefetch(pCIn + AVX_PREFETCH_BYTES, PREFETCH_TYPE); \
-    } \
+  while (pCOut < pCOutEnd) \
+  { MULTI(_mm_storeu_si128((__m128i *)pCOut, symbol); \
+    pCOut += sizeof(symbol);) \
   } \
+\
+  pOut = pCOutEnd; \
 }
 
-#undef MEMCPY_AVX_LARGE
-//#define MEMCPY_AVX_LARGE MEMCPY_AVX
-
-#define MEMCPY_AVX_LARGE \
-if (offset <= sizeof(symbol)) \
-{ _mm256_storeu_si256((__m256i *)pOut, _mm256_loadu_si256((__m256i *)pInStart)); \
-  pOut += offset; \
-  pInStart += offset; \
-} \
-else \
-{ size_t unaligned = ((size_t)pInStart & (sizeof(__m256i) - 1)); \
-  const uint8_t *pCIn = pInStart; \
-  uint8_t *pCOut = pOut; \
+#define MEMSET_AVX_MULTI \
+{ uint8_t *pCOut = pOut; \
+  uint8_t *pCOutEnd = pOut + symbolCount; \
 \
-  if (unaligned != 0) \
-  { _mm256_storeu_si256((__m256i *)pCOut, _mm256_loadu_si256((__m256i *)pCIn)); \
-    pCIn = (uint8_t *)((size_t)pCIn & ~(size_t)(sizeof(__m256i) - 1)) + sizeof(__m256i); \
-    pCOut += (pCIn - pInStart); \
+  while (pCOut < pCOutEnd) \
+  { MULTI(_mm256_storeu_si256((__m256i *)pCOut, symbol); \
+    pCOut += sizeof(symbol);) \
   } \
 \
-  pOut += offset; \
-  pInStart += offset; \
-\
-  while (pCOut < pOut) \
-  { MULTI(_mm256_storeu_si256((__m256i *)pCOut, _mm256_load_si256((__m256i *)pCIn)); \
-    pCIn += sizeof(__m256i); \
-    pCOut += sizeof(__m256i);) \
-    _mm_prefetch(pCIn + AVX_PREFETCH_BYTES, PREFETCH_TYPE); \
-  } \
+  pOut = pCOutEnd; \
 }
 
-#define MEMSET_AVX_LARGE \
-{ _mm256_storeu_si256((__m256i *)pOut, symbol); \
-  uint8_t *pCOut = pOut; \
-  pOut += symbolCount; \
-\
-  if (symbolCount > sizeof(symbol)) \
-  { pCOut = (uint8_t *)((size_t)pCOut & ~(size_t)(sizeof(__m256i) - 1)) + sizeof(__m256i); \
-\
-    while (pCOut < pOut) \
-    { MULTI_LARGE(_mm256_store_si256((__m256i *)pCOut, symbol); \
-      pCOut += sizeof(__m256i);) \
-    } \
-  } \
-}
-
-//#undef MEMSET_AVX_LARGE
-//#define MEMSET_AVX_LARGE MEMSET_AVX
+#define MEMCPY_SSE_MULTI MEMCPY_SSE
+#define MEMCPY_AVX_MULTI MEMCPY_AVX
 
 #else
 #define MEMCPY_SSE \
@@ -815,7 +759,7 @@ else \
   { MULTI(_mm_storeu_si128((__m128i *)pCOut, _mm_loadu_si128((__m128i *)pCIn)); \
     pCIn += sizeof(symbol); \
     pCOut += sizeof(symbol);) \
-    _mm_prefetch(pCIn + SSE_PREFETCH_BYTES, PREFETCH_TYPE); \
+    _mm_prefetch((const char *)pCIn + SSE_PREFETCH_BYTES, PREFETCH_TYPE); \
   } \
 \
   pOut += offset; \
@@ -844,7 +788,7 @@ else \
   { MULTI(_mm256_storeu_si256((__m256i *)pCOut, _mm256_loadu_si256((__m256i *)pCIn)); \
     pCIn += sizeof(symbol); \
     pCOut += sizeof(symbol);) \
-    _mm_prefetch(pCIn + AVX_PREFETCH_BYTES, PREFETCH_TYPE); \
+    _mm_prefetch((const char *)pCIn + AVX_PREFETCH_BYTES, PREFETCH_TYPE); \
   } \
 \
   pOut += offset; \
@@ -863,10 +807,10 @@ else \
   pOut = pCOutEnd; \
 }
 
-#define MEMCPY_SSE_LARGE MEMCPY_SSE
-#define MEMSET_SSE_LARGE MEMSET_SSE
-#define MEMCPY_AVX_LARGE MEMCPY_AVX
-#define MEMSET_AVX_LARGE MEMSET_AVX
+#define MEMSET_SSE_MULTI MEMSET_SSE
+#define MEMSET_AVX_MULTI MEMSET_AVX
+#define MEMCPY_SSE_MULTI MEMCPY_SSE
+#define MEMCPY_AVX_MULTI MEMCPY_AVX
 
 #endif
 

@@ -2,22 +2,43 @@
 #define rle8_h__
 
 #include <stdint.h>
-#include <stdbool.h>
 #include <inttypes.h>
 #include <malloc.h>
 #include <stdio.h>
 #include <memory.h>
 
+#ifndef __cplusplus
+  #include <stdbool.h>
+#endif
+
 #ifndef IN
-#define IN
+  #define IN
 #endif
 
 #ifndef OUT
-#define OUT
+  #define OUT
 #endif
 
 #ifndef OPTIONAL
-#define OPTIONAL
+  #define OPTIONAL
+#endif
+
+#ifndef min
+  #define min(a, b) ((a < b) ? (a) : (b))
+#endif
+
+#ifndef max
+  #define max(a, b) ((a > b) ? (a) : (b))
+#endif
+
+#ifdef _MSC_VER
+  #define ALIGN(a) __declspec(align(a))
+#else
+  #define ALIGN(a) __attribute__((aligned(a)))
+  
+  #ifndef _STATIC_ASSERT
+    #define _STATIC_ASSERT(expr) typedef char __static_assert_t[(expr) != 0]
+  #endif
 #endif
 
 #ifdef __cplusplus
@@ -90,9 +111,13 @@ uint32_t rle64_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, 
 
 //////////////////////////////////////////////////////////////////////////
 
+#ifdef BUILD_WITH_OPENCL
+
 bool rle8m_opencl_init(const size_t inputDataSize, const size_t outputDataSize, const size_t maxSubsectionCount);
 void rle8m_opencl_destroy();
 uint32_t rle8m_opencl_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+#endif
 
 #ifdef __cplusplus
 }
