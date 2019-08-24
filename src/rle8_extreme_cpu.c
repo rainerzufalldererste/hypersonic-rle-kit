@@ -627,6 +627,7 @@ uint32_t rle8_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, O
 #define PREFETCH_TYPE _MM_HINT_T0
 
 #define MULTI(a) {a}
+#define MULTI_LARGE(a) {a}
 
 #ifndef PREFER_UNALIGNED
 #define MEMCPY_SSE \
@@ -730,6 +731,80 @@ else \
   } \
 }
 
+#define MEMCPY_SSE_LARGE MEMCPY_SSE
+
+#define MEMSET_SSE_LARGE MEMSET_SSE
+
+#define MEMCPY_AVX_LARGE \
+{ _mm256_storeu_si256((__m256i *)pOut, _mm256_loadu_si256((__m256i *)pInStart)); \
+  const uint8_t *pCIn = pInStart; \
+  uint8_t *pCOut = pOut; \
+  pOut += offset; \
+  pInStart += offset; \
+\
+  if (offset > sizeof(symbol)) \
+  { { pCIn = (uint8_t *)((size_t)pCIn & ~(size_t)(sizeof(__m256i) - 1)) + sizeof(__m256i); \
+      pCOut += (pCIn - pInStart); \
+    } \
+\
+    while (pCOut < pOut) \
+    { MULTI_LARGE(_mm256_storeu_si256((__m256i *)pCOut, _mm256_load_si256((__m256i *)pCIn)); \
+      pCIn += sizeof(__m256i); \
+      pCOut += sizeof(__m256i);) \
+      _mm_prefetch(pCIn + AVX_PREFETCH_BYTES, PREFETCH_TYPE); \
+    } \
+  } \
+}
+
+#undef MEMCPY_AVX_LARGE
+//#define MEMCPY_AVX_LARGE MEMCPY_AVX
+
+#define MEMCPY_AVX_LARGE \
+if (offset <= sizeof(symbol)) \
+{ _mm256_storeu_si256((__m256i *)pOut, _mm256_loadu_si256((__m256i *)pInStart)); \
+  pOut += offset; \
+  pInStart += offset; \
+} \
+else \
+{ size_t unaligned = ((size_t)pInStart & (sizeof(__m256i) - 1)); \
+  const uint8_t *pCIn = pInStart; \
+  uint8_t *pCOut = pOut; \
+\
+  if (unaligned != 0) \
+  { _mm256_storeu_si256((__m256i *)pCOut, _mm256_loadu_si256((__m256i *)pCIn)); \
+    pCIn = (uint8_t *)((size_t)pCIn & ~(size_t)(sizeof(__m256i) - 1)) + sizeof(__m256i); \
+    pCOut += (pCIn - pInStart); \
+  } \
+\
+  pOut += offset; \
+  pInStart += offset; \
+\
+  while (pCOut < pOut) \
+  { MULTI(_mm256_storeu_si256((__m256i *)pCOut, _mm256_load_si256((__m256i *)pCIn)); \
+    pCIn += sizeof(__m256i); \
+    pCOut += sizeof(__m256i);) \
+    _mm_prefetch(pCIn + AVX_PREFETCH_BYTES, PREFETCH_TYPE); \
+  } \
+}
+
+#define MEMSET_AVX_LARGE \
+{ _mm256_storeu_si256((__m256i *)pOut, symbol); \
+  uint8_t *pCOut = pOut; \
+  pOut += symbolCount; \
+\
+  if (symbolCount > sizeof(symbol)) \
+  { pCOut = (uint8_t *)((size_t)pCOut & ~(size_t)(sizeof(__m256i) - 1)) + sizeof(__m256i); \
+\
+    while (pCOut < pOut) \
+    { MULTI_LARGE(_mm256_store_si256((__m256i *)pCOut, symbol); \
+      pCOut += sizeof(__m256i);) \
+    } \
+  } \
+}
+
+//#undef MEMSET_AVX_LARGE
+//#define MEMSET_AVX_LARGE MEMSET_AVX
+
 #else
 #define MEMCPY_SSE \
 { const uint8_t *pCIn = pInStart; \
@@ -787,6 +862,11 @@ else \
 \
   pOut = pCOutEnd; \
 }
+
+#define MEMCPY_SSE_LARGE MEMCPY_SSE
+#define MEMSET_SSE_LARGE MEMSET_SSE
+#define MEMCPY_AVX_LARGE MEMCPY_AVX
+#define MEMSET_AVX_LARGE MEMSET_AVX
 
 #endif
 

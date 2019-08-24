@@ -272,7 +272,7 @@ void CONCAT3(rle, TYPE_SIZE, _extreme_decompress_sse)(IN const uint8_t *pInStart
     offset--;
 
     // memcpy.
-    MEMCPY_SSE;
+    MEMCPY_SSE_LARGE;
 
     if (!symbolCount)
       return;
@@ -280,7 +280,7 @@ void CONCAT3(rle, TYPE_SIZE, _extreme_decompress_sse)(IN const uint8_t *pInStart
     symbolCount = (symbolCount + (RLEX_EXTREME_MULTI_MIN_RANGE_SHORT / sizeof(symbol_t)) - 1) * sizeof(symbol_t);
 
     // memset.
-    MEMSET_SSE;
+    MEMSET_SSE_LARGE;
   }
 }
 
@@ -322,7 +322,7 @@ void CONCAT3(rle, TYPE_SIZE, _extreme_decompress_avx)(IN const uint8_t *pInStart
     offset--;
 
     // memcpy.
-    MEMCPY_AVX;
+    MEMCPY_AVX_LARGE;
 
     if (!symbolCount)
       return;
@@ -330,7 +330,7 @@ void CONCAT3(rle, TYPE_SIZE, _extreme_decompress_avx)(IN const uint8_t *pInStart
     symbolCount = (symbolCount + (RLEX_EXTREME_MULTI_MIN_RANGE_SHORT / sizeof(symbol_t)) - 1) * sizeof(symbol_t);
 
     // memset.
-    MEMSET_AVX;
+    MEMSET_AVX_LARGE;
   }
 }
 
