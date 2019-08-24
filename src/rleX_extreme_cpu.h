@@ -123,7 +123,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, _extreme_compress)(IN const uint8_t *pIn, const
   }
 
   {
-    const int64_t range = i - lastRLE - (count / sizeof(symbol_t)) + 1;
+    const int64_t range = i - lastRLE - count + 1;
 
     if (range <= 255 && count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT)
     {
