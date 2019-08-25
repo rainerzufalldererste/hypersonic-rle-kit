@@ -255,8 +255,6 @@ void CONCAT3(rle, TYPE_SIZE, _extreme_decompress_sse)(IN const uint8_t *pInStart
       pInStart += sizeof(uint32_t);
     }
 
-    symbolCount *= sizeof(symbol_t);
-
     offset = (size_t)*pInStart;
     pInStart++;
 
