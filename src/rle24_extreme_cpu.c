@@ -232,21 +232,21 @@ void rle24_extreme_decompress_sse2(IN const uint8_t *pInStart, OUT uint8_t *pOut
 {
   size_t offset, symbolCount;
   __m128i symbol;
+  
+  const __m128i pattern00 = _mm_set_epi8( 0, -1, -1, -1,  0,  0,  0,  0,  0,  0,  0,  0,  0, -1, -1, -1);
+  const __m128i pattern01 = _mm_set_epi8(-1,  0,  0,  0,  0,  0,  0,  0,  0,  0, -1, -1, -1,  0,  0,  0);
+  const __m128i pattern02 = _mm_set_epi8( 0,  0,  0,  0,  0,  0,  0, -1, -1, -1,  0,  0,  0,  0,  0,  0);
+  const __m128i pattern03 = _mm_set_epi8( 0,  0,  0,  0, -1, -1, -1,  0,  0,  0,  0,  0,  0,  0,  0,  0);
 
-  const __m128i pattern00 = _mm_set_epi8(0, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1);
-  const __m128i pattern01 = _mm_set_epi8(-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, 0, 0, 0);
-  const __m128i pattern02 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, -1, -1, -1, 0, 0, 0, 0, 0, 0);
-  const __m128i pattern03 = _mm_set_epi8(0, 0, 0, 0, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+  const __m128i pattern10 = _mm_set_epi8( 0,  0,  0,  0,  0, -1, -1, -1,  0,  0,  0,  0,  0,  0,  0,  0);
+  const __m128i pattern11 = _mm_set_epi8( 0,  0, -1, -1, -1,  0,  0,  0,  0,  0,  0,  0,  0,  0, -1, -1);
+  const __m128i pattern12 = _mm_set_epi8(-1, -1,  0,  0,  0,  0,  0,  0,  0,  0,  0, -1, -1, -1,  0,  0);
+  const __m128i pattern13 = _mm_set_epi8( 0,  0,  0,  0,  0,  0,  0,  0, -1, -1, -1,  0,  0,  0,  0,  0);
 
-  const __m128i pattern10 = _mm_set_epi8(0, 0, 0, 0, 0, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0);
-  const __m128i pattern11 = _mm_set_epi8(0, 0, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1);
-  const __m128i pattern12 = _mm_set_epi8(-1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, 0, 0);
-  const __m128i pattern13 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, 0, 0, 0, 0, 0);
-
-  const __m128i pattern20 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, 0, 0, 0, 0);
-  const __m128i pattern21 = _mm_set_epi8(0, 0, 0, 0, 0, 0, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0);
-  const __m128i pattern22 = _mm_set_epi8(0, 0, 0, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1);
-  const __m128i pattern23 = _mm_set_epi8(-1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, 0);
+  const __m128i pattern20 = _mm_set_epi8( 0,  0,  0,  0,  0,  0,  0,  0,  0, -1, -1, -1,  0,  0,  0,  0);
+  const __m128i pattern21 = _mm_set_epi8( 0,  0,  0,  0,  0,  0, -1, -1, -1,  0,  0,  0,  0,  0,  0,  0);
+  const __m128i pattern22 = _mm_set_epi8( 0,  0,  0, -1, -1, -1,  0,  0,  0,  0,  0,  0,  0,  0,  0, -1);
+  const __m128i pattern23 = _mm_set_epi8(-1, -1, -1,  0,  0,  0,  0,  0,  0,  0,  0,  0, -1, -1, -1,  0);
 
   typedef uint32_t symbol_t;
   const size_t symbolSize = 3;
