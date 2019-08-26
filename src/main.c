@@ -274,18 +274,18 @@ int main(int argc, char **pArgv)
 
     const char *codecNames[] = 
     {
-      "Normal                  ",
-      "Normal Single           ",
-      "Ultra                   ",
-      "Ultra  Single           ",
-      "Extreme (8 Bit)         ",
-      "Extreme (8 Bit)  Single ",
-      "Extreme (16 Bit)        ",
-      "Extreme (24 Bit)        ",
-      "Extreme (32 Bit)        ",
-      "Extreme (48 Bit)        ",
-      "Extreme (64 Bit)        ",
-      "memcpy                  ",
+      "Normal                ",
+      "Normal Single         ",
+      "Ultra                 ",
+      "Ultra  Single         ",
+      "Extreme  8 Bit        ",
+      "Extreme  8 Bit Single ",
+      "Extreme 16 Bit        ",
+      "Extreme 24 Bit        ",
+      "Extreme 32 Bit        ",
+      "Extreme 48 Bit        ",
+      "Extreme 64 Bit        ",
+      "memcpy                ",
     };
 
     _STATIC_ASSERT(ARRAYSIZE(codecNames) == CodecCount);
@@ -293,12 +293,12 @@ int main(int argc, char **pArgv)
     uint32_t fileSize32 = (uint32_t)fileSize;
 
     printf("\nBenchmarking File '%s' (%" PRIu64 " Bytes)\n\n"
-      "Codec                     Ratio     Encoder Speed                         Decoder Speed                         ratio*H/log2(a)\n"
-      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n", pArgv[1], fileSize);
+      "Codec                   Ratio      Encoder Throughput (Maximum)    Decoder Throughput (Maximum)    R*H/log2(|S|)\n"
+      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n", pArgv[1], fileSize);
 
     for (; currentCodec < CodecCount; currentCodec++)
     {
-      printf("%s|         | (dry run)", codecNames[currentCodec]);
+      printf("%s|          | (dry run)", codecNames[currentCodec]);
 
       uint64_t compressionTime = 0;
       uint64_t fastestCompresionTime = UINT64_MAX;
@@ -377,7 +377,7 @@ if (runTime < fastestCompresionTime)
 compressionRuns++;
 
 if (compressionRuns > 0)
-printf("\r%s| %6.2f%% | %7.1f MiB/s (up to %7.1f MiB/s)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
+printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
       }
 
       if (compressedSize == 0)
@@ -391,7 +391,7 @@ printf("\r%s| %6.2f%% | %7.1f MiB/s (up to %7.1f MiB/s)", codecNames[currentCode
       uint64_t fastestDecompresionTime = UINT64_MAX;
       uint32_t decompressedSize = 0;
 
-      printf("\r%s| %6.2f%% | %7.1f MiB/s (up to %7.1f MiB/s) | (dry run)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
+      printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | (dry run)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
 
       const uint64_t decompressStartNs = GetCurrentTimeNs();
 
@@ -456,17 +456,17 @@ printf("\r%s| %6.2f%% | %7.1f MiB/s (up to %7.1f MiB/s)", codecNames[currentCode
         decompressionRuns++;
 
         if (decompressionRuns > 0)
-          printf("\r%s| %6.2f%% | %7.1f MiB/s (up to %7.1f MiB/s) | %7.1f MiB/s (up to %7.1f MiB/s)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0), (fileSize * (double)decompressionRuns / (double)(1024 * 1024)) / (decompressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestDecompresionTime / 1000000000.0));
+          printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | %7.1f MiB/s (%7.1f MiB/s)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0), (fileSize * (double)decompressionRuns / (double)(1024 * 1024)) / (decompressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestDecompresionTime / 1000000000.0));
       }
 
       if (decompressedSize == 0)
       {
-        printf("\r%s| %6.2f%% | %7.1f MiB/s (up to %7.1f MiB/s) | <FAILED TO DECOMRPESS>\n", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
+        printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | <FAILED TO DECOMRPESS>\n", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
 
         continue;
       }
 
-      printf("\r%s| %6.2f%% | %7.1f MiB/s (up to %7.1f MiB/s) | %7.1f MiB/s (up to %7.1f MiB/s) | %12.8f %%", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0), (fileSize * (double)decompressionRuns / (double)(1024 * 1024)) / (decompressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestDecompresionTime / 1000000000.0), ((compressedSize / (double)fileSize) * (GetInformationRatio(pCompressedData, compressedSize))) * 100.0f);
+      printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | %7.1f MiB/s (%7.1f MiB/s) | %11.7f %%", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0), (fileSize * (double)decompressionRuns / (double)(1024 * 1024)) / (decompressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestDecompresionTime / 1000000000.0), ((compressedSize / (double)fileSize) * (GetInformationRatio(pCompressedData, compressedSize))) * 100.0f);
 
       puts("");
 
