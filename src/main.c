@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -19,7 +20,8 @@ const char ArgumentExtremeSize[] = "--x-size";
 const char ArgumentMinimumTime[] = "--min-time";
 
 uint64_t GetCurrentTimeNs();
-bool Validate(const uint8_t * pUncompressedData, const uint8_t * pDecompressedData, const size_t fileSize);
+bool Validate(const uint8_t *pUncompressedData, const uint8_t *pDecompressedData, const size_t fileSize);
+double GetInformationRatio(const uint8_t *pData, const size_t length);
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -291,8 +293,8 @@ int main(int argc, char **pArgv)
     uint32_t fileSize32 = (uint32_t)fileSize;
 
     printf("\nBenchmarking File '%s' (%" PRIu64 " Bytes)\n\n"
-      "Codec                     Ratio     Encoder Speed                         Decoder Speed\n"
-      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n", pArgv[1], fileSize);
+      "Codec                     Ratio     Encoder Speed                         Decoder Speed                         ratio*H/log2(a)\n"
+      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n", pArgv[1], fileSize);
 
     for (; currentCodec < CodecCount; currentCodec++)
     {
@@ -463,6 +465,8 @@ printf("\r%s| %6.2f%% | %7.1f MiB/s (up to %7.1f MiB/s)", codecNames[currentCode
 
         continue;
       }
+
+      printf("\r%s| %6.2f%% | %7.1f MiB/s (up to %7.1f MiB/s) | %7.1f MiB/s (up to %7.1f MiB/s) | %12.8f %%", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0), (fileSize * (double)decompressionRuns / (double)(1024 * 1024)) / (decompressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestDecompresionTime / 1000000000.0), ((compressedSize / (double)fileSize) * (GetInformationRatio(pCompressedData, compressedSize))) * 100.0f);
 
       puts("");
 
@@ -846,4 +850,29 @@ bool Validate(const uint8_t *pUncompressedData, const uint8_t *pDecompressedData
   }
 
   return true;
+}
+
+double GetInformationRatio(const uint8_t *pData, const size_t length)
+{
+  uint64_t hist[256];
+  memset(hist, 0, sizeof(hist));
+
+  for (int i = 0; i < length; i++)
+    hist[pData[i]]++;
+
+  const double lengthD = (double)length;
+  double ret = 0;
+  uint64_t histSymbolCount = 0;
+
+  for (int i = 0; i < 256; i++)
+  {
+    if (hist[i] != 0)
+    {
+      const double freq = hist[i] / lengthD;
+      ret -= freq * log2(freq);
+      histSymbolCount++;
+    }
+  }
+
+  return ret / log2((double)histSymbolCount);
 }
