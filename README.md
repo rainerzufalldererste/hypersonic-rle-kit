@@ -1,65 +1,88 @@
 # rle8
 
 ### What is it?
-- A fast run length en/decoder.
+- Possibly the fastest run length en/decoder (obviously dependent on the dataset).
 - Tries to keep symbol general symbol frequency to improve compression ratio of an entropy encoder that could go after the Run Length Encoding like ANS, Arithmetic Coding or Huffman.
 - Written in C.
-- SIMD Variants for AVX2, AVX and SSE2 are available for the decoder. Automatically picked by the decoder based on the features available on the CPU it's running on.
+- SIMD Variants for AVX2, AVX, SSSE3 and SSE2 are available for the decoder. Automatically picked by the decoder based on the extensions available on the current platform.
+- Specialized versions for various different scenarios. (Single RLE Symbol, Short Strings of RLE Symbol, 8 Bit, 16 Bit, 24 Bit, 32 Bit, 48 Bit, 64 Bit)
 - `OpenCL` variant available for some of the decoders.
-- Specialized versions for single run length encodable symbol.
-- Specialized versions for various different scenarios.
 
 ### Benchmark
  - Single-Threaded
  - Running on an `Intel(R) Xeon(R) CPU E5-1680 v3 @ 3.20GHz` on Windows 10.
  - Compiled with `Visual Studio 2015`.
  - Compared to [TurboRLE](https://github.com/powturbo/TurboRLE)
-##### [1034.db](http://encode.su/threads/2077-EGTB-compression?p=41392&viewfull=1#post41392) (Checkers program "End Game Table Base")
 
-| Type | Compressed Size (Ratio) | Encoding Speed | Decoding Speed | Size (Ratio) with `rans_static_32x16` |
+#### `video-frame.raw` (heavily quantized video frame DCTs, 88.473.600 Bytes)
+| Type | Compression Ratio | Encoding Speed | Decoding Speed | Entropy Compressible To |
 | -- | -- | -- | -- | -- |
-| - | 419.225.625 Bytes (100.00%) | - | - | 56.728.176 Bytes (13.53%) |
-| rle8 | 88.666.372 Bytes (21.15%) | 412.501 MB/s | 2469.096 MB/s | 43.940.318 Bytes (10.48%) |
-| rle8 single | 88.666.372 Bytes (21.15%) | 414.679 MB/s | 2474.987 MB/s | 43.940.318 Bytes (10.48%) |
-| rle8 ultra | 104.249.934 Bytes (24.87%) | 393.790 MB/s | 2715.048 MB/s | 48.666.568 Bytes (11.61%) |
-| rle8 ultra single | 104.249.934 Bytes (24.87%) | 394.349 MB/s | 2710.763 MB/s | 48.666.568 Bytes (11.61%) |
-| **rle8 extreme 8 bit** | 96.495.695 Bytes (**23.02%**) | 677.071 MB/s | **6521.398 MB/s** | 51.048.980 Bytes (12.18%) |
-| **rle8 extreme 8 bit single** | 86.326.906 Bytes (**20.59%**) | 361.772 MB/s | **6820.208 MB/s** | 50.940.427 Bytes (12.15%) |
-| **rle8 extreme 16 bit** | 104.335.593 Bytes (**24.89%**) | 753.408 MB/s | **6456.242 MB/s** | 51.955.612 Bytes (12.39%) |
-| **rle8 extreme 32 bit** | 118.999.253 Bytes (28.39%) | 1149.847 MB/s | **6663.612 MB/s** | 52.076.188 Bytes (12.42%) |
-| **rle8 extreme 64 bit** | 139.860.053 Bytes (33.36%) | 1419.075 MB/s | **7263.287 MB/s** | 50.986.906 Bytes (12.16%) |
+| rle8 Normal                |  19.93 % |  446.0 MiB/s | 1497.3 MiB/s |  9.05 % |
+| rle8 Normal Single         |  19.96 % |  446.9 MiB/s | 2362.0 MiB/s |  9.10 % |
+| rle8 Ultra                 |  24.08 % |  425.5 MiB/s | 1585.4 MiB/s | 11.61 % |
+| rle8 Ultra  Single         |  24.11 % |  426.2 MiB/s | 2617.4 MiB/s | 11.69 % |
+| **rle8 Extreme  8 Bit**        | **19.38 %** |  772.0 MiB/s | **7629.2 MiB/s** |  9.47 % |
+| **rle8 Extreme  8 Bit Single** | **18.36 %** |  406.5 MiB/s | **7740.2 MiB/s** |  9.69 % |
+| **rle8 Extreme 16 Bit**        | **20.32 %** | **1084.4 MiB/s** | **7565.9 MiB/s** |  9.56 % |
+| **rle8 Extreme 24 Bit**        | **21.50 %** | **1256.8 MiB/s** | **7706.5 MiB/s** |  9.45 % |
+| **rle8 Extreme 32 Bit**        | **22.01 %** | **1382.3 MiB/s** | **7794.0 MiB/s** |  9.67 % |
+| **rle8 Extreme 48 Bit**        | **23.41 %** | **1508.5 MiB/s** | **7821.3 MiB/s** |  9.60 % |
+| **rle8 Extreme 64 Bit**        | **24.53 %** | 1807.0 MiB/s | **8146.0 MiB/s** |  9.61 % |
 | - | - | - | - | - |
-| trle | 73.108.990 (17.4%) | 633.02 MB/s | 2493.27 MB/s | - |
-| srle 0 | 84.671.759 (20.2%) | 390.43 MB/s | 4783.11 MB/s | - |
-| srle 8 | 92.369.848 (22.0%) | 886.09 MB/s | 5300.75 MB/s | - |
-| srle 16 | 113.561.537 (27.1%) | 804.69 MB/s | 5948.99 MB/s | - |
-| srle 32 | 136.918.311 (32.7%) | 1310.77 MB/s | 7372.94 MB/s | - |
-| srle 64 | 165.547.365 (39.5%) | 2140.93 MB/s | 8391.23 MB/s | - |
-| mrle | 88.055.360 (21.0%) | 207.23 MB/s | 1206.61 MB/s | - |
-| memcpy | 419.225.625 (100.0%) | 7686.57 MB/s | - | - |
+| memcpy                     | 100.00 % | 7454.5 MiB/s | 7442.8 MiB/s | 14.025 % |
+| trle    | 16.0 % |  688.86 | 2976.10 | - |
+| srle 0  | 17.8 % |  421.62 | 5771.27 | - |
+| srle 8  | 18.7 % | 1035.85 | 6289.44 | - |
+| srle 16 | 21.3 % |  975.94 | 7225.28 | - |
+| srle 32 | 24.2 % | 1696.55 | 7940.55 | - |
+| srle 64 | 27.5 % | 2824.83 | 8846.48 | - |
+| mrle    | 19.7 % |  217.13 | 1389.76 | - |
 
-##### `video-frame.raw` (heavily quantized video frame DCTs)
-| Type | Compressed Size (Ratio) | Encoding Speed | Decoding Speed | Size (Ratio) with `rans_static_32x16` |
+#### [1034.db](http://encode.su/threads/2077-EGTB-compression?p=41392&viewfull=1#post41392) (Checkers program "End Game Table Base", 419.225.625 Bytes)
+| Type | Compression Ratio | Encoding Speed | Decoding Speed | Entropy Compressible To |
 | -- | -- | -- | -- | -- |
-| - | 88.473.600 Bytes (100.00%) | - | - | 11.378.953 Bytes (12.86%) |
-| rle8 | 17.630.322 Bytes (19.93%) | 449.978 MB/s | 1497.118 MB/s | 8.099.993 Bytes (9.16%) |
-| rle8 single | 17.657.837 Bytes (19.96%) | 450.186 MB/s | 2378.925 MB/s | 8.138.195 Bytes (9.20%) |
-| rle8 ultra | 21.306.466 Bytes (24.08%) | 432.428 MB/s | 1602.872 MB/s | 9.306.772 Bytes (10.52%) |
-| rle8 ultra single | 21.332.661 Bytes (24.11%) | 428.820 MB/s | 2657.480 MB/s | 9.342.219 Bytes (10.56%) |
-| **rle8 extreme 8 bit** | 17.147.077 Bytes (**19.38%**) | 771.743 MB/s | **7730.117 MB/s** | 8.435.522 Bytes (9.53%) |
-| **rle8 extreme 8 bit single** | 16.242.653 Bytes (**18.36%**) | 403.398 MB/s | **7738.341 MB/s** | 8.628.014 Bytes (9.75%) |
-| **rle8 extreme 16 bit** | 17.980.330 Bytes (**20.32%**) | 1009.200 MB/s | **7662.235 MB/s** | 8.526.123 Bytes (9.64%) |
-| **rle8 extreme 32 bit** | 19.473.112 Bytes (**22.01%**) | 1522.979 MB/s | **7853.659 MB/s** | 8.636.199 Bytes (9.76%) |
-| **rle8 extreme 64 bit** | 21.703.102 Bytes (**24.53%**) | 1858.194 MB/s | **8227.052 MB/s** | 8.595.611 Bytes (9.72%) |
-| - | - | - | - | - |1
-| trle | 14.187.432 (16.0%) | 690.37 MB/s | 29741.10 MB/s | - |
-| srle 0 | 15.743.523 (17.8%) | 423.49 MB/s | 5686.69 MB/s | - |
-| srle 8 | 16.555.349 (18.7%) | 1003.01 MB/s | 6193.03 MB/s | - |
-| srle 16 | 18.868.388 (21.3%) | 1033.75 MB/s | 7139.00 MB/s | - |
-| srle 32 | 21.390.380 (24.2%) | 1689.23 MB/s | 8122.06 MB/s | - |
-| srle 64 | 24.311.530 (27.5%) | 2820.68 MB/s | 8809.48 MB/s | - |
-| mrle | 17.420.113 (19.7%) | 215.72 MB/s | 1320.74 MB/s | - |
-| memcpy | 88.473.600 (100.0%) | 7568.31 MB/s | - | - |
+| rle8 Normal                | 21.15 % |  409.0 MiB/s | 2445.9 MiB/s | 10.37 % |
+| rle8 Normal Single         | 21.15 % |  412.7 MiB/s | 2457.1 MiB/s | 10.37 % |
+| rle8 Ultra                 | 24.87 % |  392.4 MiB/s | 2713.7 MiB/s | 14.20 % |
+| rle8 Ultra  Single         | 24.87 % |  391.9 MiB/s | 2704.4 MiB/s | 14.20 % |
+| **rle8 Extreme  8 Bit** | **23.02 %** |  676.4 MiB/s | **6523.0 MiB/s** | 12.08 % |
+| **rle8 Extreme  8 Bit Single** | **20.59 %** |  364.5 MiB/s | **6844.6 MiB/s** | 12.06 % |
+| **rle8 Extreme 16 Bit** | **24.89 %** |  853.1 MiB/s | **6365.2 MiB/s** | 12.27 % |
+| **rle8 Extreme 24 Bit** | **27.27 %** |  **978.7 MiB/s** | **6487.3 MiB/s** | 11.95 % |
+| **rle8 Extreme 32 Bit** | 28.39 % |  992.8 MiB/s | 6597.8 MiB/s | 12.27 % |
+| **rle8 Extreme 48 Bit** | 31.22 % | 1129.1 MiB/s | 6687.6 MiB/s | 12.02 % |
+| **rle8 Extreme 64 Bit** | 33.36 % | 1259.9 MiB/s | 7187.6 MiB/s | 11.98 % |
+| - | - | - | - | - |
+| memcpy                     | 100.00 % | 7296.5 MiB/s | 7284.0 MiB/s | 16.76 % |
+| trle    | 17.4 % |  628.88 MB/s | 2467.25 MB/s | - |
+| srle 0  | 20.2 % |  388.40 MB/s | 4768.86 MB/s | - |
+| srle 8  | 22.0 % |  878.50 MB/s | 5474.78 MB/s | - |
+| srle 16 | 27.1 % |  800.06 MB/s | 5925.12 MB/s | - |
+| srle 32 | 32.7 % | 1310.59 MB/s | 7329.50 MB/s | - |
+| srle 64 | 39.5 % | 2138.32 MB/s | 8332.19 MB/s | - |
+| mrle    | 21.0 % |  206.70 MB/s | 1210.46 MB/s | - |
+
+The 24 Bit and 48 Bit Variants allow for run length encoding of common data layouts that are usually not covered by RLE implementations:
+
+#### [Pixel Art Bitmap Image](https://i.redd.it/tj5oyhhuehv11.png) (PNG converted to BMP, 123.710.454 Bytes)
+| Type | Compression Ratio | Encoding Speed | Decoding Speed | Entropy Compressible To |
+| -- | -- | -- | -- | -- |
+| rle8 Normal         | 100.00 % |  534.4 MiB/s | 6996.0 MiB/s | 77.03 % |
+| rle8 Extreme  8 Bit |  99.99 % |  723.2 MiB/s | 6447.9 MiB/s | 76.10 % |
+| rle8 Extreme 16 Bit |  99.99 % |  601.1 MiB/s | 6303.2 MiB/s | 76.02 % |
+| **rle8 Extreme 24 Bit** |   **1.84 %** | **2387.7 MiB/s** | **8585.1 MiB/s** |  1.32 % |
+| rle8 Extreme 32 Bit |  99.99 % |  597.4 MiB/s | 6469.2 MiB/s | 76.02 % |
+| **rle8 Extreme 48 Bit** |   **2.78 %** | **3528.2 MiB/s** | **8612.6 MiB/s** |  2.12 % |
+| rle8 Extreme 64 Bit |  99.99 % |  589.6 MiB/s | 6543.7 MiB/s | 75.87 % |
+| - | - | - | - | - |
+| memcpy              | 100.00 % | 7425.3 MiB/s | 7399.2 MiB/s | 77.03 % |
+| trle    | 100.0 % | 190.00 MB/s | 2275.99 MB/s | - |
+| srle 0  | 100.0 % |  73.89 MB/s | 6887.61 MB/s | - |
+| srle 8  | 100.0 % | 202.73 MB/s | 6541.97 MB/s | - |
+| srle 16 | 100.0 % | 230.61 MB/s | 6846.39 MB/s | - |
+| srle 32 | 100.0 % | 448.01 MB/s | 6539.39 MB/s | - |
+| srle 64 | 100.0 % | 832.76 MB/s | 6741.36 MB/s | - |
+| mrle    | 100.0 % |  92.28 MB/s | 1576.94 MB/s | - |
 
 ### Setup
 ``` bash
