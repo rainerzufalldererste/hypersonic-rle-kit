@@ -30,13 +30,13 @@
 | **rle8 Extreme 64 Bit**        | **24.53 %** | 1807.0 MiB/s | **8146.0 MiB/s** |  9.61 % |
 | - | - | - | - | - |
 | memcpy                     | 100.00 % | 7454.5 MiB/s | 7442.8 MiB/s | 14.025 % |
-| trle    | 16.0 % |  688.86 | 2976.10 | - |
-| srle 0  | 17.8 % |  421.62 | 5771.27 | - |
-| srle 8  | 18.7 % | 1035.85 | 6289.44 | - |
-| srle 16 | 21.3 % |  975.94 | 7225.28 | - |
-| srle 32 | 24.2 % | 1696.55 | 7940.55 | - |
-| srle 64 | 27.5 % | 2824.83 | 8846.48 | - |
-| mrle    | 19.7 % |  217.13 | 1389.76 | - |
+| trle    | 16.0 % |  688.86 MB/s | 2976.10 MB/s | - |
+| srle 0  | 17.8 % |  421.62 MB/s | 5771.27 MB/s | - |
+| srle 8  | 18.7 % | 1035.85 MB/s | 6289.44 MB/s | - |
+| srle 16 | 21.3 % |  975.94 MB/s | 7225.28 MB/s | - |
+| srle 32 | 24.2 % | 1696.55 MB/s | 7940.55 MB/s | - |
+| srle 64 | 27.5 % | 2824.83 MB/s | 8846.48 MB/s | - |
+| mrle    | 19.7 % |  217.13 MB/s | 1389.76 MB/s | - |
 
 #### [1034.db](http://encode.su/threads/2077-EGTB-compression?p=41392&viewfull=1#post41392) (Checkers program "End Game Table Base", 419.225.625 Bytes)
 | Type | Compression Ratio | Encoding Speed | Decoding Speed | Entropy Compressible To |
