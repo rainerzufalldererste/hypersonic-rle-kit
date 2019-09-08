@@ -297,7 +297,7 @@ int main(int argc, char **pArgv)
       "Normal               ",
       "Normal Single        ",
       "Ultra                ",
-      "Ultra  Single        ",
+      "Ultra Single         ",
       "Extreme 8 Bit        ",
       "Extreme 8 Bit Single ",
       "Extreme 16 Bit       ",

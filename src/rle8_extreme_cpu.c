@@ -91,15 +91,30 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
 
   int64_t count = 0;
   uint8_t symbol = ~(*pIn);
+  uint64_t symbol64 = symbol * (uint64_t)0x0101010101010101;
 
   for (; i < inSize; i++)
   {
-    if (pIn[i] == symbol)
+    uint64_t current64 = *(const uint64_t *)&pIn[i];
+
+    if (current64 == symbol64)
     {
-      count++;
+      count += sizeof(symbol64);
+      i += sizeof(symbol64) - 1;
     }
     else
     {
+#ifdef _MSC_VER
+      unsigned long _zero;
+      _BitScanForward64(&_zero, current64 ^ symbol64);
+#else
+      const uint64_t _zero = __builtin_ctzl(current64 ^ symbol64) / 8;
+#endif
+
+      _zero /= 8;
+      count += _zero;
+      i += _zero;
+
       {
         const int64_t range = i - lastRLE - count + 1;
 
@@ -168,6 +183,7 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
       }
 
       symbol = pIn[i];
+      symbol64 = symbol * (uint64_t)0x0101010101010101;
       count = 1;
     }
   }
