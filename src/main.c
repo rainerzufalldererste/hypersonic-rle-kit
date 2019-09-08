@@ -29,7 +29,7 @@ int main(int argc, char **pArgv)
 {
   if (argc <= 1)
   {
-    printf("Usage: rle8 <InputFileName>\n\n\t[%s <Run Count>]\n\t[%s <Minimum Benchmark Time in Seconds>]\n\n\tOR:\n\n\t[%s <Output File Name>]\n\n\t[%s]\n\t\tif '%s': [%s <Sub Section Count>]\n\n\t[%s (for shorter strings of rle-symbols)]\n\n\t[%s (for very fast decoding)]\n\t\tif '%s': [%s (8 | 16 | 24 | 32 | 48 | 64)] (symbol size)\n\n\t[%s (only rle most frequent symbol, only available for 8 bit modes)]\n\n\t[%s <Run Count>]\n", ArgumentRuns, ArgumentMinimumTime, ArgumentTo, ArgumentNormal, ArgumentNormal, ArgumentSubSections, ArgumentUltra, ArgumentExtreme, ArgumentExtreme, ArgumentExtremeSize, ArgumentSingle, ArgumentRuns);
+    printf("Usage: rle8 <InputFileName>\n\n\t[%s <Run Count>]\n\t[%s <Minimum Benchmark Time in Seconds>]\n\n\tOR:\n\n\t[%s <Output File Name>]\n\n\t[%s]\n\t\tif '%s': [%s <Sub Section Count>]\n\n\t[%s (for shorter strings of rle-symbols)]\n\n\t[%s (for very fast decoding)]\n\t\tif '%s': [%s (8 | 16 | 24 | 32 | 48 | 64 | 128)] (symbol size)\n\n\t[%s (only rle most frequent symbol, only available for 8 bit modes)]\n\n\t[%s <Run Count>]\n", ArgumentRuns, ArgumentMinimumTime, ArgumentTo, ArgumentNormal, ArgumentNormal, ArgumentSubSections, ArgumentUltra, ArgumentExtreme, ArgumentExtreme, ArgumentExtremeSize, ArgumentSingle, ArgumentRuns);
     return 1;
   }
 
@@ -137,21 +137,40 @@ int main(int argc, char **pArgv)
         case '8':
           extremeSize = 8;
           break;
+
         case '1':
-          extremeSize = 16;
+          switch (pArgv[argIndex + 1][1])
+          {
+          case '6':
+            extremeSize = 16;
+            break;
+
+          case '2':
+            extremeSize = 128;
+            break;
+
+          default:
+            puts("Invalid Parameter.");
+            return 1;
+          }
           break;
+
         case '2':
           extremeSize = 24;
           break;
+
         case '3':
           extremeSize = 32;
           break;
+
         case '4':
           extremeSize = 48;
           break;
+
         case '6':
           extremeSize = 64;
           break;
+
         default:
           puts("Invalid Parameter.");
           return 1;
@@ -266,6 +285,7 @@ int main(int argc, char **pArgv)
       Extreme32,
       Extreme48,
       Extreme64,
+      Extreme128,
 
       MemCopy,
 
@@ -274,18 +294,19 @@ int main(int argc, char **pArgv)
 
     const char *codecNames[] = 
     {
-      "Normal                ",
-      "Normal Single         ",
-      "Ultra                 ",
-      "Ultra  Single         ",
-      "Extreme  8 Bit        ",
-      "Extreme  8 Bit Single ",
-      "Extreme 16 Bit        ",
-      "Extreme 24 Bit        ",
-      "Extreme 32 Bit        ",
-      "Extreme 48 Bit        ",
-      "Extreme 64 Bit        ",
-      "memcpy                ",
+      "Normal               ",
+      "Normal Single        ",
+      "Ultra                ",
+      "Ultra  Single        ",
+      "Extreme 8 Bit        ",
+      "Extreme 8 Bit Single ",
+      "Extreme 16 Bit       ",
+      "Extreme 24 Bit       ",
+      "Extreme 32 Bit       ",
+      "Extreme 48 Bit       ",
+      "Extreme 64 Bit       ",
+      "Extreme 128 Bit      ",
+      "memcpy               ",
     };
 
     _STATIC_ASSERT(ARRAYSIZE(codecNames) == CodecCount);
@@ -293,8 +314,8 @@ int main(int argc, char **pArgv)
     uint32_t fileSize32 = (uint32_t)fileSize;
 
     printf("\nBenchmarking File '%s' (%" PRIu64 " Bytes)\n\n"
-      "Codec                   Ratio      Encoder Throughput (Maximum)    Decoder Throughput (Maximum)    R*H/log2(|S|)\n"
-      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n", pArgv[1], fileSize);
+      "Codec                  Ratio      Encoder Throughput (Maximum)    Decoder Throughput (Maximum)    R*H/log2(|S|)\n"
+      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n", pArgv[1], fileSize);
 
     for (; currentCodec < CodecCount; currentCodec++)
     {
@@ -357,6 +378,10 @@ int main(int argc, char **pArgv)
           compressedSize = rle64_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme128:
+          compressedSize = rle128_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case MemCopy:
           compressedSize = fileSize32;
           memcpy(pCompressedData, pUncompressedData, fileSize);
@@ -366,18 +391,18 @@ int main(int argc, char **pArgv)
         runTime = GetCurrentTimeNs() - runTime;
 
         if (compressedSize == 0)
-break;
+          break;
 
-if (compressionRuns >= 0)
-compressionTime += runTime;
+        if (compressionRuns >= 0)
+          compressionTime += runTime;
 
-if (runTime < fastestCompresionTime)
-  fastestCompresionTime = runTime;
+        if (runTime < fastestCompresionTime)
+          fastestCompresionTime = runTime;
 
-compressionRuns++;
+        compressionRuns++;
 
-if (compressionRuns > 0)
-printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
+        if (compressionRuns > 0)
+          printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
       }
 
       if (compressedSize == 0)
@@ -434,6 +459,10 @@ printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s)", codecNames[currentCodec], c
 
         case Extreme64:
           decompressedSize = rle64_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme128:
+          decompressedSize = rle128_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case MemCopy:
@@ -558,6 +587,10 @@ printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s)", codecNames[currentCodec], c
             case 64:
               compressedSize = rle64_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
               break;
+
+            case 128:
+              compressedSize = rle128_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+              break;
             }
           }
         }
@@ -656,6 +689,10 @@ printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s)", codecNames[currentCodec], c
 
           case 64:
             decompressedSize = rle64_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+            break;
+
+          case 128:
+            decompressedSize = rle128_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
             break;
           }
         }

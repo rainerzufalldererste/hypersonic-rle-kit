@@ -121,6 +121,9 @@ uint32_t rle24_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, 
 uint32_t rle48_extreme_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 uint32_t rle48_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
+uint32_t rle128_extreme_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle128_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
 //////////////////////////////////////////////////////////////////////////
 
 #ifdef BUILD_WITH_OPENCL
