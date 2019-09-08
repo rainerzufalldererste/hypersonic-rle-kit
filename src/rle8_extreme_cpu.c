@@ -104,16 +104,19 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
     }
     else
     {
+      if (count > 1)
+      {
 #ifdef _MSC_VER
-      unsigned long _zero;
-      _BitScanForward64(&_zero, current64 ^ symbol64);
+        unsigned long _zero;
+        _BitScanForward64(&_zero, current64 ^ symbol64);
 #else
-      const uint64_t _zero = __builtin_ctzl(current64 ^ symbol64) / 8;
+        const uint64_t _zero = __builtin_ctzl(current64 ^ symbol64) / 8;
 #endif
 
-      _zero /= 8;
-      count += _zero;
-      i += _zero;
+        _zero /= 8;
+        count += _zero;
+        i += _zero;
+      }
 
       {
         const int64_t range = i - lastRLE - count + 1;
