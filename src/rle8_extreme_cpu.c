@@ -91,16 +91,18 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
 
   int64_t count = 0;
   uint8_t symbol = ~(*pIn);
-  uint64_t symbol64 = symbol * (uint64_t)0x0101010101010101;
+  __m128i symbol128 = _mm_set1_epi8(symbol);
+  
+  const int64_t endInSize128 = inSize - sizeof(__m128i);
 
-  while (i < inSize - sizeof(symbol64))
+  while (i < endInSize128)
   {
-    uint64_t current64 = *(const uint64_t *)&pIn[i];
+    const uint32_t mask = _mm_movemask_epi8(_mm_cmpeq_epi8(symbol128, _mm_loadu_si128((const __m128i *)&(pIn[i]))));
 
-    if (current64 == symbol64)
+    if (0xFFFF == mask)
     {
-      count += sizeof(symbol64);
-      i += sizeof(symbol64);
+      count += sizeof(symbol128);
+      i += sizeof(symbol128);
     }
     else
     {
@@ -108,12 +110,11 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
       {
 #ifdef _MSC_VER
         unsigned long _zero;
-        _BitScanForward64(&_zero, current64 ^ symbol64);
+        _BitScanForward64(&_zero, ~mask);
 #else
-        const uint64_t _zero = __builtin_ctzl(current64 ^ symbol64) / 8;
+        const uint64_t _zero = __builtin_ctzl(~mask);
 #endif
 
-        _zero /= 8;
         count += _zero;
         i += _zero;
       }
@@ -164,7 +165,7 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
       }
 
       symbol = pIn[i];
-      symbol64 = symbol * (uint64_t)0x0101010101010101;
+      symbol128 = _mm_set1_epi8(symbol);
       count = 1;
       i++;
     }
@@ -182,7 +183,7 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
       {
         const int64_t range = i - lastRLE - count + 1;
 
-        if (range <= 255 && count >= RLE8_EXTREME_MULTI_MIN_RANGE_SHORT)
+        if (count >= RLE8_EXTREME_MULTI_MIN_RANGE_SHORT)
         {
           pOut[index] = symbol;
           index++;
@@ -198,7 +199,7 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
           {
             pOut[index] = 0;
             index++;
-            *(uint32_t *) &(pOut[index]) = (uint32_t)storedCount;
+            *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
             index += sizeof(uint32_t);
           }
 
@@ -206,7 +207,7 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
           {
             pOut[index] = 0;
             index++;
-            *((uint32_t *)& pOut[index]) = (uint32_t)range;
+            *((uint32_t *)&pOut[index]) = (uint32_t)range;
             index += sizeof(uint32_t);
           }
           else
