@@ -164,6 +164,30 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
         }
       }
 
+      while (i < endInSize128)
+      {
+        const __m128i current = _mm_loadu_si128((const __m128i *)(&pIn[i]));
+        const __m128i next = _mm_bsrli_si128(current, 1);
+        const int32_t cmp = 0x7FFF & _mm_movemask_epi8(_mm_cmpeq_epi8(current, next));
+
+        if (cmp == 0)
+        {
+          i += sizeof(__m128i) - 1;
+        }
+        else
+        {
+#ifdef _MSC_VER
+          unsigned long _zero;
+          _BitScanForward64(&_zero, cmp);
+#else
+          const uint64_t _zero = __builtin_ctzl(cmp);
+#endif
+
+          i += _zero;
+          break;
+        }
+      }
+
       symbol = pIn[i];
       symbol128 = _mm_set1_epi8(symbol);
       count = 1;
