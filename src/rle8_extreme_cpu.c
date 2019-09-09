@@ -93,14 +93,14 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
   uint8_t symbol = ~(*pIn);
   uint64_t symbol64 = symbol * (uint64_t)0x0101010101010101;
 
-  for (; i < inSize; i++)
+  while (i < inSize - sizeof(symbol64))
   {
     uint64_t current64 = *(const uint64_t *)&pIn[i];
 
     if (current64 == symbol64)
     {
       count += sizeof(symbol64);
-      i += sizeof(symbol64) - 1;
+      i += sizeof(symbol64);
     }
     else
     {
@@ -121,6 +121,67 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
       {
         const int64_t range = i - lastRLE - count + 1;
 
+        if (count >= RLE8_EXTREME_MULTI_MIN_RANGE_SHORT)
+        {
+          pOut[index] = symbol;
+          index++;
+
+          const int64_t storedCount = count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1;
+
+          if (storedCount <= 255)
+          {
+            pOut[index] = (uint8_t)storedCount;
+            index++;
+          }
+          else
+          {
+            pOut[index] = 0;
+            index++;
+            *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+            index += sizeof(uint32_t);
+          }
+
+          if (range > 255)
+          {
+            pOut[index] = 0;
+            index++;
+            *((uint32_t *)&pOut[index]) = (uint32_t)range;
+            index += sizeof(uint32_t);
+          }
+          else
+          {
+            pOut[index] = (uint8_t)range;
+            index++;
+          }
+
+          const size_t copySize = i - count - lastRLE;
+
+          memcpy(pOut + index, pIn + lastRLE, copySize);
+          index += copySize;
+
+          lastRLE = i;
+        }
+      }
+
+      symbol = pIn[i];
+      symbol64 = symbol * (uint64_t)0x0101010101010101;
+      count = 1;
+      i++;
+    }
+  }
+
+  for (; i < inSize; i++)
+  {
+    if (pIn[i] == symbol)
+    {
+      count++;
+      i++;
+    }
+    else
+    {
+      {
+        const int64_t range = i - lastRLE - count + 1;
+
         if (range <= 255 && count >= RLE8_EXTREME_MULTI_MIN_RANGE_SHORT)
         {
           pOut[index] = symbol;
@@ -137,44 +198,22 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
           {
             pOut[index] = 0;
             index++;
-            *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+            *(uint32_t *) &(pOut[index]) = (uint32_t)storedCount;
             index += sizeof(uint32_t);
           }
 
-          pOut[index] = (uint8_t)range;
-          index++;
-
-          const size_t copySize = i - count - lastRLE;
-
-          memcpy(pOut + index, pIn + lastRLE, copySize);
-          index += copySize;
-
-          lastRLE = i;
-        }
-        else if (count >= RLE8_EXTREME_MULTI_MIN_RANGE_LONG)
-        {
-          pOut[index] = symbol;
-          index++;
-
-          const int64_t storedCount = count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1;
-
-          if (storedCount <= 255)
-          {
-            pOut[index] = (uint8_t)storedCount;
-            index++;
-          }
-          else
+          if (range > 255)
           {
             pOut[index] = 0;
             index++;
-            *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+            *((uint32_t *)& pOut[index]) = (uint32_t)range;
             index += sizeof(uint32_t);
           }
-
-          pOut[index] = 0;
-          index++;
-          *((uint32_t *)&pOut[index]) = (uint32_t)range;
-          index += sizeof(uint32_t);
+          else
+          {
+            pOut[index] = (uint8_t)range;
+            index++;
+          }
 
           const size_t copySize = i - count - lastRLE;
 
@@ -186,7 +225,6 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
       }
 
       symbol = pIn[i];
-      symbol64 = symbol * (uint64_t)0x0101010101010101;
       count = 1;
     }
   }
