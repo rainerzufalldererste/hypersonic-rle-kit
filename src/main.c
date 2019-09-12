@@ -228,7 +228,7 @@ int main(int argc, char **pArgv)
 
   fseek(pFile, 0, SEEK_SET);
 
-  compressedBufferSize = max(rle8_compress_bounds((uint32_t)fileSize), rle8_extreme_compress_bounds((uint32_t)fileSize));
+  compressedBufferSize = max(max(rle8_compress_bounds((uint32_t)fileSize), rle8_extreme_compress_bounds((uint32_t)fileSize)), rleX_mtf_compress_bounds((uint32_t)fileSize));
   
   if (subSections != 0)
     compressedBufferSize = max(compressedBufferSize, rle8m_compress_bounds((uint32_t)subSections, (uint32_t)fileSize));
@@ -266,6 +266,7 @@ int main(int argc, char **pArgv)
       Extreme32,
       Extreme48,
       Extreme64,
+      Mtf8,
 
       MemCopy,
 
@@ -285,6 +286,7 @@ int main(int argc, char **pArgv)
       "Extreme 32 Bit        ",
       "Extreme 48 Bit        ",
       "Extreme 64 Bit        ",
+      "Mtf 8 Bit             ",
       "memcpy                ",
     };
 
@@ -357,6 +359,10 @@ int main(int argc, char **pArgv)
           compressedSize = rle64_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Mtf8:
+          compressedSize = rle8_mtf_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case MemCopy:
           compressedSize = fileSize32;
           memcpy(pCompressedData, pUncompressedData, fileSize);
@@ -382,7 +388,7 @@ printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s)", codecNames[currentCodec], c
 
       if (compressedSize == 0)
       {
-        printf("%s <FAILED TO COMRPESS>\n", codecNames[currentCodec]);
+        printf("\r%s| <FAILED TO COMRPESS>\n", codecNames[currentCodec]);
         continue;
       }
 
