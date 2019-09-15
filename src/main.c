@@ -95,7 +95,7 @@ int main(int argc, char **pArgv)
       {
         minSeconds = atoi(pArgv[argIndex + 1]);
 
-        if (minSeconds <= 0)
+        if (minSeconds < 0)
         {
           puts("Invalid Parameter.");
           return 1;
@@ -287,6 +287,7 @@ int main(int argc, char **pArgv)
       Extreme64,
       Extreme128,
       Mtf8,
+      MtfTransform,
 
       MemCopy,
 
@@ -308,6 +309,7 @@ int main(int argc, char **pArgv)
       "Extreme 64 Bit       ",
       "Extreme 128 Bit      ",
       "Mtf 8 Bit            ",
+      "Mtf Transform        ",
       "memcpy               ",
     };
 
@@ -339,53 +341,57 @@ int main(int argc, char **pArgv)
         case Normal:
           compressedSize = rle8_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
-
+    
         case NormalSingle:
           compressedSize = rle8_compress_only_max_frequency(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
-
+    
         case Ultra:
           compressedSize = rle8_ultra_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
-
+    
         case UltraSingle:
           compressedSize = rle8_ultra_compress_only_max_frequency(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
-
+    
         case Extreme8:
           compressedSize = rle8_extreme_multi_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
-
+    
         case Extreme8Single:
           compressedSize = rle8_extreme_single_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
-
+    
         case Extreme16:
           compressedSize = rle16_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
-
+    
         case Extreme24:
           compressedSize = rle24_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
-
+    
         case Extreme32:
           compressedSize = rle32_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
-
+    
         case Extreme48:
           compressedSize = rle48_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
-
+    
         case Extreme64:
           compressedSize = rle64_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
-
+    
         case Extreme128:
           compressedSize = rle128_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
-
+    
         case Mtf8:
           compressedSize = rle8_mtf_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case MtfTransform:
+          compressedSize = mtf_encode(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case MemCopy:
@@ -436,39 +442,43 @@ int main(int argc, char **pArgv)
         case NormalSingle:
           decompressedSize = rle8_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
-
+     
         case Ultra:
         case UltraSingle:
           decompressedSize = rle8_ultra_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
-
+     
         case Extreme8:
         case Extreme8Single:
           decompressedSize = rle8_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
-
+     
         case Extreme16:
           decompressedSize = rle16_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
-
+     
         case Extreme24:
           decompressedSize = rle24_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
-
+     
         case Extreme32:
           decompressedSize = rle32_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
-
+     
         case Extreme48:
           decompressedSize = rle48_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
-
+     
         case Extreme64:
           decompressedSize = rle64_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
-
+     
         case Extreme128:
           decompressedSize = rle128_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case MtfTransform:
+          decompressedSize = mtf_decode(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case MemCopy:

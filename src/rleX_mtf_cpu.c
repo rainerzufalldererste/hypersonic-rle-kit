@@ -22,6 +22,119 @@ uint32_t rleX_mtf_decompress_additional_size()
   return 128; // just to be on the safe side.
 }
 
+__declspec(noinline)
+uint32_t mtf_encode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
+{
+  if (pIn == NULL || pOut == NULL || outSize < inSize)
+    return 0;
+
+  uint8_t *pOutStart = pOut;
+  
+  ALIGN(16)
+  struct
+  {
+    ALIGN(16) uint8_t padding[16];
+    ALIGN(16) uint8_t symbols[256 + 16];
+  } _;
+
+  for (size_t i = 0; i < 256; i++)
+    _.symbols[i] = i;
+
+  for (size_t i = 0; i < inSize; i++)
+  {
+    const uint8_t s = pIn[i];
+#if FRONT_MTF_SIMD
+    const __m128i sx = _mm_set1_epi8(s);
+    
+    for (size_t j = 0; j < 256; j += 16)
+    {
+      const __m128i sb = _mm_load_si128(_.symbols + j);
+      const uint32_t mask = _mm_movemask_epi8(_mm_cmpeq_epi8(sb, sx));
+
+      if (mask != 0)
+      {
+#ifdef _MSC_VER
+        unsigned long symbolIndex;
+        _BitScanForward64(&symbolIndex, mask);
+#else
+        uint64_t symbolIndex = __builtin_ctzl(mask);
+#endif
+
+        symbolIndex += j;
+#else
+    uint8_t symbolIndex = 0;
+
+    for (; symbolIndex != 255; symbolIndex++)
+      if (_.symbols[symbolIndex] == s)
+        break;
+#endif
+
+        *pOut = symbolIndex;
+        pOut++;
+
+        if (symbolIndex != 0)
+        {
+#if BACK_MTF_SIMD
+          int64_t symbolIndexI = (int64_t)symbolIndex;
+
+          do
+          {
+            _mm_storeu_si128(_.symbols + symbolIndexI - 15, _mm_loadu_si128(_.symbols + symbolIndexI - 16));
+            symbolIndexI -= 16;
+          }
+          while (symbolIndexI > 0);
+#else
+          for (size_t l = symbolIndex; l >= 1; l--)
+            _.symbols[l] = _.symbols[l - 1];
+#endif
+
+          _.symbols[0] = s;
+        }
+
+#if FRONT_MTF_SIMD
+        break;
+#endif
+      }
+#if FRONT_MTF_SIMD
+    }
+  }
+#endif
+
+  return inSize;
+}
+
+__declspec(noinline)
+uint32_t mtf_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
+{
+  if (pIn == NULL || pOut == NULL || outSize < inSize)
+    return 0;
+
+  uint8_t *pOutStart = pOut;
+
+  ALIGN(16) uint8_t symbols[256 + 15];
+
+  for (size_t i = 0; i < 256; i++)
+    symbols[i] = i;
+
+  for (size_t i = 0; i < inSize; i++)
+  {
+    const uint8_t s = pIn[i];
+    const uint8_t d = symbols[s];
+    *pOut = d;
+    pOut++;
+
+    if (s != 0)
+    {
+      for (size_t l = s; l >= 1; l--)
+        symbols[l] = symbols[l - 1];
+
+      symbols[0] = d;
+    }
+  }
+
+  return inSize;
+}
+
 #undef TYPE_SIZE
 
 //////////////////////////////////////////////////////////////////////////
@@ -76,14 +189,16 @@ uint32_t rle8_mtf_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uin
     if (*(symbol_t *)uncompressed == symbol)
     {
       count++;
+
+      if (count < RLEX_MTF_MIN_SIZE)
+      {
+        *(symbol_t *)&pOut[sizeof(symbol_t) * (count - 1)] = symbol;
+      }
     }
     else
     {
       if (count >= RLEX_MTF_MIN_SIZE)
       {
-        *(symbol_t *)pOut = symbol;
-        pOut += sizeof(symbol_t);
-
         const int64_t storedCount = (count / sizeof(symbol_t)) - (RLEX_MTF_MIN_SIZE / sizeof(symbol_t)) + 1;
 
         if (storedCount <= 255)
@@ -121,9 +236,16 @@ uint32_t rle8_mtf_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uin
 
         lastRLE = i;
       }
+      else
+      {
+        pOut += sizeof(symbol_t) * (count - 1);
+      }
 
       count = 1;
       symbol = *(symbol_t *)uncompressed;
+
+      *(symbol_t *)pOut = symbol;
+      pOut += sizeof(symbol_t);
     }
 
     i += sizeof(symbol_t);
