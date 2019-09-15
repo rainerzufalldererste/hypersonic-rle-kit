@@ -247,7 +247,7 @@ int main(int argc, char **pArgv)
 
   fseek(pFile, 0, SEEK_SET);
 
-  compressedBufferSize = max(max(rle8_compress_bounds((uint32_t)fileSize), rle8_extreme_compress_bounds((uint32_t)fileSize)), rleX_mtf_compress_bounds((uint32_t)fileSize));
+  compressedBufferSize = max(rle8_compress_bounds((uint32_t)fileSize), rle8_extreme_compress_bounds((uint32_t)fileSize));
   
   if (subSections != 0)
     compressedBufferSize = max(compressedBufferSize, rle8m_compress_bounds((uint32_t)subSections, (uint32_t)fileSize));
@@ -286,8 +286,6 @@ int main(int argc, char **pArgv)
       Extreme48,
       Extreme64,
       Extreme128,
-      Mtf8,
-      MtfTransform,
 
       MemCopy,
 
@@ -308,8 +306,6 @@ int main(int argc, char **pArgv)
       "Extreme 48 Bit       ",
       "Extreme 64 Bit       ",
       "Extreme 128 Bit      ",
-      "Mtf 8 Bit            ",
-      "Mtf Transform        ",
       "memcpy               ",
     };
 
@@ -384,14 +380,6 @@ int main(int argc, char **pArgv)
     
         case Extreme128:
           compressedSize = rle128_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
-          break;
-    
-        case Mtf8:
-          compressedSize = rle8_mtf_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
-          break;
-
-        case MtfTransform:
-          compressedSize = mtf_encode(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case MemCopy:
@@ -475,10 +463,6 @@ int main(int argc, char **pArgv)
      
         case Extreme128:
           decompressedSize = rle128_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
-          break;
-
-        case MtfTransform:
-          decompressedSize = mtf_decode(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case MemCopy:
