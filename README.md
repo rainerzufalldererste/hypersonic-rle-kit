@@ -53,7 +53,7 @@
 | **rle8 Extreme 32 Bit**        | **28.39 %** | **1485.0 MiB/s** | **10928.2 MiB/s** | 12.27 % |
 | **rle8 Extreme 48 Bit**        | **31.22 %** | **1758.2 MiB/s** | **13129.2 MiB/s** | 12.02 % |
 | **rle8 Extreme 64 Bit**        | **33.36 %** |   1623.6 MiB/s   | **12586.9 MiB/s** | 11.98 % |
-| rle Extreme 128 Bit            |   39.84 %   |   1521.6 MiB/s   |   13386.2 MiB/s   | 12.16 % |
+| rle8 Extreme 128 Bit           |   39.84 %   |   1521.6 MiB/s   |   13386.2 MiB/s   | 12.16 % |
 | - | - | - | - | - |
 | memcpy                         |  100.00 %   |   12839.1 MiB/s  |   12832.8 MiB/s   | 16.76 % |
 | trle    | 17.4 % |  599.75 MiB/s |  3241.93 MiB/s | - |
@@ -69,14 +69,14 @@ The 24 Bit and 48 Bit Variants allow for run length encoding of common data layo
 #### [Pixel Art Bitmap Image](https://i.redd.it/tj5oyhhuehv11.png) (PNG converted to BMP, 123.710.454 Bytes)
 | Type | Ratio | Encoding Speed | Decoding Speed | Entropy Compressible To |
 | -- | -- | -- | -- | -- |
-| rle Normal                   |   100.00 %   |    691.6 MiB/s   |   11875.4 MiB/s   | 77.03 % |
-| **rle Extreme 8 Bit**        |  **99.99 %** | **4892.4 MiB/s** |   10863.6 MiB/s   | 76.18 % |
-| rle Extreme 16 Bit           |    99.99 %   |    581.5 MiB/s   |   11166.5 MiB/s   | 76.02 % |
-| **rle Extreme 24 Bit**       |   **1.84 %** | **3710.0 MiB/s** | **16767.0 MiB/s** |  1.32 % |
-| rle Extreme 32 Bit           |    99.99 %   |    609.9 MiB/s   |   11268.7 MiB/s   | 76.02 % |
-| **rle Extreme 48 Bit**       |   **2.78 %** | **6407.1 MiB/s** | **16446.9 MiB/s** |  2.12 % |
-| rle Extreme 64 Bit           |    99.99 %   |    592.6 MiB/s   |   10949.2 MiB/s   | 75.87 % |
-| rle Extreme 128 Bit          |    99.99 %   |    598.1 MiB/s   |   10896.0 MiB/s   | 75.87 % |
+| rle8 Normal                   |   100.00 %   |    691.6 MiB/s   |   11875.4 MiB/s   | 77.03 % |
+| **rle8 Extreme 8 Bit**        |  **99.99 %** | **4892.4 MiB/s** |   10863.6 MiB/s   | 76.18 % |
+| rle8 Extreme 16 Bit           |    99.99 %   |    581.5 MiB/s   |   11166.5 MiB/s   | 76.02 % |
+| **rle8 Extreme 24 Bit**       |   **1.84 %** | **3710.0 MiB/s** | **16767.0 MiB/s** |  1.32 % |
+| rle8 Extreme 32 Bit           |    99.99 %   |    609.9 MiB/s   |   11268.7 MiB/s   | 76.02 % |
+| **rle8 Extreme 48 Bit**       |   **2.78 %** | **6407.1 MiB/s** | **16446.9 MiB/s** |  2.12 % |
+| rle8 Extreme 64 Bit           |    99.99 %   |    592.6 MiB/s   |   10949.2 MiB/s   | 75.87 % |
+| rle8 Extreme 128 Bit          |    99.99 %   |    598.1 MiB/s   |   10896.0 MiB/s   | 75.87 % |
 | - | - | - | - | - |
 | memcpy                       |   100.00 %   |  13089.0 MiB/s   |   13086.8 MiB/s   | 77.03 % |
 | trle    | 100.0 % |  273.17 MiB/s |  3817.19 MiB/s | - |
