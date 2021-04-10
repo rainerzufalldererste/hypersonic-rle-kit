@@ -815,7 +815,7 @@ bool Validate(const uint8_t *pUncompressedData, const uint8_t *pDecompressedData
         const int64_t start = max(0, (int64_t)i - 64);
         const int64_t end = min((int64_t)fileSize, (int64_t)(i + 64));
 
-        printf("\nContext: (%" PRIi64 " to %" PRIi64 ")\n", start, end);
+        printf("\nContext: (%" PRIi64 " to %" PRIi64 ")\n\n   Expected:                                        |  Actual Output:\n\n", start, end);
 
         for (int64_t context = start; context < end; context += 16)
         {

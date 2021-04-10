@@ -54,10 +54,15 @@ __attribute__((packed))
   uint32_t offsetIfNull;
 } rle8_extreme_single_symbol_debug_t;
 
+int64_t rle8_extreme_compress_multi_sse2(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE);
+int64_t rle8_extreme_compress_multi_avx2(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE);
+
 void rle8_extreme_decompress_multi_sse(IN const uint8_t *pInStart, OUT uint8_t *pOut);
 void rle8_extreme_decompress_multi_avx(IN const uint8_t *pInStart, OUT uint8_t *pOut);
+void rle8_extreme_decompress_multi_avx512f(IN const uint8_t *pInStart, OUT uint8_t *pOut);
 void rle8_extreme_decompress_single_sse(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t symbol);
 void rle8_extreme_decompress_single_avx(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t symbol);
+void rle8_extreme_decompress_single_avx512f(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t symbol);
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -91,107 +96,13 @@ uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSiz
 
   int64_t count = 0;
   uint8_t symbol = ~(*pIn);
-  __m128i symbol128 = _mm_set1_epi8(symbol);
-  
-  const int64_t endInSize128 = inSize - sizeof(__m128i);
 
-  while (i < endInSize128)
-  {
-    const uint32_t mask = _mm_movemask_epi8(_mm_cmpeq_epi8(symbol128, _mm_loadu_si128((const __m128i *)&(pIn[i]))));
+  _DetectCPUFeatures();
 
-    if (0xFFFF == mask)
-    {
-      count += sizeof(symbol128);
-      i += sizeof(symbol128);
-    }
-    else
-    {
-      if (count > 1)
-      {
-#ifdef _MSC_VER
-        unsigned long _zero;
-        _BitScanForward64(&_zero, ~mask);
-#else
-        const uint64_t _zero = __builtin_ctzl(~mask);
-#endif
-
-        count += _zero;
-        i += _zero;
-      }
-
-      if (count >= RLE8_EXTREME_MULTI_MIN_RANGE_SHORT)
-      {
-        pOut[index] = symbol;
-        index++;
-
-        const int64_t storedCount = count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1;
-
-        if (storedCount <= 255)
-        {
-          pOut[index] = (uint8_t)storedCount;
-          index++;
-        }
-        else
-        {
-          pOut[index] = 0;
-          index++;
-          *(uint32_t *) &(pOut[index]) = (uint32_t)storedCount;
-          index += sizeof(uint32_t);
-        }
-        const int64_t range = i - lastRLE - count + 1;
-
-
-        if (range > 255)
-        {
-          pOut[index] = 0;
-          index++;
-          *((uint32_t *)& pOut[index]) = (uint32_t)range;
-          index += sizeof(uint32_t);
-        }
-        else
-        {
-          pOut[index] = (uint8_t)range;
-          index++;
-        }
-
-        const size_t copySize = i - count - lastRLE;
-
-        memcpy(pOut + index, pIn + lastRLE, copySize);
-        index += copySize;
-
-        lastRLE = i;
-      }
-
-      while (i < endInSize128)
-      {
-        const __m128i current = _mm_loadu_si128((const __m128i *)(&pIn[i]));
-        const __m128i next = _mm_bsrli_si128(current, 1);
-        const int32_t cmp = 0x7FFF & _mm_movemask_epi8(_mm_cmpeq_epi8(current, next));
-
-        if (cmp == 0)
-        {
-          i += sizeof(__m128i) - 1;
-        }
-        else
-        {
-#ifdef _MSC_VER
-          unsigned long _zero;
-          _BitScanForward64(&_zero, cmp);
-#else
-          const uint64_t _zero = __builtin_ctzl(cmp);
-#endif
-
-          i += _zero;
-          break;
-        }
-      }
-
-      symbol = pIn[i];
-      symbol128 = _mm_set1_epi8(symbol);
-      count = 1;
-      i++;
-    }
-  }
+  if (avx2Supported)
+    i = rle8_extreme_compress_multi_avx2(pIn, inSize, pOut, &index, &symbol, &count, &lastRLE);
+  else
+    i = rle8_extreme_compress_multi_sse2(pIn, inSize, pOut, &index, &symbol, &count, &lastRLE);
 
   for (; i < inSize; i++)
   {
@@ -606,7 +517,9 @@ uint32_t rle8_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, O
   {
     pIn += index;
 
-    if (avxSupported)
+    if (avx512FSupported)
+      rle8_extreme_decompress_multi_avx512f(pIn, pOut);
+    else if (avxSupported)
       rle8_extreme_decompress_multi_avx(pIn, pOut);
     else
       rle8_extreme_decompress_multi_sse(pIn, pOut);
@@ -621,7 +534,9 @@ uint32_t rle8_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, O
 
     pIn += index;
 
-    if (avxSupported)
+    if (avx512FSupported)
+      rle8_extreme_decompress_single_avx512f(pIn, pOut, symbol);
+    else if (avxSupported)
       rle8_extreme_decompress_single_avx(pIn, pOut, symbol);
     else
       rle8_extreme_decompress_single_sse(pIn, pOut, symbol);
@@ -637,6 +552,241 @@ uint32_t rle8_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, O
 }
 
 //////////////////////////////////////////////////////////////////////////
+
+int64_t rle8_extreme_compress_multi_sse2(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE)
+{
+  const int64_t endInSize128 = inSize - sizeof(__m128i);
+  int64_t i = 0;
+  size_t index = *pOutIndex;
+  uint8_t symbol = *pSymbol;
+  __m128i symbol128 = _mm_set1_epi8(symbol);
+  int64_t count = 0;
+  int64_t lastRLE = 0;
+
+  while (i < endInSize128)
+  {
+    const uint32_t mask = _mm_movemask_epi8(_mm_cmpeq_epi8(symbol128, _mm_loadu_si128((const __m128i *)&(pIn[i]))));
+
+    if (0xFFFF == mask)
+    {
+      count += sizeof(symbol128);
+      i += sizeof(symbol128);
+    }
+    else
+    {
+      if (mask != 0 || count > 1)
+      {
+#ifdef _MSC_VER
+        unsigned long _zero;
+        _BitScanForward64(&_zero, ~mask);
+#else
+        const uint64_t _zero = __builtin_ctzl(~mask);
+#endif
+
+        count += _zero;
+        i += _zero;
+      }
+
+      if (count >= RLE8_EXTREME_MULTI_MIN_RANGE_SHORT)
+      {
+        pOut[index] = symbol;
+        index++;
+
+        const int64_t storedCount = count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1;
+
+        if (storedCount <= 255)
+        {
+          pOut[index] = (uint8_t)storedCount;
+          index++;
+        }
+        else
+        {
+          pOut[index] = 0;
+          index++;
+          *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+          index += sizeof(uint32_t);
+        }
+
+        const int64_t range = i - lastRLE - count + 1;
+
+        if (range > 255)
+        {
+          pOut[index] = 0;
+          index++;
+          *((uint32_t *)&pOut[index]) = (uint32_t)range;
+          index += sizeof(uint32_t);
+        }
+        else
+        {
+          pOut[index] = (uint8_t)range;
+          index++;
+        }
+
+        const size_t copySize = i - count - lastRLE;
+
+        memcpy(pOut + index, pIn + lastRLE, copySize);
+        index += copySize;
+
+        lastRLE = i;
+      }
+
+      while (i < endInSize128)
+      {
+        const __m128i current = _mm_loadu_si128((const __m128i *)(&pIn[i]));
+        const __m128i next = _mm_bsrli_si128(current, 1);
+        const int32_t cmp = 0x7FFF & _mm_movemask_epi8(_mm_cmpeq_epi8(current, next));
+
+        if (cmp == 0)
+        {
+          i += sizeof(symbol128) - 1;
+        }
+        else
+        {
+#ifdef _MSC_VER
+          unsigned long _zero;
+          _BitScanForward64(&_zero, cmp);
+#else
+          const uint64_t _zero = __builtin_ctzl(cmp);
+#endif
+
+          i += _zero;
+          break;
+        }
+      }
+
+      symbol = pIn[i];
+      symbol128 = _mm_set1_epi8(symbol);
+      count = 1;
+      i++;
+    }
+  }
+
+  *pOutIndex = index;
+  *pSymbol = symbol;
+  *pCount = count;
+  *pLastRLE = lastRLE;
+
+  return i;
+}
+
+#ifndef _MSC_VER
+__attribute__((target("avx")))
+#endif
+int64_t rle8_extreme_compress_multi_avx2(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE)
+{
+  const int64_t endInSize256 = inSize - sizeof(__m256i);
+  int64_t i = 0;
+  size_t index = *pOutIndex;
+  uint8_t symbol = *pSymbol;
+  __m256i symbol256 = _mm256_set1_epi8(symbol);
+  int64_t count = 0;
+  int64_t lastRLE = 0;
+
+  while (i < endInSize256)
+  {
+    const uint32_t mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(symbol256, _mm256_loadu_si256((const __m256i *)&(pIn[i]))));
+
+    if (0xFFFFFFFF == mask)
+    {
+      count += sizeof(symbol256);
+      i += sizeof(symbol256);
+    }
+    else
+    {
+      if (mask != 0 || count > 1)
+      {
+#ifdef _MSC_VER
+        unsigned long _zero;
+        _BitScanForward64(&_zero, ~mask);
+#else
+        const uint64_t _zero = __builtin_ctzl(~mask);
+#endif
+
+        count += _zero;
+        i += _zero;
+      }
+
+      if (count >= RLE8_EXTREME_MULTI_MIN_RANGE_SHORT)
+      {
+        pOut[index] = symbol;
+        index++;
+
+        const int64_t storedCount = count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1;
+
+        if (storedCount <= 255)
+        {
+          pOut[index] = (uint8_t)storedCount;
+          index++;
+        }
+        else
+        {
+          pOut[index] = 0;
+          index++;
+          *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+          index += sizeof(uint32_t);
+        }
+
+        const int64_t range = i - lastRLE - count + 1;
+
+        if (range > 255)
+        {
+          pOut[index] = 0;
+          index++;
+          *((uint32_t *)&pOut[index]) = (uint32_t)range;
+          index += sizeof(uint32_t);
+        }
+        else
+        {
+          pOut[index] = (uint8_t)range;
+          index++;
+        }
+
+        const size_t copySize = i - count - lastRLE;
+
+        memcpy(pOut + index, pIn + lastRLE, copySize);
+        index += copySize;
+
+        lastRLE = i;
+      }
+
+      while (i < endInSize256)
+      {
+        const __m256i current = _mm256_loadu_si256((const __m256i *)(&pIn[i]));
+        const __m256i next = _mm256_loadu_si256((const __m256i *)(&pIn[i + 1]));
+        const int32_t cmp = 0x7FFFFFFF & _mm256_movemask_epi8(_mm256_cmpeq_epi8(current, next));
+
+        if (cmp == 0)
+        {
+          i += sizeof(symbol256) - 1;
+        }
+        else
+        {
+#ifdef _MSC_VER
+          unsigned long _zero;
+          _BitScanForward64(&_zero, cmp);
+#else
+          const uint64_t _zero = __builtin_ctzl(cmp);
+#endif
+
+          i += _zero;
+          break;
+        }
+      }
+
+      symbol = pIn[i];
+      symbol256 = _mm256_set1_epi8(symbol);
+      count = 1;
+      i++;
+    }
+  }
+
+  *pOutIndex = index;
+  *pSymbol = symbol;
+  *pCount = count;
+  *pLastRLE = lastRLE;
+
+  return i;
+}
 
 void rle8_extreme_decompress_multi_sse(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
@@ -741,6 +891,59 @@ void rle8_extreme_decompress_multi_avx(IN const uint8_t *pInStart, OUT uint8_t *
   }
 }
 
+#ifndef _MSC_VER
+__attribute__((target("avx512f")))
+#endif
+void rle8_extreme_decompress_multi_avx512f(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+{
+  size_t offset, symbolCount;
+  __m512i symbol;
+
+  while (true)
+  {
+#ifdef _DEBUG
+    rle8_extreme_multi_symbol_debug_t *pSymbol = (rle8_extreme_multi_symbol_debug_t *)pInStart;
+    (void)pSymbol;
+#endif
+
+    symbol = _mm512_set1_epi8(*pInStart);
+    pInStart++;
+    symbolCount = (size_t)*pInStart;
+    pInStart++;
+
+    if (symbolCount == 0)
+    {
+      symbolCount = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+    }
+
+    offset = (size_t)*pInStart;
+    pInStart++;
+
+    if (offset == 0)
+    {
+      offset = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
+    }
+
+    offset--;
+
+    // memcpy.
+    MEMCPY_AVX512;
+
+    if (!symbolCount)
+      return;
+
+    symbolCount += (RLE8_EXTREME_MULTI_MIN_RANGE_SHORT - 1);
+
+    // memset.
+    MEMSET_AVX512;
+  }
+}
+
 void rle8_extreme_decompress_single_sse(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t singleSymbol)
 {
   size_t offset, symbolCount;
@@ -837,5 +1040,57 @@ void rle8_extreme_decompress_single_avx(IN const uint8_t *pInStart, OUT uint8_t 
 
     // memset.
     MEMSET_AVX;
+  }
+}
+
+
+#ifndef _MSC_VER
+__attribute__((target("avx512f")))
+#endif
+void rle8_extreme_decompress_single_avx512f(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t singleSymbol)
+{
+  size_t offset, symbolCount;
+  const __m512i symbol = _mm512_set1_epi8(singleSymbol);
+
+  while (true)
+  {
+#ifdef _DEBUG
+    rle8_extreme_single_symbol_debug_t *pSymbol = (rle8_extreme_single_symbol_debug_t *)pInStart;
+    (void)pSymbol;
+#endif
+
+    symbolCount = (size_t)*pInStart;
+    pInStart++;
+
+    if (symbolCount == 0)
+    {
+      symbolCount = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+    }
+
+    offset = (size_t)*pInStart;
+    pInStart++;
+
+    if (offset == 0)
+    {
+      offset = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
+    }
+
+    offset--;
+
+    // memcpy.
+    MEMCPY_AVX512;
+
+    if (!symbolCount)
+      return;
+
+    symbolCount += (RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT - 1);
+
+    // memset.
+    MEMSET_AVX512;
   }
 }
