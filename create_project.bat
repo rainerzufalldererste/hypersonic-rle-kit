@@ -6,7 +6,7 @@ IF "%1"=="1" GOTO ONE;
 IF "%1"=="2" GOTO TWO;
 IF "%1"=="3" GOTO THREE;
 IF "%1"=="4" GOTO FOUR;
-IF "%1"=="4" GOTO FIVE
+IF "%1"=="4" GOTO FIVE;
 
 ECHO INVALID PARAMETER (%1)
 
@@ -52,4 +52,3 @@ GOTO END
  GOTO END
 
 :END
-
