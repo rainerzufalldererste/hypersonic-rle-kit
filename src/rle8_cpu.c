@@ -392,7 +392,7 @@ bool rle8_get_compress_info(IN const uint8_t *pIn, const uint32_t inSize, OUT rl
 
     for (size_t i = 0; i < inSize; i++)
     {
-      if (pIn[i] == lastSymbol)
+      if (pIn[i] == lastSymbol && i < 255)
       {
         count++;
       }
@@ -479,7 +479,7 @@ bool rle8_get_compress_info_only_max_frequency(IN const uint8_t * pIn, const uin
 
     for (size_t i = 0; i < inSize; i++)
     {
-      if (pIn[i] == lastSymbol)
+      if (pIn[i] == lastSymbol && i < 255)
       {
         count++;
       }
