@@ -274,6 +274,7 @@ int main(int argc, char **pArgv)
   {
     enum
     {
+      MultiMTF,
       Extreme8,
       Extreme8Single,
       Extreme16,
@@ -294,6 +295,7 @@ int main(int argc, char **pArgv)
 
     const char *codecNames[] = 
     {
+      "Multi MTF            ",
       "Extreme 8 Bit        ",
       "Extreme 8 Bit Single ",
       "Extreme 16 Bit       ",
@@ -334,6 +336,10 @@ int main(int argc, char **pArgv)
 
         switch (currentCodec)
         {
+        case MultiMTF:
+          compressedSize = rle_mmtf_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme8:
           compressedSize = rle8_extreme_multi_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
@@ -426,16 +432,10 @@ int main(int argc, char **pArgv)
 
         switch (currentCodec)
         {
-        case Normal:
-        case NormalSingle:
-          decompressedSize = rle8_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+        case MultiMTF:
+          decompressedSize = rle_mmtf_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
-     
-        case Ultra:
-        case UltraSingle:
-          decompressedSize = rle8_ultra_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
-          break;
-     
+
         case Extreme8:
         case Extreme8Single:
           decompressedSize = rle8_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
@@ -463,6 +463,16 @@ int main(int argc, char **pArgv)
      
         case Extreme128:
           decompressedSize = rle128_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Normal:
+        case NormalSingle:
+          decompressedSize = rle8_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Ultra:
+        case UltraSingle:
+          decompressedSize = rle8_ultra_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case MemCopy:
