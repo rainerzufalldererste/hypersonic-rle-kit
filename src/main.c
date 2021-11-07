@@ -274,10 +274,6 @@ int main(int argc, char **pArgv)
   {
     enum
     {
-      Normal,
-      NormalSingle,
-      Ultra,
-      UltraSingle,
       Extreme8,
       Extreme8Single,
       Extreme16,
@@ -286,6 +282,10 @@ int main(int argc, char **pArgv)
       Extreme48,
       Extreme64,
       Extreme128,
+      Normal,
+      NormalSingle,
+      Ultra,
+      UltraSingle,
 
       MemCopy,
 
@@ -294,10 +294,6 @@ int main(int argc, char **pArgv)
 
     const char *codecNames[] = 
     {
-      "Normal               ",
-      "Normal Single        ",
-      "Ultra                ",
-      "Ultra Single         ",
       "Extreme 8 Bit        ",
       "Extreme 8 Bit Single ",
       "Extreme 16 Bit       ",
@@ -306,6 +302,10 @@ int main(int argc, char **pArgv)
       "Extreme 48 Bit       ",
       "Extreme 64 Bit       ",
       "Extreme 128 Bit      ",
+      "Normal (old)         ",
+      "Normal Single (old)  ",
+      "Ultra (old)          ",
+      "Ultra Single (old)   ",
       "memcpy               ",
     };
 
@@ -334,22 +334,6 @@ int main(int argc, char **pArgv)
 
         switch (currentCodec)
         {
-        case Normal:
-          compressedSize = rle8_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
-          break;
-    
-        case NormalSingle:
-          compressedSize = rle8_compress_only_max_frequency(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
-          break;
-    
-        case Ultra:
-          compressedSize = rle8_ultra_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
-          break;
-    
-        case UltraSingle:
-          compressedSize = rle8_ultra_compress_only_max_frequency(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
-          break;
-    
         case Extreme8:
           compressedSize = rle8_extreme_multi_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
@@ -380,6 +364,22 @@ int main(int argc, char **pArgv)
     
         case Extreme128:
           compressedSize = rle128_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Normal:
+          compressedSize = rle8_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case NormalSingle:
+          compressedSize = rle8_compress_only_max_frequency(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Ultra:
+          compressedSize = rle8_ultra_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case UltraSingle:
+          compressedSize = rle8_ultra_compress_only_max_frequency(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case MemCopy:

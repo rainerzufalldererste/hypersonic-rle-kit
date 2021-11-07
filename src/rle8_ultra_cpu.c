@@ -561,14 +561,14 @@ bool rle8_ultra_get_compress_info(IN const uint8_t *pIn, const uint32_t inSize, 
 
     for (size_t i = 0; i < inSize; i++)
     {
-      if (pIn[i] == lastSymbol && i < ULTRA_MAX_BLOCK_LENGTH)
+      if (pIn[i] == lastSymbol)
       {
         count++;
       }
       else
       {
         prob[lastSymbol] += count;
-        pcount[lastSymbol]++;
+        pcount[lastSymbol] += (count / ULTRA_MAX_BLOCK_LENGTH) + 1;
         count = 1;
         lastSymbol = pIn[i];
       }
@@ -648,14 +648,14 @@ bool rle8_ultra_get_compress_info_only_max_frequency(IN const uint8_t *pIn, cons
 
     for (size_t i = 0; i < inSize; i++)
     {
-      if (pIn[i] == lastSymbol && i < ULTRA_MAX_BLOCK_LENGTH)
+      if (pIn[i] == lastSymbol)
       {
         count++;
       }
       else
       {
         prob[lastSymbol] += count;
-        pcount[lastSymbol]++;
+        pcount[lastSymbol] += (count / ULTRA_MAX_BLOCK_LENGTH) + 1;
         count = 1;
         lastSymbol = pIn[i];
       }

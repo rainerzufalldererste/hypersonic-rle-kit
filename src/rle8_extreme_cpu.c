@@ -1530,7 +1530,7 @@ void rle8_extreme_decompress_multi_avx2(IN const uint8_t *pInStart, OUT uint8_t 
     symbolCount += (RLE8_EXTREME_MULTI_MIN_RANGE_SHORT - 1);
 
     // memset.
-    MEMSET_AVX;
+    MEMSET_AVX2;
   }
 }
 
