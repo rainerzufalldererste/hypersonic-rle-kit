@@ -63,10 +63,15 @@ int64_t rle8_extreme_compress_single_sse2(IN const uint8_t *pIn, const size_t in
 int64_t rle8_extreme_compress_single_avx2(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, const uint8_t maxFreqSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE);
 
 void rle8_extreme_decompress_multi_sse(IN const uint8_t *pInStart, OUT uint8_t *pOut);
+void rle8_extreme_decompress_multi_sse41(IN const uint8_t *pInStart, OUT uint8_t *pOut);
 void rle8_extreme_decompress_multi_avx(IN const uint8_t *pInStart, OUT uint8_t *pOut);
+void rle8_extreme_decompress_multi_avx2(IN const uint8_t *pInStart, OUT uint8_t *pOut);
 void rle8_extreme_decompress_multi_avx512f(IN const uint8_t *pInStart, OUT uint8_t *pOut);
+
 void rle8_extreme_decompress_single_sse(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t symbol);
+void rle8_extreme_decompress_single_sse41(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t symbol);
 void rle8_extreme_decompress_single_avx(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t symbol);
+void rle8_extreme_decompress_single_avx2(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t symbol);
 void rle8_extreme_decompress_single_avx512f(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t symbol);
 
 //////////////////////////////////////////////////////////////////////////
@@ -483,8 +488,12 @@ uint32_t rle8_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, O
 
     if (avx512FSupported)
       rle8_extreme_decompress_multi_avx512f(pIn, pOut);
+    else if (avx2Supported)
+      rle8_extreme_decompress_multi_avx2(pIn, pOut);
     else if (avxSupported)
       rle8_extreme_decompress_multi_avx(pIn, pOut);
+    else if (sse41Supported)
+      rle8_extreme_decompress_multi_sse41(pIn, pOut);
     else
       rle8_extreme_decompress_multi_sse(pIn, pOut);
     
@@ -500,8 +509,12 @@ uint32_t rle8_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, O
 
     if (avx512FSupported)
       rle8_extreme_decompress_single_avx512f(pIn, pOut, symbol);
+    else if (avx2Supported)
+      rle8_extreme_decompress_single_avx2(pIn, pOut, symbol);
     else if (avxSupported)
       rle8_extreme_decompress_single_avx(pIn, pOut, symbol);
+    else if (sse41Supported)
+      rle8_extreme_decompress_single_sse41(pIn, pOut, symbol);
     else
       rle8_extreme_decompress_single_sse(pIn, pOut, symbol);
 
@@ -1363,6 +1376,59 @@ void rle8_extreme_decompress_multi_sse(IN const uint8_t *pInStart, OUT uint8_t *
 }
 
 #ifndef _MSC_VER
+__attribute__((target("sse4.1")))
+#endif
+void rle8_extreme_decompress_multi_sse41(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+{
+  size_t offset, symbolCount;
+  __m128i symbol;
+
+  while (true)
+  {
+#ifdef _DEBUG
+    rle8_extreme_multi_symbol_debug_t *pSymbol = (rle8_extreme_multi_symbol_debug_t *)pInStart;
+    (void)pSymbol;
+#endif
+
+    symbol = _mm_set1_epi8(*pInStart);
+    pInStart++;
+    symbolCount = (size_t)*pInStart;
+    pInStart++;
+
+    if (symbolCount == 0)
+    {
+      symbolCount = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+    }
+
+    offset = (size_t)*pInStart;
+    pInStart++;
+
+    if (offset == 0)
+    {
+      offset = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
+    }
+
+    offset--;
+
+    // memcpy.
+    MEMCPY_SSE41;
+
+    if (!symbolCount)
+      return;
+
+    symbolCount += (RLE8_EXTREME_MULTI_MIN_RANGE_SHORT - 1);
+
+    // memset.
+    MEMSET_SSE;
+  }
+}
+
+#ifndef _MSC_VER
 __attribute__((target("avx")))
 #endif
 void rle8_extreme_decompress_multi_avx(IN const uint8_t *pInStart, OUT uint8_t *pOut)
@@ -1404,6 +1470,59 @@ void rle8_extreme_decompress_multi_avx(IN const uint8_t *pInStart, OUT uint8_t *
 
     // memcpy.
     MEMCPY_AVX;
+
+    if (!symbolCount)
+      return;
+
+    symbolCount += (RLE8_EXTREME_MULTI_MIN_RANGE_SHORT - 1);
+
+    // memset.
+    MEMSET_AVX;
+  }
+}
+
+#ifndef _MSC_VER
+__attribute__((target("avx2")))
+#endif
+void rle8_extreme_decompress_multi_avx2(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+{
+  size_t offset, symbolCount;
+  __m256i symbol;
+
+  while (true)
+  {
+#ifdef _DEBUG
+    rle8_extreme_multi_symbol_debug_t *pSymbol = (rle8_extreme_multi_symbol_debug_t *)pInStart;
+    (void)pSymbol;
+#endif
+
+    symbol = _mm256_set1_epi8(*pInStart);
+    pInStart++;
+    symbolCount = (size_t)*pInStart;
+    pInStart++;
+
+    if (symbolCount == 0)
+    {
+      symbolCount = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+    }
+
+    offset = (size_t)*pInStart;
+    pInStart++;
+
+    if (offset == 0)
+    {
+      offset = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
+    }
+
+    offset--;
+
+    // memcpy.
+    MEMCPY_AVX2;
 
     if (!symbolCount)
       return;
@@ -1517,6 +1636,57 @@ void rle8_extreme_decompress_single_sse(IN const uint8_t *pInStart, OUT uint8_t 
 }
 
 #ifndef _MSC_VER
+__attribute__((target("sse4.1")))
+#endif
+void rle8_extreme_decompress_single_sse41(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t singleSymbol)
+{
+  size_t offset, symbolCount;
+  const __m128i symbol = _mm_set1_epi8(singleSymbol);
+
+  while (true)
+  {
+#ifdef _DEBUG
+    rle8_extreme_single_symbol_debug_t *pSymbol = (rle8_extreme_single_symbol_debug_t *)pInStart;
+    (void)pSymbol;
+#endif
+
+    symbolCount = (size_t)*pInStart;
+    pInStart++;
+
+    if (symbolCount == 0)
+    {
+      symbolCount = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+    }
+
+    offset = (size_t)*pInStart;
+    pInStart++;
+
+    if (offset == 0)
+    {
+      offset = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
+    }
+
+    offset--;
+
+    // memcpy.
+    MEMCPY_SSE41;
+
+    if (!symbolCount)
+      return;
+
+    symbolCount += (RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT - 1);
+
+    // memset.
+    MEMSET_SSE;
+  }
+}
+
+#ifndef _MSC_VER
 __attribute__((target("avx")))
 #endif
 void rle8_extreme_decompress_single_avx(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t singleSymbol)
@@ -1556,6 +1726,57 @@ void rle8_extreme_decompress_single_avx(IN const uint8_t *pInStart, OUT uint8_t 
 
     // memcpy.
     MEMCPY_AVX;
+
+    if (!symbolCount)
+      return;
+
+    symbolCount += (RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT - 1);
+
+    // memset.
+    MEMSET_AVX;
+  }
+}
+
+#ifndef _MSC_VER
+__attribute__((target("avx2")))
+#endif
+void rle8_extreme_decompress_single_avx2(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t singleSymbol)
+{
+  size_t offset, symbolCount;
+  const __m256i symbol = _mm256_set1_epi8(singleSymbol);
+
+  while (true)
+  {
+#ifdef _DEBUG
+    rle8_extreme_single_symbol_debug_t *pSymbol = (rle8_extreme_single_symbol_debug_t *)pInStart;
+    (void)pSymbol;
+#endif
+
+    symbolCount = (size_t)*pInStart;
+    pInStart++;
+
+    if (symbolCount == 0)
+    {
+      symbolCount = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+    }
+
+    offset = (size_t)*pInStart;
+    pInStart++;
+
+    if (offset == 0)
+    {
+      offset = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
+    }
+
+    offset--;
+
+    // memcpy.
+    MEMCPY_AVX2;
 
     if (!symbolCount)
       return;
