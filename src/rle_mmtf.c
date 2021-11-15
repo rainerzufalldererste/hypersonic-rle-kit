@@ -39,6 +39,9 @@ uint32_t rle_mmtf_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uin
 
     for (size_t i = 1; i < 256; i++)
     {
+      if (0xFFFFFFFF == _mm256_movemask_epi8(prevMatched))
+        break;
+
       lastHist = currentHist;
       currentHist = _mm256_load_si256(history + i * sizeof(__m256i));
       matched = _mm256_cmpeq_epi8(symbols, currentHist);
