@@ -126,6 +126,18 @@ uint32_t rle128_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize,
 
 //////////////////////////////////////////////////////////////////////////
 
+uint32_t rle_mmtf_bounds(const uint32_t inSize);
+
+// If SSE2 is not available, both of these functions will return 0.
+uint32_t rle_mmtf128_encode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle_mmtf128_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+// If AVX2 is not available, both of these functions will return 0.
+uint32_t rle_mmtf256_encode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle_mmtf256_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+//////////////////////////////////////////////////////////////////////////
+
 #ifdef BUILD_WITH_OPENCL
 
 bool rle8m_opencl_init(const size_t inputDataSize, const size_t outputDataSize, const size_t maxSubsectionCount);
