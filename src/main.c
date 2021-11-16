@@ -244,7 +244,7 @@ int main(int argc, char **pArgv)
       return 1;
     }
 
-    if (normalMode + ultraMode + extremeMode + mmtfMode != 1)
+    if (normalMode + ultraMode + extremeMode + mmtfMode > 1)
     {
       puts("Normal, Extreme, Ultra and MMTF cannot be used at the same time.");
       return 1;
