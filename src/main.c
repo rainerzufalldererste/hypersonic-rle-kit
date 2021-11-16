@@ -7,6 +7,17 @@
 #include <windows.h>
 #endif
 
+#if defined(_MSC_VER)
+#define ALIGNED_ALLOC(b, a) _aligned_malloc(a, b)
+#define ALIGNED_FREE(a) _aligned_free(a)
+#elif !defined(__STDC_VERSION__) || __STDC_VERSION__ < 201112L
+#define ALIGNED_ALLOC(b, a) malloc(a)
+#define ALIGNED_FREE(a) free(a)
+#else
+#define ALIGNED_ALLOC(b, a) aligned_alloc(b, a)
+#define ALIGNED_FREE(a) free(a)
+#endif
+
 #include "rle8.h"
 
 const char ArgumentTo[] = "--to";
@@ -252,9 +263,9 @@ int main(int argc, char **pArgv)
   if (subSections != 0)
     compressedBufferSize = max(compressedBufferSize, rle8m_compress_bounds((uint32_t)subSections, (uint32_t)fileSize));
 
-  pUncompressedData = (uint8_t *)malloc(fileSize);
-  pDecompressedData = (uint8_t *)malloc(fileSize + rle8_extreme_decompress_additional_size());
-  pCompressedData = (uint8_t *)malloc(compressedBufferSize);
+  pUncompressedData = (uint8_t *)ALIGNED_ALLOC(32, fileSize);
+  pDecompressedData = (uint8_t *)ALIGNED_ALLOC(32, fileSize + rle8_extreme_decompress_additional_size());
+  pCompressedData = (uint8_t *)ALIGNED_ALLOC(32, compressedBufferSize);
 
   if (!pUncompressedData || !pDecompressedData || !pCompressedData)
   {
@@ -274,7 +285,6 @@ int main(int argc, char **pArgv)
   {
     enum
     {
-      MultiMTF,
       Extreme8,
       Extreme8Single,
       Extreme16,
@@ -283,6 +293,8 @@ int main(int argc, char **pArgv)
       Extreme48,
       Extreme64,
       Extreme128,
+      MultiMTF128,
+      MultiMTF256,
       Normal,
       NormalSingle,
       Ultra,
@@ -295,7 +307,6 @@ int main(int argc, char **pArgv)
 
     const char *codecNames[] = 
     {
-      "Multi MTF            ",
       "Extreme 8 Bit        ",
       "Extreme 8 Bit Single ",
       "Extreme 16 Bit       ",
@@ -304,6 +315,8 @@ int main(int argc, char **pArgv)
       "Extreme 48 Bit       ",
       "Extreme 64 Bit       ",
       "Extreme 128 Bit      ",
+      "Multi MTF 128 Bit    ",
+      "Multi MTF 256 Bit    ",
       "Normal (old)         ",
       "Normal Single (old)  ",
       "Ultra (old)          ",
@@ -336,10 +349,6 @@ int main(int argc, char **pArgv)
 
         switch (currentCodec)
         {
-        case MultiMTF:
-          compressedSize = rle_mmtf_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
-          break;
-
         case Extreme8:
           compressedSize = rle8_extreme_multi_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
@@ -370,6 +379,14 @@ int main(int argc, char **pArgv)
     
         case Extreme128:
           compressedSize = rle128_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case MultiMTF128:
+          compressedSize = rle_mmtf128_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case MultiMTF256:
+          compressedSize = rle_mmtf256_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Normal:
@@ -432,10 +449,6 @@ int main(int argc, char **pArgv)
 
         switch (currentCodec)
         {
-        case MultiMTF:
-          decompressedSize = rle_mmtf_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
-          break;
-
         case Extreme8:
         case Extreme8Single:
           decompressedSize = rle8_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
@@ -463,6 +476,14 @@ int main(int argc, char **pArgv)
      
         case Extreme128:
           decompressedSize = rle128_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case MultiMTF128:
+          decompressedSize = rle_mmtf128_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case MultiMTF256:
+          decompressedSize = rle_mmtf256_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Normal:
@@ -790,9 +811,9 @@ epilogue:
   if (pFile)
     fclose(pFile);
   
-  free(pUncompressedData);
-  free(pDecompressedData);
-  free(pCompressedData);
+  ALIGNED_FREE(pUncompressedData);
+  ALIGNED_FREE(pDecompressedData);
+  ALIGNED_FREE(pCompressedData);
 
   return 0;
 }
