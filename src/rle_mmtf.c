@@ -11,13 +11,17 @@
 
 uint32_t rle_mmtf128_compress_aligned_sse41(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
 uint32_t rle_mmtf128_compress_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
+
 uint32_t rle_mmtf128_decompress_aligned_sse41(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
 uint32_t rle_mmtf128_decompress_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
 
 uint32_t rle_mmtf256_compress_aligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
 uint32_t rle_mmtf256_compress_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
+uint32_t rle_mmtf256_compress_unaligned_sse2(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
+
 uint32_t rle_mmtf256_decompress_aligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
 uint32_t rle_mmtf256_decompress_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
+uint32_t rle_mmtf256_decompress_unaligned_sse2(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -68,9 +72,12 @@ uint32_t rle_mmtf256_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT 
     return 0;
 
   _DetectCPUFeatures();
+  
+  if (!sse2Supported)
+    return 0;
 
   if (!avx2Supported)
-    return 0;
+    return rle_mmtf256_compress_unaligned_sse2(pIn, inSize, pOut);
 
   if (((uint64_t)pIn & 31) == 0 && ((uint64_t)pOut & 31) == 0)
     return rle_mmtf256_compress_aligned(pIn, inSize, pOut);
@@ -85,8 +92,11 @@ uint32_t rle_mmtf256_decompress(IN const uint8_t *pIn, const uint32_t inSize, OU
 
   _DetectCPUFeatures();
 
-  if (!avx2Supported)
+  if (!sse2Supported)
     return 0;
+
+  if (!avx2Supported)
+    return rle_mmtf256_decompress_unaligned_sse2(pIn, inSize, pOut);
 
   if (((uint64_t)pIn & 31) == 0 && ((uint64_t)pOut & 31) == 0)
     return rle_mmtf256_decompress_aligned(pIn, inSize, pOut);
@@ -508,6 +518,93 @@ uint32_t rle_mmtf256_compress_unaligned(IN const uint8_t *pIn, const uint32_t in
   return inSize;
 }
 
+uint32_t rle_mmtf256_compress_unaligned_sse2(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
+{
+  ALIGN(16) uint8_t history[sizeof(__m128i) * 2 * 256];
+
+  for (size_t i = 0; i < 256; i++)
+  {
+    _mm_store_si128((__m128i *)(history) + i * 2, _mm_set1_epi8((char)i));
+    _mm_store_si128((__m128i *)(history) + i * 2 + 1, _mm_set1_epi8((char)i));
+  }
+
+  uint32_t inSizeRemaining = inSize;
+  const __m128i one = _mm_set1_epi8(1);
+
+  while (inSizeRemaining >= sizeof(__m128i) * 2)
+  {
+    inSizeRemaining -= sizeof(__m128i) * 2;
+
+    const __m128i symbols_lo = _mm_loadu_si128((__m128i *)pIn);
+    const __m128i symbols_hi = _mm_loadu_si128((__m128i *)pIn + 1);
+    pIn += sizeof(__m128i) * 2;
+
+    __m128i index = _mm_setzero_si128();
+    __m128i currentHist_lo = _mm_load_si128((__m128i *)history);
+    __m128i currentHist_hi = _mm_load_si128((__m128i *)history + 1);
+    __m128i matched_lo = _mm_cmpeq_epi8(symbols_lo, currentHist_lo);
+    __m128i matched_hi = _mm_cmpeq_epi8(symbols_hi, currentHist_hi);
+    __m128i out_lo = _mm_setzero_si128();
+    __m128i out_hi = _mm_setzero_si128();
+    __m128i prevMatched_lo = matched_lo;
+    __m128i prevMatched_hi = matched_hi;
+    __m128i history0_lo = _mm_and_si128(matched_lo, currentHist_lo);
+    __m128i history0_hi = _mm_and_si128(matched_hi, currentHist_hi);
+    __m128i lastHist_lo;
+    __m128i lastHist_hi;
+    __m128i *pHistory = ((__m128i *)history) + 2;
+
+    while (0xFFFF != _mm_movemask_epi8(prevMatched_lo) || 0xFFFF != _mm_movemask_epi8(prevMatched_hi)) // We're gonna find that byte eventually.
+    {
+      lastHist_lo = currentHist_lo;
+      lastHist_hi = currentHist_hi;
+      currentHist_lo = _mm_load_si128(pHistory);
+      currentHist_hi = _mm_load_si128(pHistory + 1);
+
+      matched_lo = _mm_cmpeq_epi8(symbols_lo, currentHist_lo);
+      matched_hi = _mm_cmpeq_epi8(symbols_hi, currentHist_hi);
+      index = _mm_add_epi8(index, one);
+      out_lo = _mm_or_si128(out_lo, _mm_and_si128(matched_lo, index));
+      out_hi = _mm_or_si128(out_hi, _mm_and_si128(matched_hi, index));
+
+      // Overwrite History With Last History If Previously Not Matched, Or The Current History.
+      history0_lo = _mm_or_si128(history0_lo, _mm_and_si128(matched_lo, currentHist_lo));
+      history0_hi = _mm_or_si128(history0_hi, _mm_and_si128(matched_hi, currentHist_hi));
+      _mm_store_si128(pHistory, _mm_or_si128(_mm_andnot_si128(prevMatched_lo, lastHist_lo), _mm_and_si128(prevMatched_lo, currentHist_lo)));
+      _mm_store_si128(pHistory + 1, _mm_or_si128(_mm_andnot_si128(prevMatched_hi, lastHist_hi), _mm_and_si128(prevMatched_hi, currentHist_hi)));
+
+      prevMatched_lo = _mm_or_si128(prevMatched_lo, matched_lo);
+      prevMatched_hi = _mm_or_si128(prevMatched_hi, matched_hi);
+      pHistory += 2;
+    }
+
+    _mm_store_si128((__m128i *)history + 0, history0_lo);
+    _mm_store_si128((__m128i *)history + 1, history0_hi);
+    _mm_storeu_si128((__m128i *)pOut, out_lo);
+    _mm_storeu_si128((__m128i *)pOut + 1, out_hi);
+
+    pOut += sizeof(__m128i) * 2;
+  }
+
+  for (size_t i = 0; i < inSizeRemaining; i++)
+  {
+    const uint8_t symbol = *pIn;
+    pIn++;
+
+    for (size_t d = 0; d < 255; d++)
+    {
+      if (history[d * 16 + i] == symbol)
+      {
+        *pOut = (uint8_t)d;
+        pOut++;
+        break;
+      }
+    }
+  }
+
+  return inSize;
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 #ifndef _MSC_VER
@@ -626,6 +723,87 @@ uint32_t rle_mmtf256_decompress_unaligned(IN const uint8_t *pIn, const uint32_t 
     _mm256_storeu_si256((__m256i *)pOut, out);
 
     pOut += sizeof(__m256i);
+  }
+
+  for (size_t i = 0; i < inSizeRemaining; i++)
+  {
+    const uint8_t index = *pIn;
+    pIn++;
+
+    *pOut = history[(uint64_t)index * 16 + i];
+    pOut++;
+  }
+
+  return inSize;
+}
+
+uint32_t rle_mmtf256_decompress_unaligned_sse2(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
+{
+  ALIGN(16) uint8_t history[sizeof(__m128i) * 2 * 256];
+
+  for (size_t i = 0; i < 256; i++)
+  {
+    _mm_store_si128((__m128i *)(history) + i * 2 + 0, _mm_set1_epi8((char)i));
+    _mm_store_si128((__m128i *)(history) + i * 2 + 1, _mm_set1_epi8((char)i));
+  }
+
+  uint32_t inSizeRemaining = inSize;
+  const __m128i one = _mm_set1_epi8(1);
+
+  while (inSizeRemaining >= sizeof(__m128i) * 2)
+  {
+    inSizeRemaining -= sizeof(__m128i) * 2;
+
+    const __m128i indices_lo = _mm_loadu_si128((__m128i *)pIn + 0);
+    const __m128i indices_hi = _mm_loadu_si128((__m128i *)pIn + 1);
+    pIn += sizeof(__m128i) * 2;
+
+    __m128i index = _mm_setzero_si128();
+    __m128i matched_lo = _mm_cmpeq_epi8(indices_lo, index);
+    __m128i matched_hi = _mm_cmpeq_epi8(indices_hi, index);
+    __m128i currentHist_lo = _mm_load_si128((__m128i *)history + 0);
+    __m128i currentHist_hi = _mm_load_si128((__m128i *)history + 1);
+    __m128i out_lo = _mm_and_si128(currentHist_lo, matched_lo);
+    __m128i out_hi = _mm_and_si128(currentHist_hi, matched_hi);
+    __m128i prevMatched_lo = matched_lo;
+    __m128i prevMatched_hi = matched_hi;
+    __m128i history0_lo = out_lo;
+    __m128i history0_hi = out_hi;
+    __m128i lastHist_lo;
+    __m128i lastHist_hi;
+    __m128i *pHistory = ((__m128i *)history) + 2;
+
+    while (0xFFFF != _mm_movemask_epi8(prevMatched_lo) || 0xFFFF != _mm_movemask_epi8(prevMatched_hi)) // We're gonna find that byte eventually.
+    {
+      lastHist_lo = currentHist_lo;
+      lastHist_hi = currentHist_hi;
+      index = _mm_add_epi8(index, one);
+      matched_lo = _mm_cmpeq_epi8(indices_lo, index);
+      matched_hi = _mm_cmpeq_epi8(indices_hi, index);
+
+      currentHist_lo = _mm_load_si128(pHistory + 0);
+      currentHist_hi = _mm_load_si128(pHistory + 1);
+
+      out_lo = _mm_or_si128(out_lo, _mm_and_si128(matched_lo, currentHist_lo));
+      out_hi = _mm_or_si128(out_hi, _mm_and_si128(matched_hi, currentHist_hi));
+
+      // Overwrite History With Last History If Previously Not Matched, Or The Current History.
+      history0_lo = _mm_or_si128(history0_lo, _mm_and_si128(matched_lo, currentHist_lo));
+      history0_hi = _mm_or_si128(history0_hi, _mm_and_si128(matched_hi, currentHist_hi));
+      _mm_store_si128(pHistory + 0, _mm_or_si128(_mm_andnot_si128(prevMatched_lo, lastHist_lo), _mm_and_si128(prevMatched_lo, currentHist_lo)));
+      _mm_store_si128(pHistory + 1, _mm_or_si128(_mm_andnot_si128(prevMatched_hi, lastHist_hi), _mm_and_si128(prevMatched_hi, currentHist_hi)));
+
+      prevMatched_lo = _mm_or_si128(prevMatched_lo, matched_lo);
+      prevMatched_hi = _mm_or_si128(prevMatched_hi, matched_hi);
+      pHistory += 2;
+    }
+
+    _mm_store_si128((__m128i *)history + 0, history0_lo);
+    _mm_store_si128((__m128i *)history + 1, history0_hi);
+    _mm_storeu_si128((__m128i *)pOut + 0, out_lo);
+    _mm_storeu_si128((__m128i *)pOut + 1, out_hi);
+
+    pOut += sizeof(__m128i) * 2;
   }
 
   for (size_t i = 0; i < inSizeRemaining; i++)
