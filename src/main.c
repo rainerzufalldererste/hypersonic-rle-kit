@@ -29,6 +29,7 @@ const char ArgumentUltra[] = "--ultra";
 const char ArgumentExtreme[] = "--extreme";
 const char ArgumentExtremeSize[] = "--x-size";
 const char ArgumentMinimumTime[] = "--min-time";
+const char ArgumentExtremeMMTF[] = "--extreme-mmtf";
 const char ArgumentMMTF[] = "--mmtf";
 
 uint64_t GetCurrentTimeNs();
@@ -41,7 +42,12 @@ int main(int argc, char **pArgv)
 {
   if (argc <= 1)
   {
-    printf("Usage: rle8 <InputFileName>\n\n\t[%s <Run Count>]\n\t[%s <Minimum Benchmark Time in Seconds>]\n\n\tOR:\n\n\t[%s <Output File Name>]\n\n\t[%s]\n\t\tif '%s': [%s (8 | 16 | 24 | 32 | 48 | 64 | 128)] (symbol size)\n\n\t[%s (original rle8 codec)]\n\t\tif '%s': [%s <Sub Section Count>]\n\n\t[%s ('%s' optimized for fewer repititions)]\n\n\t[%s (only transform, no compression)]\n\t\tif '%s': [%s (128 | 256)] (mtf width)\n\n\t[%s (only rle most frequent symbol, only available for 8 bit modes)]\n\n\t[%s <Run Count>]\n", ArgumentRuns, ArgumentMinimumTime, ArgumentTo, ArgumentExtreme, ArgumentExtreme, ArgumentExtremeSize, ArgumentNormal, ArgumentNormal, ArgumentSubSections, ArgumentUltra, ArgumentNormal, ArgumentMMTF, ArgumentMMTF, ArgumentExtremeSize, ArgumentSingle, ArgumentRuns);
+    printf("Usage: rle8 <InputFileName>\n\n");
+    printf("\t[% s <Run Count>]\n\t[% s <Minimum Benchmark Time in Seconds>]\n\n\t", ArgumentRuns, ArgumentMinimumTime);
+    printf("OR:\n\n");
+    printf("\t[% s <Output File Name>]\n\n\t[% s]\n\t\tif '%s': [% s(8 | 16 | 24 | 32 | 48 | 64 | 128)] (symbol size)\n\n\t[% s(original rle8 codec)]\n\t\tif '%s': [% s <Sub Section Count>] \n\n\t[% s('%s' optimized for fewer repititions)]\n\n", ArgumentTo, ArgumentExtreme, ArgumentExtreme, ArgumentExtremeSize, ArgumentNormal, ArgumentNormal, ArgumentSubSections, ArgumentUltra, ArgumentNormal);
+    printf("\t[% s]\n\t\tif '%s': [% s(128 | 256)] (mtf width)\n\n\t[% s(only transform, no compression)]\n\t\tif '%s': [% s(128 | 256)] (mtf width)\n\n\t[% s(only rle most frequent symbol, only available for 8 bit modes)]\n\n\t[% s <Run Count>]\n", ArgumentExtremeMMTF, ArgumentExtremeMMTF, ArgumentExtremeSize, ArgumentMMTF, ArgumentMMTF, ArgumentExtremeSize, ArgumentSingle, ArgumentRuns);
+    
     return 1;
   }
 
@@ -61,6 +67,7 @@ int main(int argc, char **pArgv)
   bool ultraMode = false;
   bool extremeMode = false;
   bool mmtfMode = false;
+  bool extremeMmtfMode = false;
   bool benchmarkAll = false;
   uint64_t extremeSize = 8;
 
@@ -216,6 +223,13 @@ int main(int argc, char **pArgv)
         argIndex += 1;
         argsRemaining -= 1;
       }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentExtremeMMTF, sizeof(ArgumentExtremeMMTF)) == 0)
+      {
+        extremeMmtfMode = true;
+        extremeSize = 128;
+        argIndex += 1;
+        argsRemaining -= 1;
+      }
       else
       {
         puts("Invalid Parameter.");
@@ -244,7 +258,7 @@ int main(int argc, char **pArgv)
       return 1;
     }
 
-    if (normalMode + ultraMode + extremeMode + mmtfMode > 1)
+    if (normalMode + ultraMode + extremeMode + mmtfMode + extremeMmtfMode > 1)
     {
       puts("Normal, Extreme, Ultra and MMTF cannot be used at the same time.");
       return 1;
@@ -262,13 +276,13 @@ int main(int argc, char **pArgv)
       return 1;
     }
 
-    if (mmtfMode && extremeSize != 128 && extremeSize != 256)
+    if ((mmtfMode || extremeMmtfMode) && extremeSize != 128 && extremeSize != 256)
     {
-      puts("MMTF Mode only supports mtf width of 128 or 256.");
+      puts("MMTF Modes only supports mtf width of 128 or 256.");
       return 1;
     }
 
-    benchmarkAll = !normalMode && !ultraMode && !extremeMode && !mmtfMode;
+    benchmarkAll = !normalMode && !ultraMode && !extremeMode && !mmtfMode && !extremeMmtfMode;
   }
 
   size_t fileSize = 0;
@@ -296,7 +310,7 @@ int main(int argc, char **pArgv)
 
   fseek(pFile, 0, SEEK_SET);
 
-  compressedBufferSize = max(rle8_compress_bounds((uint32_t)fileSize), rle8_extreme_compress_bounds((uint32_t)fileSize));
+  compressedBufferSize = max(max(rle8_compress_bounds((uint32_t)fileSize), rle8_extreme_compress_bounds((uint32_t)fileSize)), max(rle8_extreme_mmtf128_compress_bounds((uint32_t)fileSize), rle8_extreme_mmtf256_compress_bounds((uint32_t)fileSize)));
   
   if (subSections != 0)
     compressedBufferSize = max(compressedBufferSize, rle8m_compress_bounds((uint32_t)subSections, (uint32_t)fileSize));
@@ -323,6 +337,7 @@ int main(int argc, char **pArgv)
   {
     enum
     {
+      Extreme8MultiMTF128,
       Extreme8,
       Extreme8Single,
       Extreme16,
@@ -345,6 +360,7 @@ int main(int argc, char **pArgv)
 
     const char *codecNames[] = 
     {
+      "Extreme 8 MMTF 128   ",
       "Extreme 8 Bit        ",
       "Extreme 8 Bit Single ",
       "Extreme 16 Bit       ",
@@ -417,6 +433,10 @@ int main(int argc, char **pArgv)
     
         case Extreme128:
           compressedSize = rle128_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8MultiMTF128:
+          compressedSize = rle8_extreme_mmtf128_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case MultiMTF128:
@@ -516,6 +536,10 @@ int main(int argc, char **pArgv)
           decompressedSize = rle128_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
+        case Extreme8MultiMTF128:
+          decompressedSize = rle8_extreme_mmtf128_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
         case MultiMTF128:
           decompressedSize = rle_mmtf128_decode(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
@@ -584,6 +608,8 @@ int main(int argc, char **pArgv)
         fputs("Extreme ", stdout);
       else if (mmtfMode)
         fputs("MMTF ", stdout);
+      else if (extremeMmtfMode)
+        fputs("Exreme MMTF ", stdout);
       else
         fputs("Ultra ", stdout);
 
@@ -592,7 +618,7 @@ int main(int argc, char **pArgv)
 
       if (extremeMode)
         printf("with %" PRIu64 " Bit Symbols ", extremeSize);
-      else if (mmtfMode)
+      else if (mmtfMode || extremeMmtfMode)
         printf("with %" PRIu64 " Bit width ", extremeSize);
 
       printf("(%" PRIi32 " Run%s)\n\n", runs, runs > 1 ? "s" : "");
@@ -678,6 +704,19 @@ int main(int argc, char **pArgv)
           case 256:
             compressedSize = rle_mmtf256_encode(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
             break;
+          }
+        }
+        else if (extremeMmtfMode)
+        {
+          switch (extremeSize)
+          {
+          case 128:
+            compressedSize = rle8_extreme_mmtf128_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+            break;
+
+          //case 256:
+          //  compressedSize = rle8_extreme_mmtf256_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+          //  break;
           }
         }
       }
@@ -797,6 +836,19 @@ int main(int argc, char **pArgv)
           case 256:
             decompressedSize = rle_mmtf256_decode(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
             break;
+          }
+        }
+        else if (extremeMmtfMode)
+        {
+          switch (extremeSize)
+          {
+          case 128:
+            decompressedSize = rle8_extreme_mmtf128_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+            break;
+
+          //case 256:
+          //  decompressedSize = rle8_extreme_mmtf256_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+          //  break;
           }
         }
       }

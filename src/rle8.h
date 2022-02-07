@@ -128,13 +128,26 @@ uint32_t rle128_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize,
 
 uint32_t rle_mmtf_bounds(const uint32_t inSize);
 
-// If SSE2 is not available, both of these functions will return 0.
+// If SSE2 is not available, both of these functions will fail and return 0.
 uint32_t rle_mmtf128_encode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 uint32_t rle_mmtf128_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
-// If AVX2 is not available, both of these functions will return 0.
+// If SSE2 is not available, both of these functions will fail and return 0.
 uint32_t rle_mmtf256_encode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 uint32_t rle_mmtf256_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+//////////////////////////////////////////////////////////////////////////
+
+uint32_t rle8_extreme_mmtf128_compress_bounds(const uint32_t inSize);
+uint32_t rle8_extreme_mmtf256_compress_bounds(const uint32_t inSize);
+
+// If SSE2 is not available, both of these functions will fail and return 0.
+uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_extreme_mmtf128_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+// If SSE2 is not available, both of these functions will fail and return 0.
+uint32_t rle8_extreme_mmtf256_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_extreme_mmtf256_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
 //////////////////////////////////////////////////////////////////////////
 
