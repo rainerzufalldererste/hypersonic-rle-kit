@@ -47,7 +47,9 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
     __m128i symbol128 = _mm_set1_epi8(symbol);
     int64_t count = 0;
     bool copying = 1;
-    const __m128i hiMask = _mm_set1_epi8(0xF0);
+    const __m128i hi4BitMask = _mm_set1_epi8(0xF0);
+    //const __m128i hi5BitMask = _mm_set1_epi8((uint8_t)0b11111000);
+    //const __m128i hi6BitMask = _mm_set1_epi8((uint8_t)0b11111100);
     __m128i currentBitMask = _mm_undefined_si128();
 
     uint8_t *pLastHeader = pOut;
@@ -168,8 +170,12 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
 #endif
 
             // Only low bits used.
-            if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hiMask, currentBitMask))))
+            if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi4BitMask, currentBitMask))))
             {
+              //if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi6BitMask, currentBitMask))))
+              //else if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi5BitMask, currentBitMask))))
+              //else
+
 #ifdef USE_COPY_LOW_COUNT_SPECIAL_CASE
               *pLastHeader |= 2;
 #else
@@ -184,7 +190,7 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
                 const __m128i hi = _mm_loadu_si128((const __m128i *)pStart);
                 const __m128i lo = _mm_loadu_si128((const __m128i *)(pStart + sizeof(__m128i)));
 
-                const __m128i pack = _mm_or_si128(_mm_slli_epi16(hi, 4), lo);
+                const __m128i pack = _mm_or_si128(_mm_slli_epi16(hi, 4), lo); // unpacking high can simply be >> 4 on a 8 bit boundary [but that's not an SIMD instruction :(]
 
                 _mm_storeu_si128(pPacked, pack);
 
@@ -202,7 +208,6 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
               pOut = (uint8_t *)pPacked;
             }
           }
-
 
           pLastHeader = pOut;
           count = 1;
@@ -324,8 +329,12 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
 #endif
 
           // Only low bits used.
-          if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hiMask, currentBitMask))))
+          if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi4BitMask, currentBitMask))))
           {
+            //if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi6BitMask, currentBitMask))))
+            //else if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi5BitMask, currentBitMask))))
+            //else
+
 #ifdef USE_COPY_LOW_COUNT_SPECIAL_CASE
             *pLastHeader |= 2;
 #else
@@ -359,7 +368,7 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
           }
         }
 
-        *pOut = 0;
+        *pOut = 0; // write 0 repeat header. count 0 means stop. (maybe this should rather be copy 0xFFFFFFFF)
         pOut++;
       }
     }

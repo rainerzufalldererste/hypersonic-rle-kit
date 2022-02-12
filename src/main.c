@@ -150,9 +150,9 @@ int main(int argc, char **pArgv)
       }
       else if (argsRemaining >= 2 && strncmp(pArgv[argIndex], ArgumentExtremeSize, sizeof(ArgumentExtremeSize)) == 0)
       {
-        if (!extremeMode && !mmtfMode)
+        if (!extremeMode && !mmtfMode && !extremeMmtfMode)
         {
-          printf("Invalid Parameter. Expected '%s' or '%s' with '%s'.", ArgumentExtreme, ArgumentMMTF, ArgumentExtremeSize);
+          printf("Invalid Parameter. Expected '%s', '%s' or '%s' with '%s'.", ArgumentExtreme, ArgumentMMTF, ArgumentExtremeMMTF, ArgumentExtremeSize);
           return 1;
         }
         
