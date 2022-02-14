@@ -392,7 +392,7 @@ inline uint8_t * bitpack_encode4_sse2_unaligned(const uint8_t *pIn, uint8_t *pOu
   pIn = (const uint8_t *)pIn128;
   pOut = (uint8_t *)pOut128;
 
-  for (; i < originalSize - 1; i += 2)
+  for (; i < (int64_t)originalSize - 1; i += 2)
   {
     *pOut = pIn[0] | (pIn[1] << 4);
 
@@ -400,7 +400,7 @@ inline uint8_t * bitpack_encode4_sse2_unaligned(const uint8_t *pIn, uint8_t *pOu
     pOut++;
   }
 
-  if (i < originalSize)
+  if (i < (int64_t)originalSize)
   {
     *pOut = *pIn;
     pOut++;
@@ -435,7 +435,7 @@ inline uint8_t * bitpack_encode4_sse2_aligned(const uint8_t *pIn, uint8_t *pOut,
   pIn = (const uint8_t *)pIn128;
   pOut = (uint8_t *)pOut128;
 
-  for (; i < originalSize - 1; i += 2)
+  for (; i < (int64_t)originalSize - 1; i += 2)
   {
     *pOut = pIn[0] | (pIn[1] << 4);
 
@@ -443,7 +443,7 @@ inline uint8_t * bitpack_encode4_sse2_aligned(const uint8_t *pIn, uint8_t *pOut,
     pOut++;
   }
 
-  if (i < originalSize)
+  if (i < (int64_t)originalSize)
   {
     *pOut = *pIn;
     pOut++;
@@ -475,7 +475,7 @@ inline uint8_t * bitpack_encode4_sse2_unaligned_m128i(const __m128i *pIn, uint8_
     pOut128++;
   }
 
-  if (i < originalSize)
+  if (i < (int64_t)originalSize)
   {
     uint64_t *pIn64 = (uint64_t *)pIn;
 
@@ -491,7 +491,7 @@ inline uint8_t * bitpack_encode4_sse2_unaligned_m128i(const __m128i *pIn, uint8_
 
 // `pIn` should point to a block of memory with a minimum size of `ceil(originalSize / 2)`.
 // returns `pIn` after the last byte read.
-inline uint8_t * bitpack_decode4_sse2_unaligned(const uint8_t *pIn, uint8_t *pOut, const size_t originalSize)
+inline const uint8_t * bitpack_decode4_sse2_unaligned(const uint8_t *pIn, uint8_t *pOut, const size_t originalSize)
 {
   __m128i *pOut128 = (__m128i *)pOut;
   const __m128i *pIn128 = (const __m128i *)pIn;
@@ -518,7 +518,7 @@ inline uint8_t * bitpack_decode4_sse2_unaligned(const uint8_t *pIn, uint8_t *pOu
   pIn = (const uint8_t *)pIn128;
   pOut = (uint8_t *)pOut128;
 
-  for (; i < originalSize - 1; i += 2)
+  for (; i < (int64_t)originalSize - 1; i += 2)
   {
     const uint8_t sym = pIn[0];
 
@@ -529,7 +529,7 @@ inline uint8_t * bitpack_decode4_sse2_unaligned(const uint8_t *pIn, uint8_t *pOu
     pOut += 2;
   }
 
-  if (i < originalSize)
+  if (i < (int64_t)originalSize)
   {
     *pOut = *pIn;
     pIn++;
@@ -540,7 +540,7 @@ inline uint8_t * bitpack_decode4_sse2_unaligned(const uint8_t *pIn, uint8_t *pOu
 
 // `pIn` should point to a block of memory with a minimum size of `ceil(originalSize / 2)`.
 // returns `pIn` after the last byte read.
-inline uint8_t * bitpack_decode4_sse2_aligned(const uint8_t *pIn, uint8_t *pOut, const size_t originalSize)
+inline const uint8_t * bitpack_decode4_sse2_aligned(const uint8_t *pIn, uint8_t *pOut, const size_t originalSize)
 {
   __m128i *pOut128 = (__m128i *)pOut;
   const __m128i *pIn128 = (const __m128i *)pIn;
@@ -567,7 +567,7 @@ inline uint8_t * bitpack_decode4_sse2_aligned(const uint8_t *pIn, uint8_t *pOut,
   pIn = (const uint8_t *)pIn128;
   pOut = (uint8_t *)pOut128;
 
-  for (; i < originalSize - 1; i += 2)
+  for (; i < (int64_t)originalSize - 1; i += 2)
   {
     const uint8_t sym = pIn[0];
 
@@ -578,7 +578,7 @@ inline uint8_t * bitpack_decode4_sse2_aligned(const uint8_t *pIn, uint8_t *pOut,
     pOut += 2;
   }
 
-  if (i < originalSize)
+  if (i < (int64_t)originalSize)
   {
     *pOut = *pIn;
     pIn++;
@@ -590,7 +590,7 @@ inline uint8_t * bitpack_decode4_sse2_aligned(const uint8_t *pIn, uint8_t *pOut,
 // `originalSize` must be a multiple of `sizeof(__m128i)`.
 // `pIn` should point to a block of memory with a minimum size of `originalSize / 2`.
 // returns `pIn` after the last byte read.
-inline uint8_t * bitpack_decode4_sse2_unaligned_m128i(const uint8_t *pIn, __m128i *pOut, const size_t originalSize)
+inline const uint8_t * bitpack_decode4_sse2_unaligned_m128i(const uint8_t *pIn, __m128i *pOut, const size_t originalSize)
 {
   const __m128i *pIn128 = (const __m128i *)pIn;
 
@@ -613,7 +613,7 @@ inline uint8_t * bitpack_decode4_sse2_unaligned_m128i(const uint8_t *pIn, __m128
     pOut += 2;
   }
 
-  if (i < originalSize)
+  if (i < (int64_t)originalSize)
   {
     const uint64_t fourBitPattern = 0x0F0F0F0F0F0F0F0F;
     const uint64_t in = *(const uint64_t *)pIn;
@@ -745,8 +745,6 @@ inline void bitpack_encode1_sse2_aligned(const uint8_t *pIn, uint8_t *pOut, cons
   const __m128i *pIn128 = (const __m128i *)pIn;
   uint16_t *pOut16 = (uint16_t *)pOut;
 
-  const __m128i patternLow2 = _mm_set1_epi8(3);
-
   for (size_t i = 0; i < originalSize; i += sizeof(__m128i))
   {
     const __m128i v = _mm_load_si128(pIn128);
@@ -767,8 +765,6 @@ inline void bitpack_encode1_sse2_unaligned(const uint8_t *pIn, uint8_t *pOut, co
 {
   const __m128i *pIn128 = (const __m128i *)pIn;
   uint16_t *pOut16 = (uint16_t *)pOut;
-
-  const __m128i patternLow2 = _mm_set1_epi8(3);
 
   for (size_t i = 0; i < originalSize; i += sizeof(__m128i))
   {

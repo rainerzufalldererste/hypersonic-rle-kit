@@ -119,30 +119,7 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
             {
               *pLastHeader |= 2;
 
-              size_t remaining = count;
-              __m128i *pPacked = (__m128i *)(pStart - 3);
-
-              while (remaining > 1)
-              {
-                const __m128i hi = _mm_loadu_si128((const __m128i *)pStart);
-                const __m128i lo = _mm_loadu_si128((const __m128i *)(pStart + sizeof(__m128i)));
-
-                const __m128i pack = _mm_or_si128(_mm_slli_epi16(hi, 4), lo);
-
-                _mm_storeu_si128(pPacked, pack);
-
-                pPacked++;
-                pStart += sizeof(__m128i) * 2;
-                remaining -= 2;
-              }
-
-              if (remaining)
-              {
-                _mm_storeu_si128(pPacked, _mm_loadu_si128((const __m128i *)pStart));
-                pPacked++;
-              }
-
-              pOut = (uint8_t *)pPacked;
+              pOut = bitpack_encode4_sse2_unaligned_m128i((const __m128i *)pStart, pStart - 3, count * sizeof(__m128i));
             }
             else
             {
@@ -183,30 +160,7 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
               *pLastHeader |= 1;
 #endif
 
-              size_t remaining = count;
-              __m128i *pPacked = (__m128i *)pStart;
-
-              while (remaining > 1)
-              {
-                const __m128i hi = _mm_loadu_si128((const __m128i *)pStart);
-                const __m128i lo = _mm_loadu_si128((const __m128i *)(pStart + sizeof(__m128i)));
-
-                const __m128i pack = _mm_or_si128(_mm_slli_epi16(hi, 4), lo); // unpacking high can simply be >> 4 on a 8 bit boundary [but that's not an SIMD instruction :(]
-
-                _mm_storeu_si128(pPacked, pack);
-
-                pPacked++;
-                pStart += sizeof(__m128i) * 2;
-                remaining -= 2;
-              }
-
-              if (remaining)
-              {
-                _mm_storeu_si128(pPacked, _mm_loadu_si128((const __m128i *)pStart));
-                pPacked++;
-              }
-
-              pOut = (uint8_t *)pPacked;
+              pOut = bitpack_encode4_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
             }
           }
 
