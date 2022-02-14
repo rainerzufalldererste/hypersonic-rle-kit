@@ -369,7 +369,7 @@ inline void bitpack_decode3_6_sse2_unaligned(const uint8_t *pIn, uint8_t *pOut, 
 // `originalSize` must be a multiple of __m128i.
 // `pOut` must contain at least `originalSize * 3 / 8` bytes.
 // returns `pOut` one byte after the last one that was written to.
-inline uint8_t *bitpack_encode3_sse2_unaligned_m128i(const __m128i *pIn, const uint8_t *pOut, const size_t originalSize)
+inline uint8_t * bitpack_encode3_sse2_unaligned_m128i(const __m128i *pIn, uint8_t *pOut, const size_t originalSize)
 {
   const __m128i patternLow2 = _mm_set1_epi8(3);
 
@@ -407,8 +407,10 @@ inline uint8_t *bitpack_encode3_sse2_unaligned_m128i(const __m128i *pIn, const u
     pOut += sizeof(uint32_t);
   }
 
-  if (i < originalSize3)
+  if (i <= originalSize3)
   {
+    i += sizeof(__m128i) * 3;
+
     const __m128i p0 = _mm_loadu_si128(pIn);
     const __m128i p1 = _mm_loadu_si128(pIn + 1);
     const __m128i p2 = _mm_loadu_si128(pIn + 2);
@@ -462,7 +464,7 @@ inline const uint8_t * bitpack_decode3_sse2_unaligned_m128i(const uint8_t *pIn, 
   const __m128i patternLow3 = _mm_set1_epi8(7);
   const __m128i patternBitSelect = _mm_set1_epi64x((int64_t)0x8040201008040201);
 
-  for (; i < originalSize6; i += sizeof(__m128i) * 6)
+  for (; i <= originalSize6; i += sizeof(__m128i) * 6)
   {
     const __m128i combinedA = _mm_loadu_si128((const __m128i *)(pIn));
     const __m128i combinedB = _mm_loadu_si128((const __m128i *)(pIn + sizeof(__m128i)));
@@ -505,8 +507,10 @@ inline const uint8_t * bitpack_decode3_sse2_unaligned_m128i(const uint8_t *pIn, 
     pOut += 6;
   }
 
-  if (i < originalSize3)
+  if (i <= originalSize3)
   {
+    i += sizeof(__m128i) * 3;
+
     const __m128i combinedA = _mm_loadu_si128((const __m128i *)pIn);
 
     const __m128i d0 = _mm_and_si128(patternLow3, combinedA);
@@ -539,7 +543,7 @@ inline const uint8_t * bitpack_decode3_sse2_unaligned_m128i(const uint8_t *pIn, 
 
   for (; i < (int64_t)originalSize; i += sizeof(__m128i))
   {
-    uint8_t *pIn16 = (const uint16_t *)pIn;
+    const uint16_t *pIn16 = (const uint16_t *)pIn;
 
     const uint16_t mask0 = pIn16[0];
     const uint16_t mask1 = pIn16[1];
@@ -580,7 +584,7 @@ inline const uint8_t * bitpack_decode3_sse2_unaligned_m128i(const uint8_t *pIn, 
     pOut++;
   }
 
-  return *pIn;
+  return pIn;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -666,41 +670,6 @@ inline uint8_t * bitpack_encode4_sse2_aligned(const uint8_t *pIn, uint8_t *pOut,
   {
     *pOut = *pIn;
     pOut++;
-  }
-
-  return pOut;
-}
-
-// `originalSize` must be a multiple of `sizeof(__m128i)`.
-// `pOut` should point to a block of memory with a minimum size of `originalSize / 2`.
-// returns `pOut` on the byte after the one that has been written to.
-inline uint8_t * bitpack_encode4_sse2_unaligned_m128i(const __m128i *pIn, uint8_t *pOut, const size_t originalSize)
-{
-  __m128i *pOut128 = (__m128i *)pOut;
-
-  int64_t i = 0;
-  const int64_t lastOriginalSize = (int64_t)originalSize - sizeof(__m128i) * 2;
-
-  for (; i <= lastOriginalSize; i += sizeof(__m128i) * 2)
-  {
-    const __m128i hi = _mm_loadu_si128(pIn);
-    const __m128i lo = _mm_loadu_si128(pIn + 1);
-
-    const __m128i pack = _mm_or_si128(_mm_slli_epi16(hi, 4), lo);
-
-    _mm_storeu_si128(pOut128, pack);
-
-    pIn += 2;
-    pOut128++;
-  }
-
-  if (i < (int64_t)originalSize)
-  {
-    uint64_t *pIn64 = (uint64_t *)pIn;
-
-    *(uint64_t *)pOut = pIn64[0] | (pIn64[1] << 4);
-
-    pOut += sizeof(uint64_t);
   }
 
   return pOut;
@@ -806,6 +775,45 @@ inline const uint8_t * bitpack_decode4_sse2_aligned(const uint8_t *pIn, uint8_t 
   return pIn;
 }
 
+//////////////////////////////////////////////////////////////////////////
+
+// `originalSize` must be a multiple of `sizeof(__m128i)`.
+// `pOut` should point to a block of memory with a minimum size of `originalSize / 2`.
+// returns `pOut` on the byte after the one that has been written to.
+inline uint8_t *bitpack_encode4_sse2_unaligned_m128i(const __m128i *pIn, uint8_t *pOut, const size_t originalSize)
+{
+  __m128i *pOut128 = (__m128i *)pOut;
+
+  int64_t i = 0;
+  const int64_t lastOriginalSize = (int64_t)originalSize - sizeof(__m128i) * 2;
+
+  for (; i <= lastOriginalSize; i += sizeof(__m128i) * 2)
+  {
+    const __m128i hi = _mm_loadu_si128(pIn);
+    const __m128i lo = _mm_loadu_si128(pIn + 1);
+
+    const __m128i pack = _mm_or_si128(_mm_slli_epi16(hi, 4), lo);
+
+    _mm_storeu_si128(pOut128, pack);
+
+    pIn += 2;
+    pOut128++;
+  }
+
+  pOut = (uint8_t *)pOut128;
+
+  if (i < (int64_t)originalSize)
+  {
+    uint64_t *pIn64 = (uint64_t *)pIn;
+
+    *(uint64_t *)pOut = pIn64[0] | (pIn64[1] << 4);
+
+    pOut += sizeof(uint64_t);
+  }
+
+  return pOut;
+}
+
 // `originalSize` must be a multiple of `sizeof(__m128i)`.
 // `pIn` should point to a block of memory with a minimum size of `originalSize / 2`.
 // returns `pIn` after the last byte read.
@@ -831,6 +839,8 @@ inline const uint8_t * bitpack_decode4_sse2_unaligned_m128i(const uint8_t *pIn, 
     pIn128++;
     pOut += 2;
   }
+
+  pIn = (const uint8_t *)pIn128;
 
   if (i < (int64_t)originalSize)
   {
@@ -952,6 +962,139 @@ inline void bitpack_decode2_sse2_aligned(const uint8_t *pIn, uint8_t *pOut, cons
     pIn128++;
     pOut128 += 4;
   }
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+// `originalSize` must be a multiple of `sizeof(__m128i)`.
+// `pOut` should point to a block of memory with a minimum size of `originalSize / 4`.
+// returns `pOut` one byte after the last one that was written to.
+inline uint8_t * bitpack_encode2_sse2_unaligned_m128i(const __m128i *pIn, uint8_t *pOut, const size_t originalSize)
+{
+  __m128i *pOut128 = (__m128i *)pOut;
+  int64_t i = 0;
+  int64_t originalSize4 = originalSize - sizeof(__m128i) * 4;
+
+  for (; i <= originalSize4; i += sizeof(__m128i) * 4)
+  {
+    const __m128i p0 = _mm_loadu_si128(pIn);
+    const __m128i p1 = _mm_loadu_si128(pIn + 1);
+    const __m128i p2 = _mm_loadu_si128(pIn + 2);
+    const __m128i p3 = _mm_loadu_si128(pIn + 3);
+
+    const __m128i pack = _mm_or_si128(_mm_or_si128(_mm_slli_epi16(p3, 6), _mm_slli_epi16(p2, 4)), _mm_or_si128(_mm_slli_epi16(p1, 2), p0));
+
+    _mm_storeu_si128(pOut128, pack);
+
+    pIn += 4;
+    pOut128++;
+  }
+
+  pOut = (uint8_t *)pOut128;
+
+  if ((int64_t)(i + sizeof(uint64_t) * 4) <= (int64_t)originalSize)
+  {
+    i += sizeof(uint64_t) * 4;
+
+    const uint64_t *pIn64 = (const uint64_t *)pIn;
+    pIn += 2;
+
+    const uint64_t p0 = pIn64[0];
+    const uint64_t p1 = pIn64[1];
+    const uint64_t p2 = pIn64[2];
+    const uint64_t p3 = pIn64[3];
+
+    const uint64_t combined = p0 | (p1 << 2) | (p2 << 4) | (p3 << 6);
+
+    *(uint64_t *)pOut = combined;
+    pOut += sizeof(uint64_t);
+  }
+
+  if (i < (int64_t)originalSize)
+  {
+    const uint32_t *pIn32 = (const uint32_t *)pIn;
+
+    const uint32_t p0 = pIn32[0];
+    const uint32_t p1 = pIn32[1];
+    const uint32_t p2 = pIn32[2];
+    const uint32_t p3 = pIn32[3];
+
+    const uint32_t combined = p0 | (p1 << 2) | (p2 << 4) | (p3 << 6);
+
+    *(uint32_t *)pOut = combined;
+    pOut += sizeof(uint32_t);
+  }
+
+  return pOut;
+}
+
+// `originalSize` must be a multiple of `sizeof(__m128i)`.
+// `pIn` should point to a block of memory with a minimum size of `originalSize / 4`.
+// returns `pIn` after the last byte read.
+inline const uint8_t * bitpack_decode2_sse2_unaligned_m128i(const uint8_t *pIn, __m128i *pOut, const size_t originalSize)
+{
+  const __m128i *pIn128 = (const __m128i *)pIn;
+
+  int64_t i = 0;
+  int64_t originalSize4 = originalSize - sizeof(__m128i) * 4;
+
+  const __m128i lo_pattern = _mm_set1_epi8(3);
+
+  for (; i <= originalSize4; i += sizeof(__m128i) * 4)
+  {
+    const __m128i pack = _mm_loadu_si128(pIn128);
+
+    const __m128i unpack0 = _mm_and_si128(lo_pattern, pack);
+    const __m128i unpack1 = _mm_and_si128(lo_pattern, _mm_srli_epi16(pack, 2));
+    const __m128i unpack2 = _mm_and_si128(lo_pattern, _mm_srli_epi16(pack, 4));
+    const __m128i unpack3 = _mm_and_si128(lo_pattern, _mm_srli_epi16(pack, 6));
+
+    _mm_storeu_si128(pOut, unpack0);
+    _mm_storeu_si128(pOut + 1, unpack1);
+    _mm_storeu_si128(pOut + 2, unpack2);
+    _mm_storeu_si128(pOut + 3, unpack3);
+
+    pIn128++;
+    pOut += 4;
+  }
+
+  pIn = (uint8_t *)pIn128;
+
+  if ((int64_t)(i + sizeof(uint64_t) * 4) <= (int64_t)originalSize)
+  {
+    i += sizeof(uint64_t) * 4;
+
+    const uint64_t combined = *(uint64_t *)pIn;
+    pIn += sizeof(uint64_t);
+
+    const uint64_t lo_pattern_64 = 0x0303030303030303;
+
+    uint64_t *pOut64 = (uint64_t *)pOut;
+
+    pOut64[0] = combined & lo_pattern_64;
+    pOut64[1] = (combined >> 2) & lo_pattern_64;
+    pOut64[2] = (combined >> 4) & lo_pattern_64;
+    pOut64[3] = (combined >> 6) & lo_pattern_64;
+
+    pOut += 2;
+  }
+
+  if (i < (int64_t)originalSize)
+  {
+    const uint32_t combined = *(uint32_t *)pIn;
+    pIn += sizeof(uint32_t);
+
+    const uint32_t lo_pattern_32 = 0x03030303;
+
+    uint32_t *pOut32 = (uint32_t *)pOut;
+
+    pOut32[0] = combined & lo_pattern_32;
+    pOut32[1] = (combined >> 2) & lo_pattern_32;
+    pOut32[2] = (combined >> 4) & lo_pattern_32;
+    pOut32[3] = (combined >> 6) & lo_pattern_32;
+  }
+
+  return pIn;
 }
 
 //////////////////////////////////////////////////////////////////////////
