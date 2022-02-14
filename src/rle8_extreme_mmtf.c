@@ -5,6 +5,13 @@
 //////////////////////////////////////////////////////////////////////////
 
 //#define USE_COPY_LOW_COUNT_SPECIAL_CASE
+#define USE_VARIOUS_COPY_SIZES
+
+#ifdef USE_VARIOUS_COPY_SIZES
+#ifdef USE_COPY_LOW_COUNT_SPECIAL_CASE
+#error USE_VARIOUS_COPY_SIZES and USE_COPY_LOW_COUNT_SPECIAL_CASE cannot be active at the same time.
+#endif
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -49,8 +56,12 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
     int64_t count = 0;
     bool copying = 1;
     const __m128i hi4BitMask = _mm_set1_epi8(0xF0);
-    //const __m128i hi5BitMask = _mm_set1_epi8((uint8_t)0b11111000);
-    //const __m128i hi6BitMask = _mm_set1_epi8((uint8_t)0b11111100);
+    const __m128i hi5BitMask = _mm_set1_epi8((uint8_t)0b11111000);
+    const __m128i hi6BitMask = _mm_set1_epi8((uint8_t)0b11111100);
+
+    (void)hi5BitMask;
+    (void)hi6BitMask;
+
     __m128i currentBitMask = _mm_undefined_si128();
 
     uint8_t *pLastHeader = pOut;
@@ -115,7 +126,7 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
             pOut -= 3;
 
             // Only low bits used.
-            if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hiMask, currentBitMask))))
+            if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi4BitMask, currentBitMask))))
             {
               *pLastHeader |= 2;
 
@@ -144,23 +155,40 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
             *(uint32_t *)pLastHeader = (uint32_t)count << 2 | 1;
 #else
           {
+  #ifdef USE_VARIOUS_COPY_SIZES
+            *(uint32_t *)pLastHeader = (uint32_t)count << 2;
+  #else
             *(uint32_t *)pLastHeader = (uint32_t)count << 1;
+  #endif
 #endif
 
             // Only low bits used.
             if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi4BitMask, currentBitMask))))
             {
-              //if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi6BitMask, currentBitMask))))
-              //else if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi5BitMask, currentBitMask))))
-              //else
+#ifdef USE_VARIOUS_COPY_SIZES
+              if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi6BitMask, currentBitMask))))
+              {
+                *pLastHeader |= 3;
 
+                pOut = bitpack_encode2_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
+              }
+              else if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi5BitMask, currentBitMask))))
+              {
+                *pLastHeader |= 2;
+
+                pOut = bitpack_encode3_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
+              }
+              else
+#endif
+              {
 #ifdef USE_COPY_LOW_COUNT_SPECIAL_CASE
-              *pLastHeader |= 2;
+                *pLastHeader |= 2;
 #else
-              *pLastHeader |= 1;
+                *pLastHeader |= 1;
 #endif
 
-              pOut = bitpack_encode4_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
+                pOut = bitpack_encode4_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
+              }
             }
           }
 
@@ -228,34 +256,11 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
           pOut -= 3;
 
           // Only low bits used.
-          if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hiMask, currentBitMask))))
+          if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi4BitMask, currentBitMask))))
           {
             *pLastHeader |= 2;
 
-            size_t remaining = count;
-            __m128i *pPacked = (__m128i *)(pStart - 3);
-
-            while (remaining > 1)
-            {
-              const __m128i hi = _mm_loadu_si128((const __m128i *)pStart);
-              const __m128i lo = _mm_loadu_si128((const __m128i *)(pStart + sizeof(__m128i)));
-
-              const __m128i pack = _mm_or_si128(_mm_slli_epi16(hi, 4), lo);
-
-              _mm_storeu_si128(pPacked, pack);
-
-              pPacked++;
-              pStart += sizeof(__m128i) * 2;
-              remaining -= 2;
-            }
-
-            if (remaining)
-            {
-              _mm_storeu_si128(pPacked, _mm_loadu_si128((const __m128i *)pStart));
-              pPacked++;
-            }
-
-            pOut = (uint8_t *)pPacked;
+            pOut = bitpack_encode4_sse2_unaligned_m128i((const __m128i *)pStart, pStart - 3, count * sizeof(__m128i));
           }
           else
           {
@@ -296,30 +301,7 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
             *pLastHeader |= 1;
 #endif
 
-            size_t remaining = count;
-            __m128i *pPacked = (__m128i *)pStart;
-
-            while (remaining > 1)
-            {
-              const __m128i hi = _mm_loadu_si128((const __m128i *)pStart);
-              const __m128i lo = _mm_loadu_si128((const __m128i *)(pStart + sizeof(__m128i)));
-
-              const __m128i pack = _mm_or_si128(_mm_slli_epi16(hi, 4), lo);
-
-              _mm_storeu_si128(pPacked, pack);
-
-              pPacked++;
-              pStart += sizeof(__m128i) * 2;
-              remaining -= 2;
-            }
-
-            if (remaining)
-            {
-              _mm_storeu_si128(pPacked, _mm_loadu_si128((const __m128i *)pStart));
-              pPacked++;
-            }
-
-            pOut = (uint8_t *)pPacked;
+            pOut = bitpack_encode4_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
           }
         }
 
