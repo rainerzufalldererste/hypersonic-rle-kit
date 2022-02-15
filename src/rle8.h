@@ -151,6 +151,13 @@ uint32_t rle8_extreme_mmtf256_decompress(IN const uint8_t *pIn, const uint32_t i
 
 //////////////////////////////////////////////////////////////////////////
 
+uint32_t rle8_sh_bounds(const uint32_t size);
+
+uint32_t rle8_sh_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_sh_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+//////////////////////////////////////////////////////////////////////////
+
 #ifdef BUILD_WITH_OPENCL
 
 bool rle8m_opencl_init(const size_t inputDataSize, const size_t outputDataSize, const size_t maxSubsectionCount);
