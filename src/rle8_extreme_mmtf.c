@@ -447,10 +447,16 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
 
 uint32_t rle8_extreme_mmtf128_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
-  (void)pIn;
-  (void)inSize;
-  (void)pOut;
-  (void)outSize;
+  if (pIn == NULL || pOut == NULL || inSize == 0 || outSize == 0)
+    return 0;
+
+  const size_t expectedInSize = ((uint32_t *)pIn)[0];
+  const size_t expectedOutSize = ((uint32_t *)pIn)[1];
+
+  if (expectedOutSize > outSize || expectedInSize > inSize)
+    return 0;
+
+  // TODO: Implement.
 
   return 0;
 }

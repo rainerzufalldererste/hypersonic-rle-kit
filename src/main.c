@@ -1002,7 +1002,7 @@ bool Validate(const uint8_t *pUncompressedData, const uint8_t *pDecompressedData
     {
       if (pUncompressedData[i] != pDecompressedData[i])
       {
-        printf("First invalid char at %" PRIu64 " (0x%" PRIX8 " != 0x%" PRIX8 ").\n", i, pUncompressedData[i], pDecompressedData[i]);
+        printf("First invalid char at %" PRIu64 " [0x%" PRIX64 "] (0x%" PRIX8 " != 0x%" PRIX8 ").\n", i, i, pUncompressedData[i], pDecompressedData[i]);
 
         const int64_t start = max(0, (int64_t)i - 64);
         const int64_t end = min((int64_t)fileSize, (int64_t)(i + 64));
