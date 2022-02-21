@@ -13,31 +13,34 @@ typedef struct
 } rle8_sh_header_state;
 
 //static size_t stats[255] = { 0 };
-static uint8_t hist[0x10000] = { 0 };
-static size_t histIdx = 0;
-static size_t hist0[0x10000] = { 0 };
-static size_t hist0Idx = 0;
+//static uint8_t hist[0x10000] = { 0 };
+//static size_t histIdx = 0;
+//static size_t hist0[0x10000] = { 0 };
+//static size_t hist0Idx = 0;
+//
+//inline void rle8_write_to_hist0(size_t size)
+//{
+//  if (hist0Idx < sizeof(hist0) / sizeof(size_t))
+//    hist0[hist0Idx++] = size;
+//
+//  printf("[%" PRIX8 "], ", size);
+//}
+//
+//inline void rle8_validate_from_hist0(size_t size)
+//{
+//  if (hist0Idx < sizeof(hist0) / sizeof(size_t))
+//  {
+//    if (hist0[hist0Idx] != size)
+//      __debugbreak();
+//
+//    hist0Idx++;
+//  }
+//
+//  printf("[%" PRIX8 "], ", size);
+//}
 
-inline void rle8_write_to_hist0(size_t size)
-{
-  if (hist0Idx < sizeof(hist0) / sizeof(size_t))
-    hist0[hist0Idx++] = size;
-
-  printf("[%" PRIX8 "], ", size);
-}
-
-inline void rle8_validate_from_hist0(size_t size)
-{
-  if (hist0Idx < sizeof(hist0) / sizeof(size_t))
-  {
-    if (hist0[hist0Idx] != size)
-      __debugbreak();
-
-    hist0Idx++;
-  }
-
-  printf("[%" PRIX8 "], ", size);
-}
+#define rle8_write_to_hist0(...) 
+#define rle8_validate_from_hist0(...) 
 
 inline void rle8_sh_write_bits(rle8_sh_header_state *pHeader, const uint8_t bits, const uint8_t count)
 {
@@ -59,11 +62,11 @@ inline void rle8_sh_write_bits(rle8_sh_header_state *pHeader, const uint8_t bits
   }
 
   //stats[bits | ((count == 3 && (bits & 0b100)) << 7)]++;
-  
-  if (histIdx < sizeof(hist))
-    hist[histIdx++] = bits;
-
-  printf("%" PRIX8 ", ", bits);
+  //
+  //if (histIdx < sizeof(hist))
+  //  hist[histIdx++] = bits;
+  //
+  //printf("%" PRIX8 ", ", bits);
 }
 
 typedef struct
@@ -75,15 +78,15 @@ typedef struct
 
 inline void rle8_sh_consume_bits(rle8_sh_read_header *pHeader, const int8_t bits)
 {
-  printf("%" PRIX8 ", ", (pHeader->value & (uint8_t)(((size_t)1 << (uint8_t)bits) - 1)));
-
-  if (histIdx < sizeof(hist))
-  {
-    if (hist[histIdx] != (pHeader->value & (uint8_t)(((size_t)1 << (uint8_t)bits) - 1)))
-      __debugbreak();
-
-    histIdx++;
-  }
+  //printf("%" PRIX8 ", ", (pHeader->value & (uint8_t)(((size_t)1 << (uint8_t)bits) - 1)));
+  //
+  //if (histIdx < sizeof(hist))
+  //{
+  //  if (hist[histIdx] != (pHeader->value & (uint8_t)(((size_t)1 << (uint8_t)bits) - 1)))
+  //    __debugbreak();
+  //
+  //  histIdx++;
+  //}
 
   pHeader->remainingBits -= bits;
   pHeader->value >>= bits;
@@ -310,10 +313,10 @@ uint32_t rle8_sh_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint
   if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_extreme_mmtf128_compress_bounds(inSize))
     return 0;
 
-  /// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  histIdx = 0;
-  hist0Idx = 0;
-  /// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ///// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  //histIdx = 0;
+  //hist0Idx = 0;
+  ///// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   uint32_t *pFileHeader = (uint32_t *)pOut;
   pFileHeader[0] = inSize;
@@ -559,10 +562,10 @@ uint32_t rle8_sh_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT ui
   if (pIn == NULL || pOut == NULL || inSize == 0 || outSize == 0)
     return 0;
 
-  /// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  histIdx = 0;
-  hist0Idx = 0;
-  /// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ///// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  //histIdx = 0;
+  //hist0Idx = 0;
+  ///// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   const uint32_t expectedOutSize = ((uint32_t *)pIn)[0];
   const uint32_t expectedInSize = ((uint32_t *)pIn)[1];
