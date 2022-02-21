@@ -3,7 +3,7 @@
 
 //////////////////////////////////////////////////////////////////////////
 
-//#define printf(...) 
+#define printf(...) 
 
 typedef struct
 {
@@ -37,8 +37,8 @@ inline void rle8_sh_write_bits(rle8_sh_header_state *pHeader, const uint8_t bits
 
   //stats[bits]++;
   
-  if (histIdx < sizeof(hist))
-    hist[histIdx++] = bits;
+  //if (histIdx < sizeof(hist))
+  //  hist[histIdx++] = bits;
   
   printf("%" PRIX8 ", ", bits);
 }
@@ -74,6 +74,70 @@ inline void rle8_sh_write_bits(rle8_sh_header_state *pHeader, const uint8_t bits
 uint32_t rle8_sh_bounds(const uint32_t size)
 {
   return size + sizeof(uint32_t) * 2 + 1 + sizeof(uint32_t);
+}
+
+inline void rle8_sh_copy(IN const uint8_t *pBlockStart, OUT uint8_t **ppOut, const size_t copyCount, rle8_sh_header_state *pHeader, const uint8_t lastRleSymbol, uint8_t *pSecondMostImportant, uint8_t *pThirdMostImportant, uint8_t *pLastOccuredSymbol)
+{
+  if (copyCount > 255 + SH_MIN_COPY_BLOCK_BYTES)
+  {
+    rle8_sh_write_bits(pHeader, SH_COPY_LARGE_BLOCK_PATTERN, SH_COPY_LARGE_BLOCK_BITS);
+    printf("[%" PRIu64 "] ", copyCount);
+    *(uint32_t *)*ppOut = (uint32_t)(copyCount - SH_MIN_COPY_BLOCK_BYTES);
+    *ppOut += sizeof(uint32_t);
+    memcpy(*ppOut, pBlockStart, copyCount);
+    *ppOut += copyCount;
+  }
+  else if (copyCount >= SH_MIN_COPY_BLOCK_BYTES)
+  {
+    rle8_sh_write_bits(pHeader, SH_COPY_SMALL_BLOCK_PATTERN, SH_COPY_SMALL_BLOCK_BITS);
+    **ppOut = (uint8_t)(copyCount - SH_MIN_COPY_BLOCK_BYTES);
+    (*ppOut)++;
+    memcpy(*ppOut, pBlockStart, copyCount);
+    *ppOut += copyCount;
+  }
+  else
+  {
+    for (size_t j = 0; j < copyCount; j++)
+    {
+      if (pBlockStart[j] == lastRleSymbol)
+      {
+        rle8_sh_write_bits(pHeader, SH_LAST_RLE_SYMBOL_PATTERN, SH_LAST_RLE_SYMBOL_BITS);
+      }
+      else
+      {
+        const uint8_t sym = pBlockStart[j];
+
+        if (sym == *pSecondMostImportant)
+        {
+          rle8_sh_write_bits(pHeader, SH_SECOND_SYMBOL_PATTERN, SH_SECOND_SYMBOL_BITS);
+
+          *pLastOccuredSymbol = sym;
+        }
+        else if (sym == *pThirdMostImportant)
+        {
+          rle8_sh_write_bits(pHeader, SH_THIRD_SYMBOL_PATTERN, SH_THIRD_SYMBOL_BITS);
+
+          *pLastOccuredSymbol = sym;
+        }
+        else
+        {
+          rle8_sh_write_bits(pHeader, SH_COPY_SYMBOL_PATTERN, SH_COPY_SYMBOL_BITS);
+
+          if (sym == *pLastOccuredSymbol)
+          {
+            *pThirdMostImportant = *pSecondMostImportant;
+            *pSecondMostImportant = sym;
+            printf("{%02" PRIX8 "} ", sym);
+          }
+
+          *pLastOccuredSymbol = sym;
+
+          **ppOut = sym;
+          (*ppOut)++;
+        }
+      }
+    }
+  }
 }
 
 uint32_t rle8_sh_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
@@ -123,40 +187,7 @@ uint32_t rle8_sh_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint
         {
           const size_t copyCountWithoutRle = copyCount - rleChangeCount;
 
-          if (copyCountWithoutRle > 255 + SH_MIN_COPY_BLOCK_BYTES)
-          {
-            rle8_sh_write_bits(&header, SH_COPY_LARGE_BLOCK_PATTERN, SH_COPY_LARGE_BLOCK_BITS);
-            printf("[%" PRIu64 "] ", copyCountWithoutRle);
-            *(uint32_t *)pOut = (uint32_t)(copyCountWithoutRle - SH_MIN_COPY_BLOCK_BYTES);
-            pOut += sizeof(uint32_t);
-            memcpy(pOut, pBlockStart, copyCountWithoutRle);
-            pOut += copyCountWithoutRle;
-          }
-          else if (copyCountWithoutRle >= SH_MIN_COPY_BLOCK_BYTES)
-          {
-            rle8_sh_write_bits(&header, SH_COPY_SMALL_BLOCK_PATTERN, SH_COPY_SMALL_BLOCK_BITS);
-            *pOut = (uint8_t)(copyCountWithoutRle - SH_MIN_COPY_BLOCK_BYTES);
-            pOut++;
-            memcpy(pOut, pBlockStart, copyCountWithoutRle);
-            pOut += copyCountWithoutRle;
-          }
-          else
-          {
-            for (size_t j = 0; j < copyCountWithoutRle; j++)
-            {
-              if (pBlockStart[j] == lastRleSymbol)
-              {
-                rle8_sh_write_bits(&header, SH_LAST_RLE_SYMBOL_PATTERN, SH_LAST_RLE_SYMBOL_BITS);
-              }
-              else
-              {
-                rle8_sh_write_bits(&header, SH_COPY_SYMBOL_PATTERN, SH_COPY_SYMBOL_BITS);
-
-                *pOut = pBlockStart[j];
-                pOut++;
-              }
-            }
-          }
+          rle8_sh_copy(pBlockStart, &pOut, copyCountWithoutRle, &header, lastRleSymbol, &secondMostImportant, &thirdMostImportant, &lastOccuredSymbol);
 
           pBlockStart += copyCount;
           copyCount = 0;
@@ -239,66 +270,7 @@ uint32_t rle8_sh_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint
           }
           else
           {
-            if (copyCount > 255 + SH_MIN_COPY_BLOCK_BYTES)
-            {
-              rle8_sh_write_bits(&header, SH_COPY_LARGE_BLOCK_PATTERN, SH_COPY_LARGE_BLOCK_BITS);
-              printf("[%" PRIu64 "] ", copyCount);
-              *(uint32_t *)pOut = (uint32_t)(copyCount - SH_MIN_COPY_BLOCK_BYTES);
-              pOut += sizeof(uint32_t);
-              memcpy(pOut, pBlockStart, copyCount);
-              pOut += copyCount;
-            }
-            else if (copyCount >= SH_MIN_COPY_BLOCK_BYTES)
-            {
-              rle8_sh_write_bits(&header, SH_COPY_SMALL_BLOCK_PATTERN, SH_COPY_SMALL_BLOCK_BITS);
-              *pOut = (uint8_t)(copyCount - SH_MIN_COPY_BLOCK_BYTES);
-              pOut++;
-              memcpy(pOut, pBlockStart, copyCount);
-              pOut += copyCount;
-            }
-            else
-            {
-              for (size_t j = 0; j < copyCount; j++)
-              {
-                if (pBlockStart[j] == lastRleSymbol)
-                {
-                  rle8_sh_write_bits(&header, SH_LAST_RLE_SYMBOL_PATTERN, SH_LAST_RLE_SYMBOL_BITS);
-                }
-                else
-                {
-                  const uint8_t sym = pBlockStart[j];
-
-                  if (sym == secondMostImportant)
-                  {
-                    rle8_sh_write_bits(&header, SH_SECOND_SYMBOL_PATTERN, SH_SECOND_SYMBOL_BITS);
-
-                    lastOccuredSymbol = sym;
-                  }
-                  else if (sym == thirdMostImportant)
-                  {
-                    rle8_sh_write_bits(&header, SH_THIRD_SYMBOL_PATTERN, SH_THIRD_SYMBOL_BITS);
-
-                    lastOccuredSymbol = sym;
-                  }
-                  else
-                  {
-                    rle8_sh_write_bits(&header, SH_COPY_SYMBOL_PATTERN, SH_COPY_SYMBOL_BITS);
-
-                    if (sym == lastOccuredSymbol)
-                    {
-                      thirdMostImportant = secondMostImportant;
-                      secondMostImportant = sym;
-                      printf("{%02" PRIX8 "} ", sym);
-                    }
-
-                    lastOccuredSymbol = sym;
-
-                    *pOut = sym;
-                    pOut++;
-                  }
-                }
-              }
-            }
+            rle8_sh_copy(pBlockStart, &pOut, copyCount, &header, lastRleSymbol, &secondMostImportant, &thirdMostImportant, &lastOccuredSymbol);
           }
 
           pBlockStart += copyCount;
@@ -374,66 +346,7 @@ uint32_t rle8_sh_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint
           }
           else
           {
-            if (copyCountWithoutRle > 255 + SH_MIN_COPY_BLOCK_BYTES)
-            {
-              rle8_sh_write_bits(&header, SH_COPY_LARGE_BLOCK_PATTERN, SH_COPY_LARGE_BLOCK_BITS);
-              *(uint32_t *)pOut = (uint32_t)(copyCountWithoutRle - SH_MIN_COPY_BLOCK_BYTES);
-              pOut += sizeof(uint32_t);
-              printf("[%" PRIu64 "] ", copyCountWithoutRle);
-              memcpy(pOut, pBlockStart, copyCountWithoutRle);
-              pOut += copyCountWithoutRle;
-            }
-            else if (copyCountWithoutRle >= SH_MIN_COPY_BLOCK_BYTES)
-            {
-              rle8_sh_write_bits(&header, SH_COPY_SMALL_BLOCK_PATTERN, SH_COPY_SMALL_BLOCK_BITS);
-              *pOut = (uint8_t)(copyCountWithoutRle - SH_MIN_COPY_BLOCK_BYTES);
-              pOut++;
-              memcpy(pOut, pBlockStart, copyCountWithoutRle);
-              pOut += copyCountWithoutRle;
-            }
-            else
-            {
-              for (size_t j = 0; j < copyCountWithoutRle; j++)
-              {
-                if (pBlockStart[j] == lastRleSymbol)
-                {
-                  rle8_sh_write_bits(&header, SH_LAST_RLE_SYMBOL_PATTERN, SH_LAST_RLE_SYMBOL_BITS);
-                }
-                else
-                {
-                  const uint8_t sym = pBlockStart[j];
-
-                  if (sym == secondMostImportant)
-                  {
-                    rle8_sh_write_bits(&header, SH_SECOND_SYMBOL_PATTERN, SH_SECOND_SYMBOL_BITS);
-
-                    lastOccuredSymbol = sym;
-                  }
-                  else if (sym == thirdMostImportant)
-                  {
-                    rle8_sh_write_bits(&header, SH_THIRD_SYMBOL_PATTERN, SH_THIRD_SYMBOL_BITS);
-
-                    lastOccuredSymbol = sym;
-                  }
-                  else
-                  {
-                    rle8_sh_write_bits(&header, SH_COPY_SYMBOL_PATTERN, SH_COPY_SYMBOL_BITS);
-
-                    if (sym == lastOccuredSymbol)
-                    {
-                      thirdMostImportant = secondMostImportant;
-                      secondMostImportant = sym;
-                      printf("{%02" PRIX8 "} ", sym);
-                    }
-
-                    lastOccuredSymbol = sym;
-
-                    *pOut = sym;
-                    pOut++;
-                  }
-                }
-              }
-            }
+            rle8_sh_copy(pBlockStart, &pOut, copyCountWithoutRle, &header, lastRleSymbol, &secondMostImportant, &thirdMostImportant, &lastOccuredSymbol);
           }
 
           pBlockStart += copyCount;
@@ -500,66 +413,7 @@ uint32_t rle8_sh_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint
       rleCount = 0;
     }
 
-    if (copyCount > 255 + SH_MIN_COPY_BLOCK_BYTES)
-    {
-      rle8_sh_write_bits(&header, SH_COPY_LARGE_BLOCK_PATTERN, SH_COPY_LARGE_BLOCK_BITS);
-      printf("[%" PRIu64 "] ", copyCount);
-      *(uint32_t *)pOut = (uint32_t)(copyCount - SH_MIN_COPY_BLOCK_BYTES);
-      pOut += sizeof(uint32_t);
-      memcpy(pOut, pBlockStart, copyCount);
-      pOut += copyCount;
-    }
-    else if (copyCount >= SH_MIN_COPY_BLOCK_BYTES)
-    {
-      rle8_sh_write_bits(&header, SH_COPY_SMALL_BLOCK_PATTERN, SH_COPY_SMALL_BLOCK_BITS);
-      *pOut = (uint8_t)(copyCount - SH_MIN_COPY_BLOCK_BYTES);
-      pOut++;
-      memcpy(pOut, pBlockStart, copyCount);
-      pOut += copyCount;
-    }
-    else
-    {
-      for (size_t j = 0; j < copyCount; j++)
-      {
-        if (pBlockStart[j] == lastRleSymbol)
-        {
-          rle8_sh_write_bits(&header, SH_LAST_RLE_SYMBOL_PATTERN, SH_LAST_RLE_SYMBOL_BITS);
-        }
-        else
-        {
-          const uint8_t sym = pBlockStart[j];
-
-          if (sym == secondMostImportant)
-          {
-            rle8_sh_write_bits(&header, SH_SECOND_SYMBOL_PATTERN, SH_SECOND_SYMBOL_BITS);
-
-            lastOccuredSymbol = sym;
-          }
-          else if (sym == thirdMostImportant)
-          {
-            rle8_sh_write_bits(&header, SH_THIRD_SYMBOL_PATTERN, SH_THIRD_SYMBOL_BITS);
-
-            lastOccuredSymbol = sym;
-          }
-          else
-          {
-            rle8_sh_write_bits(&header, SH_COPY_SYMBOL_PATTERN, SH_COPY_SYMBOL_BITS);
-
-            if (sym == lastOccuredSymbol)
-            {
-              thirdMostImportant = secondMostImportant;
-              secondMostImportant = sym;
-              printf("{%02" PRIX8 "} ", sym);
-            }
-
-            lastOccuredSymbol = sym;
-
-            *pOut = sym;
-            pOut++;
-          }
-        }
-      }
-    }
+    rle8_sh_copy(pBlockStart, &pOut, copyCount, &header, lastRleSymbol, &secondMostImportant, &thirdMostImportant, &lastOccuredSymbol);
   }
   else
   {
@@ -620,15 +474,15 @@ typedef struct
 
 inline void rle8_sh_consume_bits(rle8_sh_read_header *pHeader, const int8_t bits)
 {
-  if (histIdx < sizeof(hist))
-  {
-    printf("%" PRIX8 ", ", (pHeader->value & (uint8_t)(((size_t)1 << (uint8_t)bits) - 1)));
-  
-    if (hist[histIdx] != (pHeader->value & (uint8_t)(((size_t)1 << (uint8_t)bits) - 1)))
-      __debugbreak();
-  
-    histIdx++;
-  }
+  printf("%" PRIX8 ", ", (pHeader->value & (uint8_t)(((size_t)1 << (uint8_t)bits) - 1)));
+
+  //if (histIdx < sizeof(hist))
+  //{
+  //  if (hist[histIdx] != (pHeader->value & (uint8_t)(((size_t)1 << (uint8_t)bits) - 1)))
+  //    __debugbreak();
+  //
+  //  histIdx++;
+  //}
 
   pHeader->remainingBits -= bits;
   pHeader->value >>= bits;
