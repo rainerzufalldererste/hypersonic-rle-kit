@@ -24,6 +24,8 @@ inline void bitpack_encode3_3_sse2_aligned(const uint8_t *pIn, uint8_t *pOut, co
     const __m128i p1 = _mm_load_si128(pIn128 + 1);
     const __m128i p2 = _mm_load_si128(pIn128 + 2);
 
+    pIn128 += 3;
+
     const __m128i p01p = _mm_or_si128(p0, _mm_slli_epi16(p1, 3));
     const __m128i p2p = _mm_slli_epi16(_mm_and_si128(p2, patternLow2), 6);
 
@@ -54,6 +56,8 @@ inline void bitpack_encode3_3_sse2_unaligned(const uint8_t *pIn, uint8_t *pOut, 
     const __m128i p0 = _mm_loadu_si128(pIn128);
     const __m128i p1 = _mm_loadu_si128(pIn128 + 1);
     const __m128i p2 = _mm_loadu_si128(pIn128 + 2);
+
+    pIn128 += 3;
 
     const __m128i p01p = _mm_or_si128(p0, _mm_slli_epi16(p1, 3));
     const __m128i p2p = _mm_slli_epi16(_mm_and_si128(p2, patternLow2), 6);
@@ -110,7 +114,7 @@ inline void bitpack_decode3_3_sse2_aligned(const uint8_t *pIn, uint8_t *pOut, co
     v = _mm_and_si128(v, patternBitSelect);
     v = _mm_min_epu8(v, patternLow1);
 
-    const __m128i d2 = _mm_or_si128(d2lo, _mm_slli_epi16(v, 3));
+    const __m128i d2 = _mm_or_si128(d2lo, _mm_slli_epi16(v, 2));
 
     _mm_stream_si128(pOut128 + 2, d2);
 
@@ -156,7 +160,7 @@ inline void bitpack_decode3_3_sse2_unaligned(const uint8_t *pIn, uint8_t *pOut, 
     v = _mm_and_si128(v, patternBitSelect);
     v = _mm_min_epu8(v, patternLow1);
 
-    const __m128i d2 = _mm_or_si128(d2lo, _mm_slli_epi16(v, 3));
+    const __m128i d2 = _mm_or_si128(d2lo, _mm_slli_epi16(v, 2));
 
     _mm_storeu_si128(pOut128 + 2, d2);
 
@@ -184,6 +188,8 @@ inline void bitpack_encode3_6_sse2_aligned(const uint8_t *pIn, uint8_t *pOut, co
     const __m128i p3 = _mm_load_si128(pIn128 + 3);
     const __m128i p4 = _mm_load_si128(pIn128 + 4);
     const __m128i p5 = _mm_load_si128(pIn128 + 5);
+
+    pIn128 += 6;
 
     const __m128i p01p = _mm_or_si128(p0, _mm_slli_epi16(p1, 3));
     const __m128i p2p = _mm_slli_epi16(_mm_and_si128(p2, patternLow2), 6);
@@ -225,6 +231,8 @@ inline void bitpack_encode3_6_sse2_unaligned(const uint8_t *pIn, uint8_t *pOut, 
     const __m128i p3 = _mm_loadu_si128(pIn128 + 3);
     const __m128i p4 = _mm_loadu_si128(pIn128 + 4);
     const __m128i p5 = _mm_loadu_si128(pIn128 + 5);
+
+    pIn128 += 6;
 
     const __m128i p01p = _mm_or_si128(p0, _mm_slli_epi16(p1, 3));
     const __m128i p2p = _mm_slli_epi16(_mm_and_si128(p2, patternLow2), 6);
@@ -295,8 +303,8 @@ inline void bitpack_decode3_6_sse2_aligned(const uint8_t *pIn, uint8_t *pOut, co
     vlo = _mm_min_epu8(vlo, patternLow1);
     vhi = _mm_min_epu8(vhi, patternLow1);
 
-    const __m128i d2 = _mm_or_si128(d2lo, _mm_slli_epi16(vlo, 3));
-    const __m128i d5 = _mm_or_si128(d5lo, _mm_slli_epi16(vhi, 3));
+    const __m128i d2 = _mm_or_si128(d2lo, _mm_slli_epi16(vlo, 2));
+    const __m128i d5 = _mm_or_si128(d5lo, _mm_slli_epi16(vhi, 2));
 
     _mm_stream_si128(pOut128 + 2, d2);
     _mm_stream_si128(pOut128 + 3, d3);
@@ -352,8 +360,8 @@ inline void bitpack_decode3_6_sse2_unaligned(const uint8_t *pIn, uint8_t *pOut, 
     vlo = _mm_min_epu8(vlo, patternLow1);
     vhi = _mm_min_epu8(vhi, patternLow1);
 
-    const __m128i d2 = _mm_or_si128(d2lo, _mm_slli_epi16(vlo, 3));
-    const __m128i d5 = _mm_or_si128(d5lo, _mm_slli_epi16(vhi, 3));
+    const __m128i d2 = _mm_or_si128(d2lo, _mm_slli_epi16(vlo, 2));
+    const __m128i d5 = _mm_or_si128(d5lo, _mm_slli_epi16(vhi, 2));
 
     _mm_storeu_si128(pOut128 + 2, d2);
     _mm_storeu_si128(pOut128 + 3, d3);
@@ -385,6 +393,8 @@ inline uint8_t * bitpack_encode3_sse2_unaligned_m128i(const __m128i *pIn, uint8_
     const __m128i p3 = _mm_loadu_si128(pIn + 3);
     const __m128i p4 = _mm_loadu_si128(pIn + 4);
     const __m128i p5 = _mm_loadu_si128(pIn + 5);
+
+    pIn += 6;
 
     const __m128i p01p = _mm_or_si128(p0, _mm_slli_epi16(p1, 3));
     const __m128i p2p = _mm_slli_epi16(_mm_and_si128(p2, patternLow2), 6);
@@ -496,8 +506,8 @@ inline const uint8_t * bitpack_decode3_sse2_unaligned_m128i(const uint8_t *pIn, 
     vlo = _mm_min_epu8(vlo, patternLow1);
     vhi = _mm_min_epu8(vhi, patternLow1);
 
-    const __m128i d2 = _mm_or_si128(d2lo, _mm_slli_epi16(vlo, 3));
-    const __m128i d5 = _mm_or_si128(d5lo, _mm_slli_epi16(vhi, 3));
+    const __m128i d2 = _mm_or_si128(d2lo, _mm_slli_epi16(vlo, 2));
+    const __m128i d5 = _mm_or_si128(d5lo, _mm_slli_epi16(vhi, 2));
 
     _mm_storeu_si128(pOut + 2, d2);
     _mm_storeu_si128(pOut + 3, d3);
@@ -534,7 +544,7 @@ inline const uint8_t * bitpack_decode3_sse2_unaligned_m128i(const uint8_t *pIn, 
     v = _mm_and_si128(v, patternBitSelect);
     v = _mm_min_epu8(v, patternLow1);
 
-    const __m128i d2 = _mm_or_si128(d2lo, _mm_slli_epi16(v, 3));
+    const __m128i d2 = _mm_or_si128(d2lo, _mm_slli_epi16(v, 2));
 
     _mm_storeu_si128(pOut + 2, d2);
 
