@@ -34,6 +34,116 @@ uint32_t rle8_extreme_mmtf256_compress_bounds(const uint32_t inSize)
 
 //////////////////////////////////////////////////////////////////////////
 
+// simplified version of `bitpack_encode2_sse2_unaligned_m128i`, to reduce decoder code footprint.
+// `originalSize` must be a multiple of `sizeof(__m128i)`.
+// `pOut` should point to a block of memory with a minimum size of `originalSize / 4`.
+// returns `pOut` one byte after the last one that was written to.
+inline uint8_t *bitpack_encode2_simple_sse2_unaligned_m128i(const __m128i *pIn, uint8_t *pOut, const size_t originalSize)
+{
+  __m128i *pOut128 = (__m128i *)pOut;
+  int64_t i = 0;
+  int64_t originalSize4 = originalSize - sizeof(__m128i) * 4;
+
+  for (; i <= originalSize4; i += sizeof(__m128i) * 4)
+  {
+    const __m128i p0 = _mm_loadu_si128(pIn);
+    const __m128i p1 = _mm_loadu_si128(pIn + 1);
+    const __m128i p2 = _mm_loadu_si128(pIn + 2);
+    const __m128i p3 = _mm_loadu_si128(pIn + 3);
+
+    const __m128i pack = _mm_or_si128(_mm_or_si128(_mm_slli_epi16(p3, 6), _mm_slli_epi16(p2, 4)), _mm_or_si128(_mm_slli_epi16(p1, 2), p0));
+
+    _mm_storeu_si128(pOut128, pack);
+
+    pIn += 4;
+    pOut128++;
+  }
+
+  pOut = (uint8_t *)pOut128;
+
+  const uint32_t *pIn32 = (const uint32_t *)pIn;
+
+  for (; i < (int64_t)originalSize; i += sizeof(uint32_t) * 4)
+  {
+    const uint32_t p0 = pIn32[0];
+    const uint32_t p1 = pIn32[1];
+    const uint32_t p2 = pIn32[2];
+    const uint32_t p3 = pIn32[3];
+
+    const uint32_t combined = p0 | (p1 << 2) | (p2 << 4) | (p3 << 6);
+
+    *(uint32_t *)pOut = combined;
+    pOut += sizeof(uint32_t);
+    pIn32 += 4;
+  }
+
+  return pOut;
+}
+
+// simplified version of `bitpack_encode3_sse2_unaligned_m128i`, to reduce decoder code footprint.
+// `originalSize` must be a multiple of __m128i.
+// `pOut` must contain at least `originalSize * 3 / 8` bytes.
+// returns `pOut` one byte after the last one that was written to.
+inline uint8_t *bitpack_encode3_simple_sse2_unaligned_m128i(const __m128i *pIn, uint8_t *pOut, const size_t originalSize)
+{
+  const __m128i patternLow2 = _mm_set1_epi8(3);
+
+  int64_t i = 0;
+  int64_t originalSize6 = (int64_t)originalSize - sizeof(__m128i) * 6;
+
+  for (; i <= originalSize6; i += sizeof(__m128i) * 6)
+  {
+    const __m128i p0 = _mm_loadu_si128(pIn);
+    const __m128i p1 = _mm_loadu_si128(pIn + 1);
+    const __m128i p2 = _mm_loadu_si128(pIn + 2);
+    const __m128i p3 = _mm_loadu_si128(pIn + 3);
+    const __m128i p4 = _mm_loadu_si128(pIn + 4);
+    const __m128i p5 = _mm_loadu_si128(pIn + 5);
+
+    const __m128i p01p = _mm_or_si128(p0, _mm_slli_epi16(p1, 3));
+    const __m128i p2p = _mm_slli_epi16(_mm_and_si128(p2, patternLow2), 6);
+
+    const __m128i combinedA = _mm_or_si128(p01p, p2p);
+
+    _mm_storeu_si128((__m128i *)pOut, combinedA);
+
+    const __m128i p34p = _mm_or_si128(p3, _mm_slli_epi16(p4, 3));
+    const __m128i p5p = _mm_slli_epi16(_mm_and_si128(p5, patternLow2), 6);
+
+    const __m128i combinedB = _mm_or_si128(p34p, p5p);
+
+    _mm_storeu_si128((__m128i *)(pOut + sizeof(__m128i)), combinedB);
+    pOut += sizeof(__m128i) * 2;
+
+    const uint32_t mask25 = _mm_movemask_epi8(_mm_slli_epi16(p2, 5)) | (_mm_movemask_epi8(_mm_slli_epi16(p5, 5)) << 16);
+
+    *(uint32_t *)pOut = (uint32_t)mask25;
+    pOut += sizeof(uint32_t);
+  }
+
+  for (; i < (int64_t)originalSize; i += sizeof(__m128i))
+  {
+    const __m128i p0 = _mm_loadu_si128(pIn);
+    pIn++;
+
+    const uint32_t mask0 = _mm_movemask_epi8(_mm_slli_epi16(p0, 7));
+    const uint32_t mask1 = _mm_movemask_epi8(_mm_slli_epi16(p0, 6));
+    const uint32_t mask2 = _mm_movemask_epi8(_mm_slli_epi16(p0, 5));
+
+    uint16_t *pOut16 = (uint16_t *)pOut;
+
+    pOut16[0] = (uint16_t)mask0;
+    pOut16[1] = (uint16_t)mask1;
+    pOut16[2] = (uint16_t)mask2;
+
+    pOut += sizeof(uint16_t) * 3;
+  }
+
+  return pOut;
+}
+
+//////////////////////////////////////////////////////////////////////////
+
 uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
   if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_extreme_mmtf128_compress_bounds(inSize))
@@ -145,7 +255,7 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
               {
                 *pLastHeader |= 0b110;
 
-                pOut = bitpack_encode2_sse2_unaligned_m128i((const __m128i *)pStart, pStart - 3, count * sizeof(__m128i));
+                pOut = bitpack_encode2_simple_sse2_unaligned_m128i((const __m128i *)pStart, pStart - 3, count * sizeof(__m128i));
 
                 PRINT(" (2 BIT) (SMALL)");
               }
@@ -153,7 +263,7 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
               {
                 *pLastHeader |= 0b100;
 
-                pOut = bitpack_encode3_sse2_unaligned_m128i((const __m128i *)pStart, pStart - 3, count * sizeof(__m128i));
+                pOut = bitpack_encode3_simple_sse2_unaligned_m128i((const __m128i *)pStart, pStart - 3, count * sizeof(__m128i));
 
                 PRINT(" (3 BIT) (SMALL)");
               }
@@ -219,7 +329,7 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
                 *pLastHeader |= 0b11;
 #endif
 
-                pOut = bitpack_encode2_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
+                pOut = bitpack_encode2_simple_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
 
                 PRINT(" (2 BIT) (LARGE)");
               }
@@ -231,7 +341,7 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
                 *pLastHeader |= 0b10;
 #endif
 
-                pOut = bitpack_encode3_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
+                pOut = bitpack_encode3_simple_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
 
                 PRINT(" (3 BIT) (LARGE)");
               }
@@ -359,7 +469,7 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
             {
               *pLastHeader |= 0b110;
 
-              pOut = bitpack_encode2_sse2_unaligned_m128i((const __m128i *)pStart, pStart - 3, count * sizeof(__m128i));
+              pOut = bitpack_encode2_simple_sse2_unaligned_m128i((const __m128i *)pStart, pStart - 3, count * sizeof(__m128i));
 
               PRINT(" (2 BIT) (SMALL)");
             }
@@ -367,7 +477,7 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
             {
               *pLastHeader |= 0b100;
 
-              pOut = bitpack_encode3_sse2_unaligned_m128i((const __m128i *)pStart, pStart - 3, count * sizeof(__m128i));
+              pOut = bitpack_encode3_simple_sse2_unaligned_m128i((const __m128i *)pStart, pStart - 3, count * sizeof(__m128i));
 
               PRINT(" (3 BIT) (SMALL)");
             }
@@ -433,7 +543,7 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
                 *pLastHeader |= 0b11;
 #endif
 
-                pOut = bitpack_encode2_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
+                pOut = bitpack_encode2_simple_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
 
                 PRINT(" (2 BIT) (LARGE)");
               }
@@ -445,7 +555,7 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
                 *pLastHeader |= 0b10;
 #endif
 
-                pOut = bitpack_encode3_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
+                pOut = bitpack_encode3_simple_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
 
                 PRINT(" (3 BIT) (LARGE)");
               }
@@ -598,7 +708,7 @@ uint32_t rle8_extreme_mmtf128_decompress(IN const uint8_t *pIn, const uint32_t i
 #error NOT IMPLEMENTED
 #endif
 
-      PRINT("COPY %" PRIu32 " blocks", inSizeRemaining);
+      PRINT("@ % 8" PRIu64 ": COPY %" PRIu32 " blocks", pOut - pOutStart, inSizeRemaining);
 
       if ((inSizeLastByte & 0b110) == 0)
       {
@@ -655,7 +765,7 @@ uint32_t rle8_extreme_mmtf128_decompress(IN const uint8_t *pIn, const uint32_t i
           // Unpack.
           {
             const __m128i pack = _mm_loadu_si128((__m128i *)pIn);
-            pIn += sizeof(__m128i) * 4;
+            pIn += sizeof(__m128i);
 
             const __m128i unpack0 = _mm_and_si128(lo_pattern, pack);
             const __m128i unpack1 = _mm_and_si128(lo_pattern, _mm_srli_epi16(pack, 2));
@@ -714,7 +824,7 @@ uint32_t rle8_extreme_mmtf128_decompress(IN const uint8_t *pIn, const uint32_t i
           pIn += sizeof(uint32_t);
 
           const uint32_t lo_pattern_32 = 0x03030303;
-          const __m128i indices = _mm_set_epi32(combined & lo_pattern_32, (combined >> 2) & lo_pattern_32, (combined >> 4) & lo_pattern_32, (combined >> 6) & lo_pattern_32);
+          const __m128i indices = _mm_and_si128(_mm_set1_epi32(lo_pattern_32), _mm_set_epi32(combined >> 6, combined >> 4, combined >> 2, combined));
 
           // Process & Store.
           {
@@ -934,7 +1044,7 @@ uint32_t rle8_extreme_mmtf128_decompress(IN const uint8_t *pIn, const uint32_t i
           // Unpack.
           {
             const __m128i pack = _mm_loadu_si128((__m128i *)pIn);
-            pIn += sizeof(__m128i) * 2;
+            pIn += sizeof(__m128i);
 
             const __m128i unpack_hi = _mm_and_si128(lo_pattern, _mm_srli_epi16(pack, 4));
             const __m128i unpack_lo = _mm_and_si128(lo_pattern, pack);
@@ -989,7 +1099,7 @@ uint32_t rle8_extreme_mmtf128_decompress(IN const uint8_t *pIn, const uint32_t i
           pIn += sizeof(uint64_t);
 
           const uint64_t fourBitPattern = 0x0F0F0F0F0F0F0F0F;
-          const __m128i indices = _mm_set_epi64x(in & fourBitPattern, (in >> 4) & fourBitPattern);
+          const __m128i indices = _mm_and_si128(_mm_set1_epi64x(fourBitPattern), _mm_set_epi64x(in >> 4, in));
 
           // Process & Store.
           {
@@ -1053,7 +1163,7 @@ uint32_t rle8_extreme_mmtf128_decompress(IN const uint8_t *pIn, const uint32_t i
       const uint8_t symbol = *pIn;
       pIn += sizeof(uint8_t);
 
-      PRINT("RLE %" PRIu32 " blocks of 0x%02" PRIX8 "\n", count, symbol);
+      PRINT("@ % 8" PRIu64 ": RLE %" PRIu32 " blocks of 0x%02" PRIX8 "\n", pOut - pOutStart, count, symbol);
 
       if (symbol == 0)
       {
@@ -1068,17 +1178,19 @@ uint32_t rle8_extreme_mmtf128_decompress(IN const uint8_t *pIn, const uint32_t i
       // TODO: Various Special Implementatinos for different values.
       else
       {
-        //for (; count >= symbol; count -= symbol)
-        //{
-        //  for (size_t i = 0; i <= symbol; i++)
-        //  {
-        //    const __m128i sym = _mm_load_si128((const __m128i *)history + symbol - i);
-        //    _mm_storeu_si128(((__m128i *)pOut) + i, sym);
-        //  }
-        //
-        //  pOut += sizeof(__m128i) * symbol;
-        //}
-        //
+        uint32_t symPlusOne = (uint32_t)symbol + 1;
+
+        for (; count >= symPlusOne; count -= symPlusOne)
+        {
+          for (uint_fast32_t i = 0; i <= symbol; i++)
+          {
+            const __m128i sym = _mm_load_si128((const __m128i *)history + symbol - i);
+            _mm_storeu_si128(((__m128i *)pOut) + i, sym);
+          }
+        
+          pOut += sizeof(__m128i) * symPlusOne;
+        }
+        
         for (; count; count--)
         {
           const __m128i sym = _mm_load_si128((const __m128i *)history + symbol);
