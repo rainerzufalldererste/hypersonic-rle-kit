@@ -1055,7 +1055,7 @@ uint32_t rle8_decompress_with_info(IN const uint8_t *pIn, IN const uint8_t *pEnd
   for (size_t i = 0; i < 256; i++)
     rleSymbolCount += rle[i];
 
-  if (rleSymbolCount == 0 || expectedOutSize == (uint32_t)(pEnd - pIn))
+  if (rleSymbolCount == 0 /* || expectedOutSize == (uint32_t)(pEnd - pIn)*/)
   {
     memcpy(pOut, pIn, expectedOutSize);
     return (uint32_t)expectedOutSize;
