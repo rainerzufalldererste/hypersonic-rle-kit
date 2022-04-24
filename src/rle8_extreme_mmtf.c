@@ -2,6 +2,9 @@
 #include "rleX_extreme_common.h"
 #include "bitpack.h"
 
+//#define PRINT(...) printf(__VA_ARGS__)
+#define PRINT(...)
+
 //////////////////////////////////////////////////////////////////////////
 
 #define USE_COPY_LOW_COUNT_SPECIAL_CASE
@@ -60,23 +63,22 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
     const __m128i hi5BitMask = _mm_set1_epi8((uint8_t)0b11111000);
     const __m128i hi6BitMask = _mm_set1_epi8((uint8_t)0b11111100);
 
-    (void)hi5BitMask;
-    (void)hi6BitMask;
-
     __m128i currentBitMask = _mm_undefined_si128();
+    //__m128i lastOut = _mm_xor_si128(_mm_set1_epi8((int8_t)-1), _mm_loadu_si128((const __m128i *)pIn));
 
     uint8_t *pLastHeader = pOut;
     pOut += sizeof(uint32_t);
 
-    __m128i out;
+    __m128i out;// = lastOut;
 
     while (inSizeRemaining >= sizeof(__m128i))
     {
       inSizeRemaining -= sizeof(__m128i);
 
-      const __m128i symbols = _mm_loadu_si128((__m128i *)pIn);
+      const __m128i symbols = _mm_loadu_si128((const __m128i *)pIn);
       pIn += sizeof(__m128i);
 
+      //lastOut = out;
       out = _mm_setzero_si128();
       __m128i index = _mm_setzero_si128();
       __m128i currentHist = _mm_load_si128((__m128i *)history);
@@ -112,8 +114,9 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
         const __m128i potentialSymbol128 = _mm_set1_epi8(potentialSymbol);
         const int32_t cmp = _mm_movemask_epi8(_mm_cmpeq_epi8(out, potentialSymbol128));
 
-        if (cmp == 0xFFFF)
+        if (/*_mm_movemask_epi8(_mm_cmpeq_epi8(out, lastOut)) == 0xFFFF && */cmp == 0xFFFF)
         {
+          PRINT("COPY %" PRIu64 " blocks.", count);
           copying = false;
           symbol = potentialSymbol;
           symbol128 = potentialSymbol128;
@@ -143,12 +146,16 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
                 *pLastHeader |= 0b110;
 
                 pOut = bitpack_encode2_sse2_unaligned_m128i((const __m128i *)pStart, pStart - 3, count * sizeof(__m128i));
+
+                PRINT(" (2 BIT) (SMALL)");
               }
               else if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi5BitMask, currentBitMask))))
               {
                 *pLastHeader |= 0b100;
 
                 pOut = bitpack_encode3_sse2_unaligned_m128i((const __m128i *)pStart, pStart - 3, count * sizeof(__m128i));
+
+                PRINT(" (3 BIT) (SMALL)");
               }
               else
   #endif
@@ -160,13 +167,15 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
   #endif
 
                 pOut = bitpack_encode4_sse2_unaligned_m128i((const __m128i *)pStart, pStart - 3, count * sizeof(__m128i));
+
+                PRINT(" (4 BIT) (SMALL)");
               }
             }
             else
             {
               // Memmove.
               {
-                const __m128i *pSrc = (const __m128i *)(pLastHeader + 3);
+                const __m128i *pSrc = (const __m128i *)(pLastHeader + 4);
                 __m128i *pDst = (__m128i *)(pLastHeader + 1);
                 size_t remainingCount = count;
 
@@ -178,6 +187,8 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
                   remainingCount--;
                 }
               }
+
+              PRINT(" (SMALL)");
             }
           }
           else
@@ -209,6 +220,8 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
 #endif
 
                 pOut = bitpack_encode2_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
+
+                PRINT(" (2 BIT) (LARGE)");
               }
               else if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi5BitMask, currentBitMask))))
               {
@@ -219,6 +232,8 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
 #endif
 
                 pOut = bitpack_encode3_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
+
+                PRINT(" (3 BIT) (LARGE)");
               }
               else
 #endif
@@ -230,12 +245,16 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
 #endif
 
                 pOut = bitpack_encode4_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
+
+                PRINT(" (4 BIT) (LARGE)");
               }
             }
           }
 
           pLastHeader = pOut;
           count = 1;
+
+          PRINT("\n");
         }
         else
         {
@@ -257,6 +276,8 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
         }
         else
         {
+          PRINT("RLE %" PRIu64 " blocks of 0x%02" PRIX8 "\n", count, symbol);
+
           // Store Repeat Header.
           if (count < 128)
           {
@@ -273,28 +294,61 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
             pOut = pLastHeader + sizeof(uint32_t) + 1;
           }
 
-          count = 1;
-          pLastHeader = pOut;
+#ifdef USE_COPY_LOW_COUNT_SPECIAL_CASE
+          const uint8_t potentialSymbol = (uint8_t)_mm_extract_epi16(out, 0);
+          const __m128i potentialSymbol128 = _mm_set1_epi8(potentialSymbol);
+          const int32_t cmp = _mm_movemask_epi8(_mm_cmpeq_epi8(out, potentialSymbol128));
 
-          pOut += sizeof(uint32_t);
-          _mm_storeu_si128((__m128i *)pOut, out);
-          pOut += sizeof(__m128i);
-          currentBitMask = out;
-          copying = true;
+          if (cmp == 0xFFFF)
+          {
+            // Store 0 block copy.
+            *pOut = 0;
+            pOut++;
+
+            PRINT("[NULL COPY]\n");
+
+            pLastHeader = pOut;
+            count = 1;
+
+            symbol = potentialSymbol;
+            symbol128 = potentialSymbol128;
+          }
+          else
+#endif
+          {
+            count = 1;
+            pLastHeader = pOut;
+
+            pOut += sizeof(uint32_t);
+            _mm_storeu_si128((__m128i *)pOut, out);
+            pOut += sizeof(__m128i);
+            currentBitMask = out;
+            copying = true;
+          }
         }
       }
     }
 
     if (copying)
     {
+      PRINT("[LAST] COPY %" PRIu64 " blocks", count);
+
       // Write Copy Header.
       {
         uint8_t *pStart = pLastHeader + sizeof(uint32_t);
 
 #ifdef USE_COPY_LOW_COUNT_SPECIAL_CASE
+#ifdef USE_VARIOUS_COPY_SIZES_WITH_LOW_COUNT_SPECIAL_CASE
+        if (count < 32)
+#else
         if (count < 64)
+#endif
         {
+#ifdef USE_VARIOUS_COPY_SIZES_WITH_LOW_COUNT_SPECIAL_CASE
+          *pLastHeader = (uint8_t)count << 3;
+#else
           *pLastHeader = (uint8_t)count << 2;
+#endif
           pOut -= 3;
 
           // Only low bits used.
@@ -306,12 +360,16 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
               *pLastHeader |= 0b110;
 
               pOut = bitpack_encode2_sse2_unaligned_m128i((const __m128i *)pStart, pStart - 3, count * sizeof(__m128i));
+
+              PRINT(" (2 BIT) (SMALL)");
             }
             else if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi5BitMask, currentBitMask))))
             {
               *pLastHeader |= 0b100;
 
               pOut = bitpack_encode3_sse2_unaligned_m128i((const __m128i *)pStart, pStart - 3, count * sizeof(__m128i));
+
+              PRINT(" (3 BIT) (SMALL)");
             }
             else
 #endif
@@ -323,13 +381,15 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
 #endif
 
               pOut = bitpack_encode4_sse2_unaligned_m128i((const __m128i *)pStart, pStart - 3, count * sizeof(__m128i));
+
+              PRINT(" (4 BIT) (SMALL)");
             }
           }
           else
           {
             // Memmove.
             {
-              const __m128i *pSrc = (const __m128i *)(pLastHeader + 3);
+              const __m128i *pSrc = (const __m128i *)(pLastHeader + 4);
               __m128i *pDst = (__m128i *)(pLastHeader + 1);
               size_t remainingCount = count;
 
@@ -341,9 +401,11 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
                 remainingCount--;
               }
             }
+
+            PRINT(" (SMALL)");
           }
         }
-        else 
+        else
         {
 #ifdef USE_VARIOUS_COPY_SIZES
           *(uint32_t *)pLastHeader = (uint32_t)count << 3 | 1;
@@ -351,58 +413,73 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
           *(uint32_t *)pLastHeader = (uint32_t)count << 2 | 1;
 #endif
 #else
-        {
-#ifdef USE_VARIOUS_COPY_SIZES
-          *(uint32_t *)pLastHeader = (uint32_t)count << 2;
-#else
-          *(uint32_t *)pLastHeader = (uint32_t)count << 1;
-#endif
-#endif
-
-          // Only low bits used.
-          if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi4BitMask, currentBitMask))))
           {
 #ifdef USE_VARIOUS_COPY_SIZES
-            if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi6BitMask, currentBitMask))))
-            {
-#ifdef USE_COPY_LOW_COUNT_SPECIAL_CASE
-              *pLastHeader |= 0b110;
+            *(uint32_t *)pLastHeader = (uint32_t)count << 2;
 #else
-              *pLastHeader |= 0b11;
+            *(uint32_t *)pLastHeader = (uint32_t)count << 1;
+#endif
 #endif
 
-              pOut = bitpack_encode2_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
-            }
-            else if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi5BitMask, currentBitMask))))
+            // Only low bits used.
+            if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi4BitMask, currentBitMask))))
             {
+#ifdef USE_VARIOUS_COPY_SIZES
+              if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi6BitMask, currentBitMask))))
+              {
 #ifdef USE_COPY_LOW_COUNT_SPECIAL_CASE
-              *pLastHeader |= 0b100;
+                *pLastHeader |= 0b110;
 #else
-              *pLastHeader |= 0b10;
+                *pLastHeader |= 0b11;
 #endif
 
-              pOut = bitpack_encode3_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
-            }
-            else
-#endif
-            {
+                pOut = bitpack_encode2_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
+
+                PRINT(" (2 BIT) (LARGE)");
+              }
+              else if (0xFFFF == _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_setzero_si128(), _mm_and_si128(hi5BitMask, currentBitMask))))
+              {
 #ifdef USE_COPY_LOW_COUNT_SPECIAL_CASE
-              *pLastHeader |= 0b010;
+                *pLastHeader |= 0b100;
 #else
-              *pLastHeader |= 0b01;
+                *pLastHeader |= 0b10;
 #endif
 
-              pOut = bitpack_encode4_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
+                pOut = bitpack_encode3_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
+
+                PRINT(" (3 BIT) (LARGE)");
+              }
+              else
+#endif
+              {
+#ifdef USE_COPY_LOW_COUNT_SPECIAL_CASE
+                *pLastHeader |= 0b010;
+#else
+                *pLastHeader |= 0b01;
+#endif
+
+                pOut = bitpack_encode4_sse2_unaligned_m128i((const __m128i *)pStart, pStart, count * sizeof(__m128i));
+
+                PRINT(" (4 BIT) (LARGE)");
+              }
             }
-          }
         }
 
-        *pOut = 0; // write 0 repeat header. count 0 means stop. (maybe this should rather be copy 0xFFFFFFFF)
+        pLastHeader = pOut;
+        count = 1;
+
+        PRINT("\n");
+
+        // null rle.
+        PRINT("[NULL RLE]\n");
+        *pOut = 0; // (maybe this should rather be copy 0xFFFFFFFF)
         pOut++;
       }
     }
     else
     {
+      PRINT("[LAST] RLE %" PRIu64 " blocks of 0x%02" PRIX8 "\n", count, symbol);
+
       // Store Repeat Header.
       {
         if (count < 128)
@@ -422,6 +499,14 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
           pOut = pHdr + sizeof(uint32_t) + 1;
         }
       }
+
+      // null copy, then null rle.
+      PRINT("[NULL COPY]\n");
+      *pOut = 0;
+      pOut++;
+      PRINT("[NULL RLE]\n");
+      *pOut = 0;
+      pOut++;
     }
 
     // Store Remaining Bytes.
@@ -450,15 +535,587 @@ uint32_t rle8_extreme_mmtf128_decompress(IN const uint8_t *pIn, const uint32_t i
   if (pIn == NULL || pOut == NULL || inSize == 0 || outSize == 0)
     return 0;
 
-  const size_t expectedInSize = ((uint32_t *)pIn)[0];
-  const size_t expectedOutSize = ((uint32_t *)pIn)[1];
+  const size_t expectedOutSize = ((uint32_t *)pIn)[0];
+  const size_t expectedInSize = ((uint32_t *)pIn)[1];
+
+  uint8_t *pOutStart = pOut;
+  
+  pIn += sizeof(uint32_t) * 2;
 
   if (expectedOutSize > outSize || expectedInSize > inSize)
     return 0;
 
-  // TODO: Implement.
+  ALIGN(16) uint8_t history[sizeof(__m128i) * 256];
 
-  return 0;
+  for (size_t i = 0; i < 256; i++)
+    _mm_store_si128((__m128i *)(history) + i, _mm_set1_epi8((char)i));
+
+  while (true)
+  {
+    // Copy.
+    {
+      uint32_t inSizeRemaining;
+
+#ifdef USE_VARIOUS_COPY_SIZES
+      const uint8_t largeCountShift = 3;
+#else
+      const uint8_t largeCountShift = 2;
+#endif
+
+#ifdef USE_COPY_LOW_COUNT_SPECIAL_CASE
+      uint8_t inSizeLastByte = *pIn;
+
+  #ifdef USE_VARIOUS_COPY_SIZES_WITH_LOW_COUNT_SPECIAL_CASE
+      const uint8_t smallCountShift = 3;
+  #else
+      const uint8_t smallCountShift = 2;
+  #endif
+
+      if (inSizeLastByte & 1)
+      {
+        inSizeRemaining = *(uint32_t *)pIn >> largeCountShift;
+        pIn += sizeof(uint32_t);
+      }
+      else
+      {
+        inSizeRemaining = inSizeLastByte >> smallCountShift;
+        pIn += sizeof(uint8_t);
+      }
+#else
+      inSizeRemaining = *(uint32_t *)pIn >> largeCountShift;
+      pIn += sizeof(uint32_t);
+#endif
+
+#ifndef USE_VARIOUS_COPY_SIZES
+#error NOT IMPLEMENTED
+#endif
+
+#ifndef USE_COPY_LOW_COUNT_SPECIAL_CASE
+#error NOT IMPLEMENTED
+#endif
+
+#ifndef USE_VARIOUS_COPY_SIZES_WITH_LOW_COUNT_SPECIAL_CASE
+#error NOT IMPLEMENTED
+#endif
+
+      PRINT("COPY %" PRIu32 " blocks", inSizeRemaining);
+
+      if ((inSizeLastByte & 0b110) == 0)
+      {
+        const __m128i one = _mm_set1_epi8(1);
+
+        for (; inSizeRemaining; inSizeRemaining--)
+        {
+          const __m128i indices = _mm_loadu_si128((__m128i *)pIn);
+          pIn += sizeof(__m128i);
+
+          __m128i index = _mm_setzero_si128();
+          __m128i matched = _mm_cmpeq_epi8(indices, index);
+          __m128i currentHist = _mm_load_si128((__m128i *)history);
+          __m128i out = _mm_and_si128(currentHist, matched);
+          __m128i prevMatched = matched;
+          __m128i history0 = out;
+          __m128i lastHist;
+          __m128i *pHistory = ((__m128i *)history) + 1;
+
+          while (0xFFFF != _mm_movemask_epi8(prevMatched)) // We're gonna find that byte eventually.
+          {
+            lastHist = currentHist;
+            index = _mm_add_epi8(index, one);
+            matched = _mm_cmpeq_epi8(indices, index);
+
+            currentHist = _mm_load_si128(pHistory);
+
+            out = _mm_or_si128(out, _mm_and_si128(matched, currentHist));
+
+            // Overwrite History With Last History If Previously Not Matched, Or The Current History.
+            history0 = _mm_or_si128(history0, _mm_and_si128(matched, currentHist));
+            _mm_store_si128(pHistory, _mm_or_si128(_mm_andnot_si128(prevMatched, lastHist), _mm_and_si128(prevMatched, currentHist)));
+
+            prevMatched = _mm_or_si128(prevMatched, matched);
+            pHistory++;
+          }
+
+          _mm_store_si128((__m128i *)history, history0);
+          _mm_storeu_si128((__m128i *)pOut, out);
+
+          pOut += sizeof(__m128i);
+        }
+      }
+      else if ((inSizeLastByte & 0b110) == 0b110) // unpack 2 bit.
+      {
+        PRINT(" (2 BIT)");
+
+        const __m128i one = _mm_set1_epi8(1);
+        const __m128i lo_pattern = _mm_set1_epi8(3);
+        ALIGN(16) __m128i decoded[4];
+
+        for (; inSizeRemaining >= 4; inSizeRemaining -= 4)
+        {
+          // Unpack.
+          {
+            const __m128i pack = _mm_loadu_si128((__m128i *)pIn);
+            pIn += sizeof(__m128i) * 4;
+
+            const __m128i unpack0 = _mm_and_si128(lo_pattern, pack);
+            const __m128i unpack1 = _mm_and_si128(lo_pattern, _mm_srli_epi16(pack, 2));
+            const __m128i unpack2 = _mm_and_si128(lo_pattern, _mm_srli_epi16(pack, 4));
+            const __m128i unpack3 = _mm_and_si128(lo_pattern, _mm_srli_epi16(pack, 6));
+
+            _mm_store_si128(decoded, unpack0);
+            _mm_store_si128(decoded + 1, unpack1);
+            _mm_store_si128(decoded + 2, unpack2);
+            _mm_store_si128(decoded + 3, unpack3);
+          }
+
+          // Process & Store.
+          for (size_t i = 0; i < 4; i++)
+          {
+            const __m128i indices = _mm_load_si128(&decoded[i]);
+
+            __m128i index = _mm_setzero_si128();
+            __m128i matched = _mm_cmpeq_epi8(indices, index);
+            __m128i currentHist = _mm_load_si128((__m128i *)history);
+            __m128i out = _mm_and_si128(currentHist, matched);
+            __m128i prevMatched = matched;
+            __m128i history0 = out;
+            __m128i lastHist;
+            __m128i *pHistory = ((__m128i *)history) + 1;
+
+            while (0xFFFF != _mm_movemask_epi8(prevMatched)) // We're gonna find that byte eventually.
+            {
+              lastHist = currentHist;
+              index = _mm_add_epi8(index, one);
+              matched = _mm_cmpeq_epi8(indices, index);
+
+              currentHist = _mm_load_si128(pHistory);
+
+              out = _mm_or_si128(out, _mm_and_si128(matched, currentHist));
+
+              // Overwrite History With Last History If Previously Not Matched, Or The Current History.
+              history0 = _mm_or_si128(history0, _mm_and_si128(matched, currentHist));
+              _mm_store_si128(pHistory, _mm_or_si128(_mm_andnot_si128(prevMatched, lastHist), _mm_and_si128(prevMatched, currentHist)));
+
+              prevMatched = _mm_or_si128(prevMatched, matched);
+              pHistory++;
+            }
+
+            _mm_store_si128((__m128i *)history, history0);
+            _mm_storeu_si128((__m128i *)pOut, out);
+
+            pOut += sizeof(__m128i);
+          }
+        }
+
+        for (; inSizeRemaining; inSizeRemaining--)
+        {
+          // Unpack.
+          const uint32_t combined = *(uint32_t *)pIn;
+          pIn += sizeof(uint32_t);
+
+          const uint32_t lo_pattern_32 = 0x03030303;
+          const __m128i indices = _mm_set_epi32(combined & lo_pattern_32, (combined >> 2) & lo_pattern_32, (combined >> 4) & lo_pattern_32, (combined >> 6) & lo_pattern_32);
+
+          // Process & Store.
+          {
+            __m128i index = _mm_setzero_si128();
+            __m128i matched = _mm_cmpeq_epi8(indices, index);
+            __m128i currentHist = _mm_load_si128((__m128i *)history);
+            __m128i out = _mm_and_si128(currentHist, matched);
+            __m128i prevMatched = matched;
+            __m128i history0 = out;
+            __m128i lastHist;
+            __m128i *pHistory = ((__m128i *)history) + 1;
+
+            while (0xFFFF != _mm_movemask_epi8(prevMatched)) // We're gonna find that byte eventually.
+            {
+              lastHist = currentHist;
+              index = _mm_add_epi8(index, one);
+              matched = _mm_cmpeq_epi8(indices, index);
+
+              currentHist = _mm_load_si128(pHistory);
+
+              out = _mm_or_si128(out, _mm_and_si128(matched, currentHist));
+
+              // Overwrite History With Last History If Previously Not Matched, Or The Current History.
+              history0 = _mm_or_si128(history0, _mm_and_si128(matched, currentHist));
+              _mm_store_si128(pHistory, _mm_or_si128(_mm_andnot_si128(prevMatched, lastHist), _mm_and_si128(prevMatched, currentHist)));
+
+              prevMatched = _mm_or_si128(prevMatched, matched);
+              pHistory++;
+            }
+
+            _mm_store_si128((__m128i *)history, history0);
+            _mm_storeu_si128((__m128i *)pOut, out);
+
+            pOut += sizeof(__m128i);
+          }
+        }
+      }
+      else if ((inSizeLastByte & 0b110) == 0b100) // unpack 3 bit.
+      {
+        PRINT(" (3 BIT)");
+
+        const __m128i one = _mm_set1_epi8(1);
+        const __m128i patternLow1 = _mm_set1_epi8(1);
+        const __m128i patternLow2 = _mm_set1_epi8(3);
+        const __m128i patternLow3 = _mm_set1_epi8(7);
+        const __m128i patternBitSelect = _mm_set1_epi64x((int64_t)0x8040201008040201);
+        ALIGN(16) __m128i decoded[6];
+
+        for (; inSizeRemaining >= 6; inSizeRemaining -= 6)
+        {
+          // Unpack.
+          {
+            const __m128i combinedA = _mm_loadu_si128((const __m128i *)(pIn));
+            const __m128i combinedB = _mm_loadu_si128((const __m128i *)(pIn + sizeof(__m128i)));
+
+            const __m128i d0 = _mm_and_si128(patternLow3, combinedA);
+            const __m128i d1 = _mm_and_si128(patternLow3, _mm_srli_epi16(combinedA, 3));
+            const __m128i d2lo = _mm_and_si128(patternLow2, _mm_srli_epi16(combinedA, 6));
+            const __m128i d3 = _mm_and_si128(patternLow3, combinedB);
+            const __m128i d4 = _mm_and_si128(patternLow3, _mm_srli_epi16(combinedB, 3));
+            const __m128i d5lo = _mm_and_si128(patternLow2, _mm_srli_epi16(combinedB, 6));
+
+            _mm_store_si128(decoded, d0);
+            _mm_store_si128(decoded + 1, d1);
+
+            pIn += sizeof(__m128i) * 2;
+
+            const uint32_t mask25 = *(uint32_t *)pIn;
+            pIn += sizeof(uint32_t);
+
+            __m128i v = _mm_set1_epi32(mask25);
+
+            v = _mm_unpacklo_epi8(v, v);
+            v = _mm_unpacklo_epi8(v, v);
+            __m128i vlo = _mm_unpacklo_epi8(v, v);
+            __m128i vhi = _mm_unpackhi_epi8(v, v);
+
+            vlo = _mm_and_si128(vlo, patternBitSelect);
+            vhi = _mm_and_si128(vhi, patternBitSelect);
+            vlo = _mm_min_epu8(vlo, patternLow1);
+            vhi = _mm_min_epu8(vhi, patternLow1);
+
+            const __m128i d2 = _mm_or_si128(d2lo, _mm_slli_epi16(vlo, 3));
+            const __m128i d5 = _mm_or_si128(d5lo, _mm_slli_epi16(vhi, 3));
+
+            _mm_store_si128(decoded + 2, d2);
+            _mm_store_si128(decoded + 3, d3);
+            _mm_store_si128(decoded + 4, d4);
+            _mm_store_si128(decoded + 5, d5);
+          }
+
+          // Process & Store.
+          for (size_t i = 0; i < 6; i++)
+          {
+            const __m128i indices = _mm_load_si128(&decoded[i]);
+
+            __m128i index = _mm_setzero_si128();
+            __m128i matched = _mm_cmpeq_epi8(indices, index);
+            __m128i currentHist = _mm_load_si128((__m128i *)history);
+            __m128i out = _mm_and_si128(currentHist, matched);
+            __m128i prevMatched = matched;
+            __m128i history0 = out;
+            __m128i lastHist;
+            __m128i *pHistory = ((__m128i *)history) + 1;
+
+            while (0xFFFF != _mm_movemask_epi8(prevMatched)) // We're gonna find that byte eventually.
+            {
+              lastHist = currentHist;
+              index = _mm_add_epi8(index, one);
+              matched = _mm_cmpeq_epi8(indices, index);
+
+              currentHist = _mm_load_si128(pHistory);
+
+              out = _mm_or_si128(out, _mm_and_si128(matched, currentHist));
+
+              // Overwrite History With Last History If Previously Not Matched, Or The Current History.
+              history0 = _mm_or_si128(history0, _mm_and_si128(matched, currentHist));
+              _mm_store_si128(pHistory, _mm_or_si128(_mm_andnot_si128(prevMatched, lastHist), _mm_and_si128(prevMatched, currentHist)));
+
+              prevMatched = _mm_or_si128(prevMatched, matched);
+              pHistory++;
+            }
+
+            _mm_store_si128((__m128i *)history, history0);
+            _mm_storeu_si128((__m128i *)pOut, out);
+
+            pOut += sizeof(__m128i);
+          }
+        }
+
+        for (; inSizeRemaining; inSizeRemaining--)
+        {
+          // Unpack.
+          const uint16_t *pIn16 = (const uint16_t *)pIn;
+
+          const uint16_t mask0 = pIn16[0];
+          const uint16_t mask1 = pIn16[1];
+          const uint16_t mask2 = pIn16[2];
+
+          pIn += sizeof(uint16_t) * 3;
+
+          __m128i v0 = _mm_set1_epi16(mask0);
+          __m128i v1 = _mm_set1_epi16(mask1);
+          __m128i v2 = _mm_set1_epi16(mask2);
+
+          v0 = _mm_unpacklo_epi8(v0, v0);
+          v1 = _mm_unpacklo_epi8(v1, v1);
+          v2 = _mm_unpacklo_epi8(v2, v2);
+
+          v0 = _mm_unpacklo_epi8(v0, v0);
+          v1 = _mm_unpacklo_epi8(v1, v1);
+          v2 = _mm_unpacklo_epi8(v2, v2);
+
+          v0 = _mm_unpacklo_epi8(v0, v0);
+          v1 = _mm_unpacklo_epi8(v1, v1);
+          v2 = _mm_unpacklo_epi8(v2, v2);
+
+          v0 = _mm_and_si128(v0, patternBitSelect);
+          v1 = _mm_and_si128(v1, patternBitSelect);
+          v2 = _mm_and_si128(v2, patternBitSelect);
+
+          v0 = _mm_min_epu8(v0, patternLow1);
+          v1 = _mm_min_epu8(v1, patternLow1);
+          v2 = _mm_min_epu8(v2, patternLow1);
+
+          v1 = _mm_slli_epi16(v1, 1);
+          v2 = _mm_slli_epi16(v2, 2);
+
+          const __m128i indices = _mm_or_si128(_mm_or_si128(v1, v2), v0);
+
+          // Process & Store.
+          {
+            __m128i index = _mm_setzero_si128();
+            __m128i matched = _mm_cmpeq_epi8(indices, index);
+            __m128i currentHist = _mm_load_si128((__m128i *)history);
+            __m128i out = _mm_and_si128(currentHist, matched);
+            __m128i prevMatched = matched;
+            __m128i history0 = out;
+            __m128i lastHist;
+            __m128i *pHistory = ((__m128i *)history) + 1;
+
+            while (0xFFFF != _mm_movemask_epi8(prevMatched)) // We're gonna find that byte eventually.
+            {
+              lastHist = currentHist;
+              index = _mm_add_epi8(index, one);
+              matched = _mm_cmpeq_epi8(indices, index);
+
+              currentHist = _mm_load_si128(pHistory);
+
+              out = _mm_or_si128(out, _mm_and_si128(matched, currentHist));
+
+              // Overwrite History With Last History If Previously Not Matched, Or The Current History.
+              history0 = _mm_or_si128(history0, _mm_and_si128(matched, currentHist));
+              _mm_store_si128(pHistory, _mm_or_si128(_mm_andnot_si128(prevMatched, lastHist), _mm_and_si128(prevMatched, currentHist)));
+
+              prevMatched = _mm_or_si128(prevMatched, matched);
+              pHistory++;
+            }
+
+            _mm_store_si128((__m128i *)history, history0);
+            _mm_storeu_si128((__m128i *)pOut, out);
+
+            pOut += sizeof(__m128i);
+          }
+        }
+      }
+      else // if ((inSizeLastByte & 0b110) == 0b010) // unpack 4 bit.
+      {
+        PRINT(" (4 BIT)");
+
+        const __m128i one = _mm_set1_epi8(1);
+        const __m128i lo_pattern = _mm_set1_epi8(0x0F);
+        ALIGN(16) __m128i decoded[2];
+
+        for (; inSizeRemaining >= 2; inSizeRemaining -= 2)
+        {
+          // Unpack.
+          {
+            const __m128i pack = _mm_loadu_si128((__m128i *)pIn);
+            pIn += sizeof(__m128i) * 2;
+
+            const __m128i unpack_hi = _mm_and_si128(lo_pattern, _mm_srli_epi16(pack, 4));
+            const __m128i unpack_lo = _mm_and_si128(lo_pattern, pack);
+
+            _mm_store_si128(decoded, unpack_hi);
+            _mm_store_si128(decoded + 1, unpack_lo);
+          }
+
+          // Process & Store.
+          for (size_t i = 0; i < 2; i++)
+          {
+            const __m128i indices = _mm_load_si128(&decoded[i]);
+
+            __m128i index = _mm_setzero_si128();
+            __m128i matched = _mm_cmpeq_epi8(indices, index);
+            __m128i currentHist = _mm_load_si128((__m128i *)history);
+            __m128i out = _mm_and_si128(currentHist, matched);
+            __m128i prevMatched = matched;
+            __m128i history0 = out;
+            __m128i lastHist;
+            __m128i *pHistory = ((__m128i *)history) + 1;
+
+            while (0xFFFF != _mm_movemask_epi8(prevMatched)) // We're gonna find that byte eventually.
+            {
+              lastHist = currentHist;
+              index = _mm_add_epi8(index, one);
+              matched = _mm_cmpeq_epi8(indices, index);
+
+              currentHist = _mm_load_si128(pHistory);
+
+              out = _mm_or_si128(out, _mm_and_si128(matched, currentHist));
+
+              // Overwrite History With Last History If Previously Not Matched, Or The Current History.
+              history0 = _mm_or_si128(history0, _mm_and_si128(matched, currentHist));
+              _mm_store_si128(pHistory, _mm_or_si128(_mm_andnot_si128(prevMatched, lastHist), _mm_and_si128(prevMatched, currentHist)));
+
+              prevMatched = _mm_or_si128(prevMatched, matched);
+              pHistory++;
+            }
+
+            _mm_store_si128((__m128i *)history, history0);
+            _mm_storeu_si128((__m128i *)pOut, out);
+
+            pOut += sizeof(__m128i);
+          }
+        }
+
+        if (inSizeRemaining) // this can be a maximum of 1
+        {
+          // Unpack.
+          const uint64_t in = *(const uint64_t *)pIn;
+          pIn += sizeof(uint64_t);
+
+          const uint64_t fourBitPattern = 0x0F0F0F0F0F0F0F0F;
+          const __m128i indices = _mm_set_epi64x(in & fourBitPattern, (in >> 4) & fourBitPattern);
+
+          // Process & Store.
+          {
+            __m128i index = _mm_setzero_si128();
+            __m128i matched = _mm_cmpeq_epi8(indices, index);
+            __m128i currentHist = _mm_load_si128((__m128i *)history);
+            __m128i out = _mm_and_si128(currentHist, matched);
+            __m128i prevMatched = matched;
+            __m128i history0 = out;
+            __m128i lastHist;
+            __m128i *pHistory = ((__m128i *)history) + 1;
+
+            while (0xFFFF != _mm_movemask_epi8(prevMatched)) // We're gonna find that byte eventually.
+            {
+              lastHist = currentHist;
+              index = _mm_add_epi8(index, one);
+              matched = _mm_cmpeq_epi8(indices, index);
+
+              currentHist = _mm_load_si128(pHistory);
+
+              out = _mm_or_si128(out, _mm_and_si128(matched, currentHist));
+
+              // Overwrite History With Last History If Previously Not Matched, Or The Current History.
+              history0 = _mm_or_si128(history0, _mm_and_si128(matched, currentHist));
+              _mm_store_si128(pHistory, _mm_or_si128(_mm_andnot_si128(prevMatched, lastHist), _mm_and_si128(prevMatched, currentHist)));
+
+              prevMatched = _mm_or_si128(prevMatched, matched);
+              pHistory++;
+            }
+
+            _mm_store_si128((__m128i *)history, history0);
+            _mm_storeu_si128((__m128i *)pOut, out);
+
+            pOut += sizeof(__m128i);
+          }
+        }
+      }
+
+      PRINT("\n");
+    }
+
+    // RLE.
+    {
+      uint8_t lastByte = *pIn;
+      uint32_t count;
+
+      if (lastByte & 1)
+      {
+        count = *(uint32_t *)pIn >> 1;
+        pIn += sizeof(uint32_t);
+      }
+      else
+      {
+        count = lastByte >> 1;
+        pIn += sizeof(uint8_t);
+      }
+
+      if (count == 0)
+        break;
+
+      const uint8_t symbol = *pIn;
+      pIn += sizeof(uint8_t);
+
+      PRINT("RLE %" PRIu32 " blocks of 0x%02" PRIX8 "\n", count, symbol);
+
+      if (symbol == 0)
+      {
+        const __m128i sym = _mm_load_si128((const __m128i *)history);
+
+        for (; count; count--)
+        {
+          _mm_storeu_si128((__m128i *)pOut, sym);
+          pOut += sizeof(__m128i);
+        }
+      }
+      // TODO: Various Special Implementatinos for different values.
+      else
+      {
+        //for (; count >= symbol; count -= symbol)
+        //{
+        //  for (size_t i = 0; i <= symbol; i++)
+        //  {
+        //    const __m128i sym = _mm_load_si128((const __m128i *)history + symbol - i);
+        //    _mm_storeu_si128(((__m128i *)pOut) + i, sym);
+        //  }
+        //
+        //  pOut += sizeof(__m128i) * symbol;
+        //}
+        //
+        for (; count; count--)
+        {
+          const __m128i sym = _mm_load_si128((const __m128i *)history + symbol);
+          _mm_storeu_si128((__m128i *)pOut, sym);
+          pOut += sizeof(__m128i);
+
+          // Memmove.
+          {
+            __m128i *pDst = (__m128i *)(history + symbol * sizeof(__m128i));
+
+            for (size_t i = symbol; i > 0; i--)
+            {
+              __m128i *pSrc = pDst - 1;
+              _mm_store_si128(pDst, _mm_load_si128(pSrc));
+              pDst = pSrc;
+            }
+          }
+
+          _mm_store_si128((__m128i *)history, sym);
+        }
+      }
+    }
+  }
+
+  // Copy Remaining Bytes.
+  const size_t outSizeRemaining = (pOutStart + expectedOutSize) - pOut;
+
+  for (size_t i = 0; i < outSizeRemaining; i++)
+  {
+    const uint8_t index = *pIn;
+    pIn++;
+
+    *pOut = history[index * 16 + i];
+    pOut++;
+  }
+
+  return (uint32_t)expectedOutSize;
 }
 
 //////////////////////////////////////////////////////////////////////////
