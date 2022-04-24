@@ -354,8 +354,6 @@ int main(int argc, char **pArgv)
   {
     enum
     {
-      Rle8SH,
-      Extreme8MultiMTF128,
       Extreme8,
       Extreme8Single,
       Extreme16,
@@ -364,6 +362,8 @@ int main(int argc, char **pArgv)
       Extreme48,
       Extreme64,
       Extreme128,
+      Rle8SH,
+      Extreme8MultiMTF128,
       MultiMTF128,
       MultiMTF256,
       Normal,
@@ -378,8 +378,6 @@ int main(int argc, char **pArgv)
 
     const char *codecNames[] = 
     {
-      "RLE 8 SH             ",
-      "Extreme 8 MMTF 128   ",
       "Extreme 8 Bit        ",
       "Extreme 8 Bit Single ",
       "Extreme 16 Bit       ",
@@ -388,6 +386,8 @@ int main(int argc, char **pArgv)
       "Extreme 48 Bit       ",
       "Extreme 64 Bit       ",
       "Extreme 128 Bit      ",
+      "RLE 8 SH             ",
+      "Extreme 8 MMTF 128   ",
       "Multi MTF 128 Bit    ",
       "Multi MTF 256 Bit    ",
       "Normal (old)         ",
