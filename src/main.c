@@ -130,7 +130,7 @@ int main(int argc, char **pArgv)
       }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentNormal, sizeof(ArgumentNormal)) == 0)
       {
-        singleSymbol = true;
+        normalMode = true;
         argIndex += 1;
         argsRemaining -= 1;
       }
