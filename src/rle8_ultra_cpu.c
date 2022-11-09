@@ -6,6 +6,13 @@
 #include <x86intrin.h>
 #endif
 
+#define ULTRA_MAX_BLOCK_LENGTH 32
+
+bool rle8_ultra_get_compress_info(IN const uint8_t *pIn, const uint32_t inSize, OUT rle8_compress_info_t *pCompressInfo);
+bool rle8_ultra_get_compress_info_only_max_frequency(IN const uint8_t *pIn, const uint32_t inSize, OUT rle8_compress_info_t *pCompressInfo);
+
+//////////////////////////////////////////////////////////////////////////
+
 uint32_t rle8_ultra_compress_bounds(const uint32_t inSize)
 {
   return inSize + (256 / 8) + 1 + 256 + sizeof(uint32_t) * 2;
@@ -18,7 +25,7 @@ uint32_t rle8_ultra_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT u
 
   rle8_compress_info_t compressInfo;
 
-  if (!rle8_get_compress_info(pIn, inSize, &compressInfo))
+  if (!rle8_ultra_get_compress_info(pIn, inSize, &compressInfo))
     return 0;
 
   size_t index = sizeof(uint32_t); // to make room for the uint32_t length as the first value.
@@ -59,7 +66,7 @@ uint32_t rle8_ultra_compress_only_max_frequency(IN const uint8_t *pIn, const uin
 
   rle8_compress_info_t compressInfo;
 
-  if (!rle8_get_compress_info_only_max_frequency(pIn, inSize, &compressInfo))
+  if (!rle8_ultra_get_compress_info_only_max_frequency(pIn, inSize, &compressInfo))
     return 0;
 
   size_t index = sizeof(uint32_t); // to make room for the uint32_t length as the first value.
@@ -141,7 +148,7 @@ uint32_t rle8_ultra_compress_with_info(IN const uint8_t *pIn, const uint32_t inS
 
     if (pCompressInfo->rle[b])
     {
-      const uint8_t range = 32;
+      const uint8_t range = ULTRA_MAX_BLOCK_LENGTH;
       uint8_t count = 0;
 
       int j = 1;
@@ -168,7 +175,7 @@ uint32_t rle8_ultra_compress_with_info(IN const uint8_t *pIn, const uint32_t inS
 
     if (pCompressInfo->rle[b])
     {
-      const uint8_t range = (uint8_t)min(inSize - i - 1, 32);
+      const uint8_t range = (uint8_t)min(inSize - i - 1, ULTRA_MAX_BLOCK_LENGTH);
 
       uint8_t count = 0;
       size_t j = 1;
@@ -322,7 +329,6 @@ const uint8_t * rle8_ultra_decompress_multi_sse(IN const uint8_t *pIn, IN const 
     _mm_storeu_si128((simd_t *)pOut, data);
 
     ALIGN(SIMD_SIZE) uint8_t dataA[sizeof(simd_t)];
-
     _mm_store_si128((simd_t *)dataA, data);
 
     for (size_t i = 0; i < sizeof(simd_t); i++)
@@ -446,7 +452,7 @@ uint32_t rle8_ultra_decompress_with_info(IN const uint8_t *pIn, IN const uint8_t
   for (size_t i = 0; i < 256; i++)
     rleSymbolCount += rle[i];
 
-  if (rleSymbolCount == 0 || expectedOutSize == (uint32_t)(pEnd - pIn))
+  if (rleSymbolCount == 0 /* || expectedOutSize == (uint32_t)(pEnd - pIn)*/)
   {
     memcpy(pOut, pIn, expectedOutSize);
     return (uint32_t)expectedOutSize;
@@ -523,4 +529,193 @@ uint32_t rle8_ultra_decompress_with_info(IN const uint8_t *pIn, IN const uint8_t
   }
 
   return (uint32_t)expectedOutSize;
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+bool rle8_ultra_get_compress_info(IN const uint8_t *pIn, const uint32_t inSize, OUT rle8_compress_info_t *pCompressInfo)
+{
+  if (pIn == NULL || inSize == 0 || pCompressInfo == NULL)
+    return false;
+
+  uint8_t symbolsByProb[256];
+  bool rle[256];
+
+  uint32_t remaining = 256;
+
+  // Get Probabilities.
+  {
+    uint32_t prob[256];
+    uint32_t pcount[256];
+    bool consumed[256];
+
+    memset(prob, 0, sizeof(prob));
+    memset(pcount, 0, sizeof(pcount));
+    memset(consumed, 0, sizeof(consumed));
+
+    uint8_t lastSymbol = 0;
+    uint32_t count = 0;
+
+    if (pIn[0] != lastSymbol)
+      pcount[lastSymbol] = (uint32_t)-1;
+
+    for (size_t i = 0; i < inSize; i++)
+    {
+      if (pIn[i] == lastSymbol)
+      {
+        count++;
+      }
+      else
+      {
+        prob[lastSymbol] += count;
+        pcount[lastSymbol] += (count / ULTRA_MAX_BLOCK_LENGTH) + 1;
+        count = 1;
+        lastSymbol = pIn[i];
+      }
+    }
+
+    prob[lastSymbol] += count;
+    pcount[lastSymbol]++;
+
+    for (size_t i = 0; i < 256; i++)
+      if (pcount[i] > 0)
+        rle[i] = (prob[i] / pcount[i]) >= 2;
+      else
+        rle[i] = false;
+
+    for (int64_t i = 255; i >= 0; i--)
+    {
+      if (pcount[i] == 0)
+      {
+        consumed[i] = true;
+        remaining--;
+        symbolsByProb[remaining] = (uint8_t)i;
+      }
+    }
+
+    for (size_t index = 0; index < remaining; index++)
+    {
+      uint32_t max = 0;
+      size_t maxIndex = 0;
+
+      for (size_t i = 0; i < 256; i++)
+      {
+        if (!consumed[i] && pcount[i] > max)
+        {
+          max = pcount[i];
+          maxIndex = i;
+        }
+      }
+
+      symbolsByProb[index] = (uint8_t)maxIndex;
+      consumed[maxIndex] = true;
+    }
+  }
+
+  pCompressInfo->symbolCount = (uint8_t)remaining;
+  memcpy(pCompressInfo->symbolsByProb, symbolsByProb, sizeof(symbolsByProb));
+  memcpy(pCompressInfo->rle, rle, sizeof(rle));
+
+  return true;
+}
+
+bool rle8_ultra_get_compress_info_only_max_frequency(IN const uint8_t *pIn, const uint32_t inSize, OUT rle8_compress_info_t *pCompressInfo)
+{
+  if (pIn == NULL || inSize == 0 || pCompressInfo == NULL)
+    return false;
+
+  uint8_t symbolsByProb[256];
+  bool rle[256];
+  memset(rle, 0, sizeof(rle));
+
+  uint32_t remaining = 256;
+
+  // Get Probabilities.
+  {
+    uint32_t prob[256];
+    uint32_t pcount[256];
+    bool consumed[256];
+
+    memset(prob, 0, sizeof(prob));
+    memset(pcount, 0, sizeof(pcount));
+    memset(consumed, 0, sizeof(consumed));
+
+    uint8_t lastSymbol = 0;
+    uint32_t count = 0;
+
+    if (pIn[0] != lastSymbol)
+      pcount[lastSymbol] = (uint32_t)-1;
+
+    for (size_t i = 0; i < inSize; i++)
+    {
+      if (pIn[i] == lastSymbol)
+      {
+        count++;
+      }
+      else
+      {
+        prob[lastSymbol] += count;
+        pcount[lastSymbol] += (count / ULTRA_MAX_BLOCK_LENGTH) + 1;
+        count = 1;
+        lastSymbol = pIn[i];
+      }
+    }
+
+    prob[lastSymbol] += count;
+    pcount[lastSymbol]++;
+
+    size_t maxBytesSaved = 0;
+    size_t maxBytesSavedIndexIndex = 0;
+
+    for (size_t i = 0; i < 256; i++)
+    {
+      if (pcount[i] > 0 && prob[i] / pcount[i] > 2)
+      {
+        const size_t saved = prob[i] - (pcount[i] * 2);
+
+        if (saved > maxBytesSaved)
+        {
+          maxBytesSaved = saved;
+          maxBytesSavedIndexIndex = i;
+        }
+      }
+    }
+
+    if (maxBytesSaved > 0)
+      rle[maxBytesSavedIndexIndex] = true;
+
+    for (int64_t i = 255; i >= 0; i--)
+    {
+      if (pcount[i] == 0)
+      {
+        consumed[i] = true;
+        remaining--;
+        symbolsByProb[remaining] = (uint8_t)i;
+      }
+    }
+
+    for (size_t index = 0; index < remaining; index++)
+    {
+      uint32_t max = 0;
+      size_t maxIndex = 0;
+
+      for (size_t i = 0; i < 256; i++)
+      {
+        if (!consumed[i] && pcount[i] > max)
+        {
+          max = pcount[i];
+          maxIndex = i;
+        }
+      }
+
+      symbolsByProb[index] = (uint8_t)maxIndex;
+      consumed[maxIndex] = true;
+    }
+  }
+
+  pCompressInfo->symbolCount = (uint8_t)remaining;
+  memcpy(pCompressInfo->symbolsByProb, symbolsByProb, sizeof(symbolsByProb));
+  memcpy(pCompressInfo->rle, rle, sizeof(rle));
+
+  return true;
 }
