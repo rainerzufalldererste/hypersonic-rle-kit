@@ -3,9 +3,11 @@
 
 #ifdef _MSC_VER
 #include <intrin.h>
+#define __builtin_popcount __popcnt
 #else
 #include <x86intrin.h>
 #endif
+
 
 //////////////////////////////////////////////////////////////////////////
 

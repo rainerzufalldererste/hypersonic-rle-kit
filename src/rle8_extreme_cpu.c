@@ -1119,7 +1119,7 @@ int64_t rle8_extreme_compress_single_sse2(IN const uint8_t *pIn, const size_t in
       {
         const int32_t cmp = _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_loadu_si128((const __m128i *)(&pIn[i])), symbol128));
 
-        if (cmp == 0 || ((cmp & 0x8000) == 0 && __popcnt((uint32_t)cmp) < RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT))
+        if (cmp == 0 || ((cmp & 0x8000) == 0 && __builtin_popcount((uint32_t)cmp) < RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT))
         {
           i += sizeof(symbol128);
         }
@@ -1297,7 +1297,7 @@ int64_t rle8_extreme_compress_single_avx2(IN const uint8_t *pIn, const size_t in
       {
         const int32_t cmp = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(&pIn[i])), symbol256));
 
-        if (cmp == 0 || ((cmp & 0x80000000) == 0 && __popcnt((uint32_t)cmp) < RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT))
+        if (cmp == 0 || ((cmp & 0x80000000) == 0 && __builtin_popcount((uint32_t)cmp) < RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT))
         {
           i += sizeof(symbol256);
         }

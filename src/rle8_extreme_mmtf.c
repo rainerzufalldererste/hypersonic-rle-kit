@@ -38,7 +38,7 @@ uint32_t rle8_extreme_mmtf256_compress_bounds(const uint32_t inSize)
 // `originalSize` must be a multiple of `sizeof(__m128i)`.
 // `pOut` should point to a block of memory with a minimum size of `originalSize / 4`.
 // returns `pOut` one byte after the last one that was written to.
-inline uint8_t *bitpack_encode2_simple_sse2_unaligned_m128i(const __m128i *pIn, uint8_t *pOut, const size_t originalSize)
+inline static uint8_t *bitpack_encode2_simple_sse2_unaligned_m128i(const __m128i *pIn, uint8_t *pOut, const size_t originalSize)
 {
   __m128i *pOut128 = (__m128i *)pOut;
   int64_t i = 0;
@@ -84,7 +84,7 @@ inline uint8_t *bitpack_encode2_simple_sse2_unaligned_m128i(const __m128i *pIn, 
 // `originalSize` must be a multiple of __m128i.
 // `pOut` must contain at least `originalSize * 3 / 8` bytes.
 // returns `pOut` one byte after the last one that was written to.
-inline uint8_t *bitpack_encode3_simple_sse2_unaligned_m128i(const __m128i *pIn, uint8_t *pOut, const size_t originalSize)
+inline static uint8_t *bitpack_encode3_simple_sse2_unaligned_m128i(const __m128i *pIn, uint8_t *pOut, const size_t originalSize)
 {
   const __m128i patternLow2 = _mm_set1_epi8(3);
 

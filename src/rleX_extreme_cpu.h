@@ -383,7 +383,7 @@ void CONCAT3(rle, TYPE_SIZE, _extreme_decompress_avx)(IN const uint8_t *pInStart
 }
 
 #ifndef _MSC_VER
-__attribute__((target("avx")))
+__attribute__((target("avx2")))
 #endif
 void CONCAT3(rle, TYPE_SIZE, _extreme_decompress_avx2)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
