@@ -17,13 +17,13 @@
 #### [video-frame.raw](https://www.dropbox.com/s/yvsl1lg98c4maq1/video_frame.raw?dl=1) (heavily quantized video frame DCTs, 88,473,600 Bytes)
 | Type | Ratio | Encoding Speed | Decoding Speed | Entropy<br/>Compressible To |
 | -- | --: | --: | --: | --: |
-| rle8 Extreme  8 Bit                   | **19.4 %** | **2,366.1 MiB/s** | **22,990.5 MiB/s** |   9.47 %   |
-| rle8 Extreme  8 Bit Single            |   18.3 %   |   1,265.4 MiB/s   | **19,731.8 MiB/s** |   9.69 %   |
-| rle8 Extreme 16 Bit                   |   20.3 %   |   1,736.8 MiB/s   | **17,659.4 MiB/s** |   9.56 %   |
-| rle8 Extreme 24 Bit                   |   21.5 %   | **1,795.9 MiB/s** | **19,589.7 MiB/s** |   9.45 %   |
-| rle8 Extreme 32 Bit                   |   22.0 %   | **2,207.0 MiB/s** | **17,710.2 MiB/s** |   9.67 %   |
-| rle8 Extreme 48 Bit                   |   23.4 %   | **2,181.7 MiB/s** | **20,051.1 MiB/s** |   9.60 %   |
-| rle8 Extreme 64 Bit                   |   24.5 %   |   2,502.0 MiB/s   | **21,495.2 MiB/s** |   9.61 %   |
+| **rle8 Extreme  8 Bit**               | **19.4 %** | **2,366.1 MiB/s** | **22,990.5 MiB/s** |   9.47 %   |
+| **rle8 Extreme  8 Bit Single**        | **18.3 %** |   1,265.4 MiB/s   | **19,731.8 MiB/s** |   9.69 %   |
+| **rle8 Extreme 16 Bit**               | **20.3 %** |   1,736.8 MiB/s   | **17,659.4 MiB/s** |   9.56 %   |
+| **rle8 Extreme 24 Bit**               | **21.5 %** | **1,795.9 MiB/s** | **19,589.7 MiB/s** |   9.45 %   |
+| **rle8 Extreme 32 Bit**               | **22.0 %** | **2,207.0 MiB/s** | **17,710.2 MiB/s** |   9.67 %   |
+| **rle8 Extreme 48 Bit**               | **23.4 %** | **2,181.7 MiB/s** | **20,051.1 MiB/s** |   9.60 %   |
+| **rle8 Extreme 64 Bit**               | **24.5 %** |   2,502.0 MiB/s   | **21,495.2 MiB/s** |   9.61 %   |
 | rle8 Extreme 128 Bit                  |   27.6 %   |   2,351.1 MiB/s   | **25,200.1 MiB/s** |   9.76 %   |
 | rle8 SH (2 symbol huffman-esque)      | **12.5 %** |     305.6 MiB/s   |    1,225.3 MiB/s   |   9.82 %   |
 | rle8 Extreme 8 MMTF 128 (dynamic-int) |   21.1 %   |   2,250.8 MiB/s   |    2,758.1 MiB/s   |  10.72 %   |
@@ -75,16 +75,16 @@
 #### `enwik9.bwt` (Wikipedia extract [enwiki9](http://mattmahoney.net/dc/textdata.html) encoded using [libdivsufsort](https://github.com/y-256/libdivsufsort), 1,000,000,124 Bytes)
 | Type | Ratio | Encoding Speed | Decoding Speed | Entropy<br/>Compressible To |
 | -- | --: | --: | --: | --: |
-| rle8 Extreme  8 Bit                   |    48.8 %   | **1,250.3 MiB/s** | **14,734.6 MiB/s** |   34.13 %   |
+| **rle8 Extreme  8 Bit**               |    48.8 %   | **1,250.3 MiB/s** | **14,734.6 MiB/s** |   34.13 %   |
 | rle8 Extreme  8 Bit Single            |    88.8 %   | **1,158.9 MiB/s** | **16,231.9 MiB/s** |   60.14 %   |
-| rle8 Extreme 16 Bit                   |    51.4 %   | **1,092.8 MiB/s** | **12,975.6 MiB/s** |   35.70 %   |
-| rle8 Extreme 24 Bit                   |    54.9 %   | **1,186.8 MiB/s** | **15,942.0 MiB/s** |   37.33 %   |
-| rle8 Extreme 32 Bit                   |    55.9 %   | **1,278.5 MiB/s** | **14,234.6 MiB/s** |   38.17 %   |
-| rle8 Extreme 48 Bit                   |    59.2 %   | **1,472.0 MiB/s** | **16,838.5 MiB/s** |   39.77 %   |
+| **rle8 Extreme 16 Bit**               |    51.4 %   | **1,092.8 MiB/s** | **12,975.6 MiB/s** |   35.70 %   |
+| **rle8 Extreme 24 Bit**               |    54.9 %   | **1,186.8 MiB/s** | **15,942.0 MiB/s** |   37.33 %   |
+| **rle8 Extreme 32 Bit**               |    55.9 %   | **1,278.5 MiB/s** | **14,234.6 MiB/s** |   38.17 %   |
+| **rle8 Extreme 48 Bit**               |    59.2 %   | **1,472.0 MiB/s** | **16,838.5 MiB/s** |   39.77 %   |
 | rle8 Extreme 64 Bit                   |    61.7 %   |   1,557.3 MiB/s   | **17,915.4 MiB/s** |   41.02 %   |
 | rle8 Extreme 128 Bit                  |    66.9 %   |   1,531.7 MiB/s   | **19,479.4 MiB/s** |   43.85 %   |
 | rle8 SH (2 symbol huffman-esque)      |    42.5 %   |     279.5 MiB/s   |    1,269.4 MiB/s   |   32.69 %   |
-| rle8 Extreme 8 MMTF 128 (dynamic-int) |    63.5 %   |   1,127.2 MiB/s   |    1,321.6 MiB/s   |   29.84 %   |
+| rle8 Extreme 8 MMTF 128 (dynamic-int) |    63.5 %   |   1,127.2 MiB/s   |    1,321.6 MiB/s   | **29.84 %** |
 | rle8 Normal                           |    66.2 %   |     392.2 MiB/s   |      932.7 MiB/s   |   34.06 %   |
 | rle8 Normal Single                    |    89.7 %   |     568.1 MiB/s   |    7,625.6 MiB/s   |   59.50 %   |
 | rle8 Ultra                            |    64.2 %   |     379.5 MiB/s   |    1,422.7 MiB/s   |   36.11 %   |
