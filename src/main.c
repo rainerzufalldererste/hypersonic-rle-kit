@@ -5,6 +5,8 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#else
+#include <unistd.h>
 #endif
 
 #if defined(_MSC_VER)
@@ -33,7 +35,13 @@ const char ArgumentExtremeMMTF[] = "--extreme-mmtf";
 const char ArgumentMMTF[] = "--mmtf";
 const char ArgumentSH[] = "--sh";
 
-uint64_t GetCurrentTimeNs();
+#ifdef _WIN32
+const char ArgumentCpuCore[] = "--cpu-core";
+#endif
+
+uint64_t GetCurrentTimeTicks();
+uint64_t TicksToNs(const uint64_t ticks);
+void SleepNs(const uint64_t sleepNs);
 bool Validate(const uint8_t *pUncompressedData, const uint8_t *pDecompressedData, const size_t fileSize);
 double GetInformationRatio(const uint8_t *pData, const size_t length);
 
@@ -50,16 +58,13 @@ int main(int argc, char **pArgv)
     printf("\t[% s]\n\t\tif '%s': [% s (128 | 256)] (mtf width)\n\n\t[% s (only transform, no compression)]\n\t\tif '%s': [% s(128 | 256)] (mtf width)\n\n", ArgumentExtremeMMTF, ArgumentExtremeMMTF, ArgumentExtremeSize, ArgumentMMTF, ArgumentMMTF, ArgumentExtremeSize);
     printf("\t[% s (separate bit packed header, doesn't support '%s')]\n\n", ArgumentSH, ArgumentSingle);
     printf("\t[% s (only rle most frequent symbol, only available for 8 bit modes)]\n\n\t[% s <Run Count>]\n", ArgumentSingle, ArgumentRuns);
+
+#ifdef _WIN32
+    printf("\n\t[% s <CPU Core Index>]\n", ArgumentCpuCore);
+#endif
     
     return 1;
   }
-
-#ifdef _WIN32
-  // For more consistent benchmarking results.
-  HANDLE thread = GetCurrentThread();
-  SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
-  SetThreadAffinityMask(thread, 1);
-#endif
 
   const char *outputFileName = NULL;
   int32_t subSections = 0;
@@ -74,6 +79,10 @@ int main(int argc, char **pArgv)
   bool shMode = false;
   bool benchmarkAll = false;
   uint64_t extremeSize = 8;
+
+#ifdef _WIN32
+  size_t cpuCoreIndex = 0;
+#endif
 
   // Parse Parameters.
   if (argc > 2)
@@ -240,6 +249,14 @@ int main(int argc, char **pArgv)
         argIndex += 1;
         argsRemaining -= 1;
       }
+#ifdef _WIN32
+      else if (argsRemaining >= 2 && strncmp(pArgv[argIndex], ArgumentCpuCore, sizeof(ArgumentCpuCore)) == 0)
+      {
+        cpuCoreIndex = strtoull(pArgv[argIndex + 1], NULL, 10);
+        argIndex += 2;
+        argsRemaining -= 2;
+      }
+#endif
       else
       {
         puts("Invalid Parameter.");
@@ -247,6 +264,13 @@ int main(int argc, char **pArgv)
       }
     }
   }
+
+#ifdef _WIN32
+  // For more consistent benchmarking results.
+  HANDLE thread = GetCurrentThread();
+  SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+  SetThreadAffinityMask(thread, (uint64_t)1 << cpuCoreIndex);
+#endif
 
   // Validate Parameters.
   {
@@ -407,6 +431,9 @@ int main(int argc, char **pArgv)
 
     for (; currentCodec < CodecCount; currentCodec++)
     {
+      if (currentCodec > 0)
+        SleepNs(500 * 1000 * 1000);
+
       printf("%s|          | (dry run)", codecNames[currentCodec]);
 
       uint64_t compressionTime = 0;
@@ -414,11 +441,12 @@ int main(int argc, char **pArgv)
       int64_t compressionRuns = -1;
       uint32_t compressedSize = 0;
 
-      const uint64_t compressStartNs = GetCurrentTimeNs();
+      const uint64_t compressStartTicks = GetCurrentTimeTicks();
+      uint64_t lastSleepTicks = compressStartTicks;
 
-      while (compressionRuns < (int64_t)runs || (GetCurrentTimeNs() - compressStartNs) < 1000000000 * (uint64_t)minSeconds)
+      while (compressionRuns < (int64_t)runs || TicksToNs(GetCurrentTimeTicks() - compressStartTicks) < 1000000000 * (uint64_t)minSeconds)
       {
-        uint64_t runTime = GetCurrentTimeNs();
+        uint64_t runTime = GetCurrentTimeTicks();
 
         switch (currentCodec)
         {
@@ -492,7 +520,7 @@ int main(int argc, char **pArgv)
           break;
         }
 
-        runTime = GetCurrentTimeNs() - runTime;
+        runTime = TicksToNs(GetCurrentTimeTicks() - runTime);
 
         if (compressedSize == 0)
           break;
@@ -507,6 +535,14 @@ int main(int argc, char **pArgv)
 
         if (compressionRuns > 0)
           printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
+
+        const uint64_t sinceSleepNs = TicksToNs(GetCurrentTimeTicks() - lastSleepTicks);
+
+        if (sinceSleepNs > 500 * 1000 * 1000) // Prevent thermal saturation.
+        {
+          SleepNs(min(sinceSleepNs / 4, 2 * 1000 * 1000 * 1000));
+          lastSleepTicks = GetCurrentTimeTicks();
+        }
       }
 
       if (compressedSize == 0)
@@ -522,11 +558,13 @@ int main(int argc, char **pArgv)
 
       printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | (dry run)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
 
-      const uint64_t decompressStartNs = GetCurrentTimeNs();
+      SleepNs(500 * 1000 * 1000);
 
-      while (decompressionRuns < (int64_t)runs || (GetCurrentTimeNs() - decompressStartNs) < 1000000000 * (uint64_t)minSeconds)
+      const uint64_t decompressStartTicks = GetCurrentTimeTicks();
+
+      while (decompressionRuns < (int64_t)runs || TicksToNs(GetCurrentTimeTicks() - decompressStartTicks) < 1000000000 * (uint64_t)minSeconds)
       {
-        uint64_t runTime = GetCurrentTimeNs();
+        uint64_t runTime = GetCurrentTimeTicks();
 
         switch (currentCodec)
         {
@@ -591,7 +629,7 @@ int main(int argc, char **pArgv)
           break;
         }
 
-        runTime = GetCurrentTimeNs() - runTime;
+        runTime = TicksToNs(GetCurrentTimeTicks() - runTime);
 
         if (decompressedSize == 0)
           break;
@@ -606,6 +644,14 @@ int main(int argc, char **pArgv)
 
         if (decompressionRuns > 0)
           printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | %7.1f MiB/s (%7.1f MiB/s)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0), (fileSize * (double)decompressionRuns / (double)(1024 * 1024)) / (decompressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestDecompresionTime / 1000000000.0));
+
+        const uint64_t sinceSleepNs = TicksToNs(GetCurrentTimeTicks() - lastSleepTicks);
+
+        if (sinceSleepNs > 500 * 1000 * 1000) // Prevent thermal saturation.
+        {
+          SleepNs(min(sinceSleepNs / 4, 2 * 1000 * 1000 * 1000));
+          lastSleepTicks = GetCurrentTimeTicks();
+        }
       }
 
       if (decompressedSize == 0)
@@ -659,11 +705,11 @@ int main(int argc, char **pArgv)
     uint64_t subTimeMin = UINT64_MAX;
     uint64_t subTimeMax = 0;
 
-    uint64_t time = GetCurrentTimeNs();
+    uint64_t time = GetCurrentTimeTicks();
 
     for (int32_t i = 0; i < runs; i++)
     {
-      uint64_t subTime = GetCurrentTimeNs();
+      uint64_t subTime = GetCurrentTimeTicks();
 
       if (subSections == 0)
       {
@@ -758,7 +804,7 @@ int main(int argc, char **pArgv)
         compressedSize = rle8m_compress((uint32_t)subSections, pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
       }
 
-      subTime = GetCurrentTimeNs() - subTime;
+      subTime = TicksToNs(GetCurrentTimeTicks() - subTime);
 
       if (subTime < subTimeMin)
         subTimeMin = subTime;
@@ -767,7 +813,7 @@ int main(int argc, char **pArgv)
         subTimeMax = subTime;
     }
 
-    time = GetCurrentTimeNs() - time;
+    time = TicksToNs(GetCurrentTimeTicks() - time);
 
     if (0 == compressedSize)
     {
@@ -808,11 +854,11 @@ int main(int argc, char **pArgv)
     subTimeMin = UINT64_MAX;
     subTimeMax = 0;
 
-    time = GetCurrentTimeNs();
+    time = GetCurrentTimeTicks();
 
     for (int32_t i = 0; i < runs; i++)
     {
-      uint64_t subTime = GetCurrentTimeNs();
+      uint64_t subTime = GetCurrentTimeTicks();
 
       if (subSections == 0)
       {
@@ -894,7 +940,7 @@ int main(int argc, char **pArgv)
         decompressedSize = rle8m_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
       }
 
-      subTime = GetCurrentTimeNs() - subTime;
+      subTime = TicksToNs(GetCurrentTimeTicks() - subTime);
 
       if (subTime < subTimeMin)
         subTimeMin = subTime;
@@ -903,7 +949,7 @@ int main(int argc, char **pArgv)
         subTimeMax = subTime;
     }
 
-    time = GetCurrentTimeNs() - time;
+    time = TicksToNs(GetCurrentTimeTicks() - time);
 
     if ((uint32_t)fileSize != decompressedSize)
     {
@@ -933,12 +979,12 @@ int main(int argc, char **pArgv)
         goto epilogue;
       }
 
-      time = GetCurrentTimeNs();
+      time = GetCurrentTimeTicks();
 
       for (int32_t i = 0; i < runs; i++)
         decompressedSize = rle8m_opencl_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
 
-      time = GetCurrentTimeNs() - time;
+      time = TicksToNs(GetCurrentTimeTicks() - time);
 
       rle8m_opencl_destroy();
 
@@ -977,18 +1023,39 @@ epilogue:
 
 //////////////////////////////////////////////////////////////////////////
 
-uint64_t GetCurrentTimeNs()
+uint64_t GetCurrentTimeTicks()
 {
 #ifdef WIN32
-  FILETIME time;
-  GetSystemTimePreciseAsFileTime(&time);
+  LARGE_INTEGER now;
+  QueryPerformanceCounter(&now);
 
-  return ((uint64_t)time.dwLowDateTime | ((uint64_t)time.dwHighDateTime << 32)) * 100;
+  return now.QuadPart;
 #else
   struct timespec time;
   clock_gettime(CLOCK_REALTIME, &time);
 
   return (uint64_t)time.tv_sec * 1000000000 + (uint64_t)time.tv_nsec;
+#endif
+}
+
+uint64_t TicksToNs(const uint64_t ticks)
+{
+#ifdef WIN32
+  LARGE_INTEGER freq;
+  QueryPerformanceFrequency(&freq);
+
+  return (ticks * 1000 * 1000 * 1000) / freq.QuadPart;
+#else
+  return ticks;
+#endif
+}
+
+void SleepNs(const uint64_t sleepNs)
+{
+#ifdef _WIN32
+  Sleep((DWORD)((sleepNs + 500 * 1000) / (1000 * 1000)));
+#else
+  usleep((uint32_t)((sleepNs + 500) / (1000)));
 #endif
 }
 
