@@ -1200,12 +1200,17 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
     size_t rleLengthExact[64];
     size_t emptyLengthByBits[64];
     size_t emptyLengthExact[64];
+    size_t alignedRleLengthByBits[64];
+    size_t alignedRleLengthExact[64];
+    size_t alignedEmptyLengthByBits[64];
+    size_t alignedEmptyLengthExact[64];
     uint8_t lastSymbol[16];
-    size_t recurringSameRleSymbolCount, totalRleCount, totalRleLength, totalEmptyLength, currentLength, currentNonLength;
+    uint8_t alignedLastSymbol[16];
+    size_t recurringRleSymbolCount, totalRleCount, totalRleLength, totalEmptyLength, currentLength, currentNonLength;
+    size_t alignedRecurringRleSymbolCount, alignedTotalRleCount, alignedTotalRleLength, alignedTotalEmptyLength, alignedCurrentLength, alignedCurrentNonLength;
   } rle_data_t;
   
   rle_data_t byRLE[16];
-
 
   memset(hist, 0, sizeof(hist));
   memset(byRLE, 0, sizeof(byRLE));
@@ -1233,9 +1238,9 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
         if (pRLE->currentLength == 0)
         {
           if (memcmp(pRLE->lastSymbol, pData + i, j) == 0)
-            pRLE->recurringSameRleSymbolCount++;
-
-          memcpy(pRLE->lastSymbol, pData + i, j);
+            pRLE->recurringRleSymbolCount++;
+          else
+            memcpy(pRLE->lastSymbol, pData + i, j);
 
           if (pRLE->currentNonLength)
           {
@@ -1286,6 +1291,68 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
 
         pRLE->currentNonLength++;
       }
+
+      if (i % j == 0)
+      {
+        if (match)
+        {
+          if (pRLE->alignedCurrentLength == 0)
+          {
+            if (memcmp(pRLE->alignedLastSymbol, pData + i, j) == 0)
+              pRLE->alignedRecurringRleSymbolCount++;
+            else
+              memcpy(pRLE->alignedLastSymbol, pData + i, j);
+
+            if (pRLE->alignedCurrentNonLength)
+            {
+#ifdef _MSC_VER
+              unsigned long index;
+              _BitScanReverse(&index, pRLE->alignedCurrentNonLength);
+#else
+              const uint32_t index = 63 - __builtin_clz(pRLE->alignedCurrentNonLength);
+#endif
+
+              pRLE->alignedEmptyLengthByBits[index]++;
+
+              if (pRLE->alignedCurrentNonLength <= 64)
+                pRLE->alignedEmptyLengthExact[pRLE->alignedCurrentNonLength - 1]++;
+
+              pRLE->alignedTotalEmptyLength += pRLE->alignedCurrentNonLength;
+
+              pRLE->alignedCurrentNonLength = 0;
+            }
+
+            pRLE->alignedCurrentLength = 1;
+          }
+          else
+          {
+            pRLE->alignedCurrentLength++;
+          }
+        }
+        else
+        {
+          if (pRLE->alignedCurrentLength)
+          {
+#ifdef _MSC_VER
+            unsigned long index;
+            _BitScanReverse(&index, pRLE->alignedCurrentLength);
+#else
+            const uint32_t index = 63 - __builtin_clz(pRLE->alignedCurrentLength);
+#endif
+
+            pRLE->alignedRleLengthByBits[index]++;
+
+            if (pRLE->alignedCurrentLength <= 64)
+              pRLE->alignedRleLengthExact[pRLE->alignedCurrentLength - 1]++;
+
+            pRLE->alignedTotalRleLength += pRLE->alignedCurrentLength;
+            pRLE->alignedTotalRleCount++;
+            pRLE->alignedCurrentLength = 0;
+          }
+
+          pRLE->alignedCurrentNonLength++;
+        }
+      }
     }
 
     if (i > nextPercent)
@@ -1296,7 +1363,7 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
     }
   }
 
-  printf("\rAnalysis Complete. %10" PRIu64 " Bytes Total.\n", size);
+  printf("\rAnalysis Complete. %10" PRIu64 " Bytes Total.\n\n", size);
 
   for (size_t i = 0; i < 16; i++)
   {
@@ -1336,14 +1403,51 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
       pRLE->totalRleCount++;
     }
 
-    printf("RLE Length %2" PRIu64 " (Repeating: %10" PRIu64 " (%10" PRIu64 " KBytes, %10" PRIu64 " KBytes Distinct), Recurring Symbol: %10" PRIu64 " (%4.2f %%))\n=================================================================================================\n", i + 1, pRLE->totalRleCount, (pRLE->totalRleLength + 512) / 1024, (pRLE->totalEmptyLength + 512) / 1024, pRLE->recurringSameRleSymbolCount, pRLE->recurringSameRleSymbolCount * 100.0 / (double)pRLE->totalRleCount);
+    if (pRLE->alignedCurrentNonLength)
+    {
+#ifdef _MSC_VER
+      unsigned long index;
+      _BitScanReverse(&index, pRLE->alignedCurrentNonLength);
+#else
+      const uint32_t index = 63 - __builtin_clz(pRLE->alignedCurrentNonLength);
+#endif
+
+      pRLE->alignedEmptyLengthByBits[index]++;
+
+      if (pRLE->alignedCurrentNonLength <= 64)
+        pRLE->alignedEmptyLengthExact[pRLE->alignedCurrentNonLength - 1]++;
+
+      pRLE->alignedTotalEmptyLength += pRLE->alignedCurrentNonLength;
+    }
+    else if (pRLE->alignedCurrentLength)
+    {
+#ifdef _MSC_VER
+      unsigned long index;
+      _BitScanReverse(&index, pRLE->alignedCurrentLength);
+#else
+      const uint32_t index = 63 - __builtin_clz(pRLE->alignedCurrentLength);
+#endif
+
+      pRLE->alignedRleLengthByBits[index]++;
+
+      if (pRLE->alignedCurrentLength <= 64)
+        pRLE->alignedRleLengthExact[pRLE->alignedCurrentLength - 1]++;
+
+      pRLE->alignedTotalRleLength += pRLE->alignedCurrentLength;
+      pRLE->alignedTotalRleCount++;
+    }
+
+    printf("RLE Length %2" PRIu64 "\n=============\n", i + 1);
+    printf("Non-Aligned: Repeating: %10" PRIu64 " (%15" PRIu64 " Bytes, %5.2f %%, %15" PRIu64 " Bytes Distinct), Recurring Symbol: %10" PRIu64 " (%5.2f %%)\n", pRLE->totalRleCount, pRLE->totalRleLength, pRLE->totalRleLength * 100.0 / size, pRLE->totalEmptyLength, pRLE->recurringRleSymbolCount, pRLE->recurringRleSymbolCount * 100.0 / (double)pRLE->totalRleCount);
+    printf("Aligned:     Repeating: %10" PRIu64 " (%15" PRIu64 " Bytes, %5.2f %%, %15" PRIu64 " Bytes Distinct), Recurring Symbol: %10" PRIu64 " (%5.2f %%)\n", pRLE->alignedTotalRleCount, pRLE->alignedTotalRleLength, pRLE->alignedTotalRleLength * 100.0 / size, pRLE->alignedTotalEmptyLength, pRLE->alignedRecurringRleSymbolCount, pRLE->alignedRecurringRleSymbolCount * 100.0 / (double)pRLE->alignedTotalRleCount);
+    puts("");
     
-    printf("AprxLen | Repeating    | Distinct     || ExactLen  | Repeating    | Distinct\n");
-    printf("--------------------------------------------------------------------------------\n");
-
+    printf("AprxLen | Repeating    | Distinct     || ExactLen  | Repeating    | Distinct     || AprxCnt | AlgnRepeat   | AlgnDistinct || Exact Count | AlgnRepeat   | AlgnDistinct\n");
+    printf("----------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+    
     for (size_t i = 0; i < 64; i++)
-      printf("%2" PRIu64 " Bit: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Bytes: | %12" PRIu64 " | %12" PRIu64 "\n", i + 1, pRLE->rleLengthByBits[i], pRLE->emptyLengthByBits[i], i + 1, pRLE->rleLengthExact[i], pRLE->emptyLengthExact[i]);
-
+      printf("%2" PRIu64 " Bit: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Bytes: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Bit: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Symbols: | %12" PRIu64 " | %12" PRIu64 "\n", i + 1, pRLE->rleLengthByBits[i], pRLE->emptyLengthByBits[i], i + 1, pRLE->rleLengthExact[i], pRLE->emptyLengthExact[i], i + 1, pRLE->alignedRleLengthByBits[i], pRLE->alignedEmptyLengthByBits[i], i + 1, pRLE->alignedRleLengthExact[i], pRLE->alignedEmptyLengthExact[i]);
+    
     puts("\n");
   }
 
