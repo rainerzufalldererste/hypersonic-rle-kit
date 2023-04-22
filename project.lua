@@ -13,6 +13,7 @@ project(ProjectName)
     ignoredefaultlibraries { "msvcrt" }
   filter { "system:linux" }
     cppdialect "C++11"
+    buildoptions { "-mxsave" }
   filter { }
   
   filter { "configurations:Release" }
