@@ -1,7 +1,7 @@
 # rle8
 
 ### What is it?
-- Possibly the fastest run length en/decoder (obviously dependent on the dataset). **Single Core Decompression Speeds > 17.5 GB/s have been observed.**
+- Possibly the fastest run length en/decoder (obviously dependent on the dataset). **Single Core Decompression Speeds > 33 GiB/s have been observed.**
 - Many different variants optimized for various scenarios.
 - Written in C.
 - SIMD Variants for AVX-512F, AVX2, AVX, SSSE3 and SSE2 are available for the decoder. Automatically picked by the en- & decoder based on the extensions available on the current platform.
