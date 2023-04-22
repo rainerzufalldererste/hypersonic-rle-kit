@@ -1255,9 +1255,13 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
 
             pRLE->currentNonLength = 0;
           }
-        }
 
-        pRLE->currentLength++;
+          pRLE->currentLength = j;
+        }
+        else
+        {
+          pRLE->currentLength++;
+        }
       }
       else
       {
@@ -1341,6 +1345,20 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
       printf("%2" PRIu64 " Bit: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Bytes: | %12" PRIu64 " | %12" PRIu64 "\n", i + 1, pRLE->rleLengthByBits[i], pRLE->emptyLengthByBits[i], i + 1, pRLE->rleLengthExact[i], pRLE->emptyLengthExact[i]);
 
     puts("\n");
+  }
+
+  puts("Histogram:");
+  puts("% | 0     | 1     | 2     | 3     | 4     | 5     | 6     | 7     | 8     | 9     | A     | B     | C     | D     | E     | F     |");
+  puts("-----------------------------------------------------------------------------------------------------------------------------------");
+
+  for (uint8_t i = 0; i <= 0xF; i++)
+  {
+    printf("%" PRIX8 " | ", i);
+
+    for (uint8_t j = 0; j <= 0xF; j++)
+      printf("%5.2f | ", hist[(j << 4) | i] * 100.0 / (double)size);
+
+    puts("");
   }
 
   puts("\n\n");
