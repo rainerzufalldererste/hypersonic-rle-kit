@@ -1246,7 +1246,7 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
           {
 #ifdef _MSC_VER
             unsigned long index;
-            _BitScanReverse(&index, pRLE->currentNonLength);
+            _BitScanReverse64(&index, pRLE->currentNonLength);
 #else
             const uint32_t index = 63 - __builtin_clz(pRLE->currentNonLength);
 #endif
@@ -1274,7 +1274,7 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
         {
 #ifdef _MSC_VER
           unsigned long index;
-          _BitScanReverse(&index, pRLE->currentLength);
+          _BitScanReverse64(&index, pRLE->currentLength);
 #else
           const uint32_t index = 63 - __builtin_clz(pRLE->currentLength);
 #endif
@@ -1307,7 +1307,7 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
             {
 #ifdef _MSC_VER
               unsigned long index;
-              _BitScanReverse(&index, pRLE->alignedCurrentNonLength);
+              _BitScanReverse64(&index, pRLE->alignedCurrentNonLength);
 #else
               const uint32_t index = 63 - __builtin_clz(pRLE->alignedCurrentNonLength);
 #endif
@@ -1335,7 +1335,7 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
           {
 #ifdef _MSC_VER
             unsigned long index;
-            _BitScanReverse(&index, pRLE->alignedCurrentLength);
+            _BitScanReverse64(&index, pRLE->alignedCurrentLength);
 #else
             const uint32_t index = 63 - __builtin_clz(pRLE->alignedCurrentLength);
 #endif
@@ -1373,7 +1373,7 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
     {
 #ifdef _MSC_VER
       unsigned long index;
-      _BitScanReverse(&index, pRLE->currentNonLength);
+      _BitScanReverse64(&index, pRLE->currentNonLength);
 #else
       const uint32_t index = 63 - __builtin_clz(pRLE->currentNonLength);
 #endif
@@ -1389,7 +1389,7 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
     {
 #ifdef _MSC_VER
       unsigned long index;
-      _BitScanReverse(&index, pRLE->currentLength);
+      _BitScanReverse64(&index, pRLE->currentLength);
 #else
       const uint32_t index = 63 - __builtin_clz(pRLE->currentLength);
 #endif
@@ -1407,7 +1407,7 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
     {
 #ifdef _MSC_VER
       unsigned long index;
-      _BitScanReverse(&index, pRLE->alignedCurrentNonLength);
+      _BitScanReverse64(&index, pRLE->alignedCurrentNonLength);
 #else
       const uint32_t index = 63 - __builtin_clz(pRLE->alignedCurrentNonLength);
 #endif
@@ -1423,7 +1423,7 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
     {
 #ifdef _MSC_VER
       unsigned long index;
-      _BitScanReverse(&index, pRLE->alignedCurrentLength);
+      _BitScanReverse64(&index, pRLE->alignedCurrentLength);
 #else
       const uint32_t index = 63 - __builtin_clz(pRLE->alignedCurrentLength);
 #endif
@@ -1445,8 +1445,8 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
     printf("AprxLen | Repeating    | Distinct     || ExactLen  | Repeating    | Distinct     || AprxCnt | AlgnRepeat   | AlgnDistinct || Exact Count | AlgnRepeat   | AlgnDistinct\n");
     printf("----------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
     
-    for (size_t i = 0; i < 64; i++)
-      printf("%2" PRIu64 " Bit: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Bytes: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Bit: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Symbols: | %12" PRIu64 " | %12" PRIu64 "\n", i + 1, pRLE->rleLengthByBits[i], pRLE->emptyLengthByBits[i], i + 1, pRLE->rleLengthExact[i], pRLE->emptyLengthExact[i], i + 1, pRLE->alignedRleLengthByBits[i], pRLE->alignedEmptyLengthByBits[i], i + 1, pRLE->alignedRleLengthExact[i], pRLE->alignedEmptyLengthExact[i]);
+    for (size_t j = 0; j < 64; j++)
+      printf("%2" PRIu64 " Bit: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Bytes: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Bit: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Symbols: | %12" PRIu64 " | %12" PRIu64 "\n", j + 1, pRLE->rleLengthByBits[j], pRLE->emptyLengthByBits[j], j + 1, pRLE->rleLengthExact[j], pRLE->emptyLengthExact[j], j + 1, pRLE->alignedRleLengthByBits[j], pRLE->alignedEmptyLengthByBits[j], j + 1, pRLE->alignedRleLengthExact[j], pRLE->alignedEmptyLengthExact[j]);
     
     puts("\n");
   }
