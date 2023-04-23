@@ -47,6 +47,20 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
     }
     else
     {
+#ifdef UNBOUND
+      uint8_t symBytes[sizeof(symbol)];
+      memcpy(symBytes, &symbol, sizeof(symbol));
+
+      for (size_t j = 0; j < (sizeof(symbol) - 1); j++) // can't reach the absolute max.
+      {
+        if (pIn[i] != symBytes[j])
+          break;
+
+        count++;
+        i++;
+      }
+#endif
+
       {
         const int64_t range = i - lastRLE - count + 1;
 
