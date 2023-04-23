@@ -401,6 +401,9 @@ int main(int argc, char **pArgv)
       Extreme48,
       Extreme64,
       Extreme128,
+      Extreme16Unbound,
+      Extreme32Unbound,
+      Extreme64Unbound,
       Rle8SH,
       Extreme8MultiMTF128,
       MultiMTF128,
@@ -417,23 +420,26 @@ int main(int argc, char **pArgv)
 
     const char *codecNames[] = 
     {
-      "Extreme 8 Bit        ",
-      "Extreme 8 Bit Single ",
-      "Extreme 16 Bit       ",
-      "Extreme 24 Bit       ",
-      "Extreme 32 Bit       ",
-      "Extreme 48 Bit       ",
-      "Extreme 64 Bit       ",
-      "Extreme 128 Bit      ",
-      "RLE 8 SH             ",
-      "Extreme 8 MMTF 128   ",
-      "Multi MTF 128 Bit    ",
-      "Multi MTF 256 Bit    ",
-      "Normal (old)         ",
-      "Normal Single (old)  ",
-      "Ultra (old)          ",
-      "Ultra Single (old)   ",
-      "memcpy               ",
+      "Extreme 8 Bit          ",
+      "Extreme 8 Bit Single   ",
+      "Extreme 16 Bit         ",
+      "Extreme 24 Bit         ",
+      "Extreme 32 Bit         ",
+      "Extreme 48 Bit         ",
+      "Extreme 64 Bit         ",
+      "Extreme 128 Bit        ",
+      "Extreme Unbound 16 Bit ",
+      "Extreme Unbound 32 Bit ",
+      "Extreme Unbound 64 Bit ",
+      "RLE 8 SH               ",
+      "Extreme 8 MMTF 128     ",
+      "Multi MTF 128 Bit      ",
+      "Multi MTF 256 Bit      ",
+      "Normal (old)           ",
+      "Normal Single (old)    ",
+      "Ultra (old)            ",
+      "Ultra Single (old)     ",
+      "memcpy                 ",
     };
 
     _STATIC_ASSERT(ARRAYSIZE(codecNames) == CodecCount);
@@ -441,8 +447,8 @@ int main(int argc, char **pArgv)
     uint32_t fileSize32 = (uint32_t)fileSize;
 
     printf("\nBenchmarking File '%s' (%" PRIu64 " Bytes)\n\n"
-      "Codec                  Ratio      Encoder Throughput (Maximum)    Decoder Throughput (Maximum)    R*H/log2(|S|)\n"
-      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n", pArgv[1], fileSize);
+      "Codec                    Ratio      Encoder Throughput (Maximum)    Decoder Throughput (Maximum)    R*H/log2(|S|)\n"
+      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n", pArgv[1], fileSize);
 
     for (; currentCodec < CodecCount; currentCodec++)
     {
@@ -495,6 +501,18 @@ int main(int argc, char **pArgv)
     
         case Extreme128:
           compressedSize = rle128_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme16Unbound:
+          compressedSize = rle16_extreme_unbound_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme32Unbound:
+          compressedSize = rle32_extreme_unbound_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme64Unbound:
+          compressedSize = rle64_extreme_unbound_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme8MultiMTF128:
@@ -611,6 +629,18 @@ int main(int argc, char **pArgv)
      
         case Extreme128:
           decompressedSize = rle128_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Unbound:
+          decompressedSize = rle16_extreme_unbound_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Unbound:
+          decompressedSize = rle32_extreme_unbound_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Unbound:
+          decompressedSize = rle64_extreme_unbound_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Extreme8MultiMTF128:
