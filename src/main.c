@@ -34,6 +34,7 @@ const char ArgumentMinimumTime[] = "--min-time";
 const char ArgumentExtremeMMTF[] = "--extreme-mmtf";
 const char ArgumentMMTF[] = "--mmtf";
 const char ArgumentSH[] = "--sh";
+const char ArgumentAnalyze[] = "--analyze";
 
 #ifdef _WIN32
 const char ArgumentCpuCore[] = "--cpu-core";
@@ -44,6 +45,7 @@ uint64_t TicksToNs(const uint64_t ticks);
 void SleepNs(const uint64_t sleepNs);
 bool Validate(const uint8_t *pUncompressedData, const uint8_t *pDecompressedData, const size_t fileSize);
 double GetInformationRatio(const uint8_t *pData, const size_t length);
+void AnalyzeData(const uint8_t *pData, const size_t size);
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -52,15 +54,16 @@ int main(int argc, char **pArgv)
   if (argc <= 1)
   {
     printf("Usage: rle8 <InputFileName>\n\n");
-    printf("\t[% s <Run Count>]\n\t[% s <Minimum Benchmark Time in Seconds>]\n\n\t", ArgumentRuns, ArgumentMinimumTime);
+    printf("\t[%s <Run Count>]\n\t[%s <Minimum Benchmark Time in Seconds>]\n\n\t", ArgumentRuns, ArgumentMinimumTime);
     printf("OR:\n\n");
-    printf("\t[% s <Output File Name>]\n\n\t[% s]\n\t\tif '%s': [% s (8 | 16 | 24 | 32 | 48 | 64 | 128)] (symbol size)\n\n\t[% s (original rle8 codec)]\n\t\tif '%s': [% s <Sub Section Count>] \n\n\t[% s ('%s' optimized for fewer repititions)]\n\n", ArgumentTo, ArgumentExtreme, ArgumentExtreme, ArgumentExtremeSize, ArgumentNormal, ArgumentNormal, ArgumentSubSections, ArgumentUltra, ArgumentNormal);
-    printf("\t[% s]\n\t\tif '%s': [% s (128 | 256)] (mtf width)\n\n\t[% s (only transform, no compression)]\n\t\tif '%s': [% s(128 | 256)] (mtf width)\n\n", ArgumentExtremeMMTF, ArgumentExtremeMMTF, ArgumentExtremeSize, ArgumentMMTF, ArgumentMMTF, ArgumentExtremeSize);
-    printf("\t[% s (separate bit packed header, doesn't support '%s')]\n\n", ArgumentSH, ArgumentSingle);
-    printf("\t[% s (only rle most frequent symbol, only available for 8 bit modes)]\n\n\t[% s <Run Count>]\n", ArgumentSingle, ArgumentRuns);
+    printf("\t[%s <Output File Name>]\n\n\t[%s]\n\t\tif '%s': [%s (8 | 16 | 24 | 32 | 48 | 64 | 128)] (symbol size)\n\n\t[%s (original rle8 codec)]\n\t\tif '%s': [%s <Sub Section Count>] \n\n\t[%s ('%s' optimized for fewer repititions)]\n\n", ArgumentTo, ArgumentExtreme, ArgumentExtreme, ArgumentExtremeSize, ArgumentNormal, ArgumentNormal, ArgumentSubSections, ArgumentUltra, ArgumentNormal);
+    printf("\t[%s]\n\t\tif '%s': [%s (128 | 256)] (mtf width)\n\n\t[%s (only transform, no compression)]\n\t\tif '%s': [%s(128 | 256)] (mtf width)\n\n", ArgumentExtremeMMTF, ArgumentExtremeMMTF, ArgumentExtremeSize, ArgumentMMTF, ArgumentMMTF, ArgumentExtremeSize);
+    printf("\t[%s (separate bit packed header, doesn't support '%s')]\n\n", ArgumentSH, ArgumentSingle);
+    printf("\t[%s (only rle most frequent symbol, only available for 8 bit modes)]\n\n\t[%s <Run Count>]\n", ArgumentSingle, ArgumentRuns);
+    printf("\t[%s (analyze file contents for compressability)]n", ArgumentAnalyze);
 
 #ifdef _WIN32
-    printf("\n\t[% s <CPU Core Index>]\n", ArgumentCpuCore);
+    printf("\n\t[%s <CPU Core Index>]\n", ArgumentCpuCore);
 #endif
     
     return 1;
@@ -78,6 +81,7 @@ int main(int argc, char **pArgv)
   bool extremeMmtfMode = false;
   bool shMode = false;
   bool benchmarkAll = false;
+  bool analyzeFileContents = false;
   uint64_t extremeSize = 8;
 
 #ifdef _WIN32
@@ -249,6 +253,12 @@ int main(int argc, char **pArgv)
         argIndex += 1;
         argsRemaining -= 1;
       }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentAnalyze, sizeof(ArgumentAnalyze)) == 0)
+      {
+        analyzeFileContents = true;
+        argIndex += 1;
+        argsRemaining -= 1;
+      }
 #ifdef _WIN32
       else if (argsRemaining >= 2 && strncmp(pArgv[argIndex], ArgumentCpuCore, sizeof(ArgumentCpuCore)) == 0)
       {
@@ -371,6 +381,11 @@ int main(int argc, char **pArgv)
     puts("Failed to read file.");
     goto epilogue;
   }
+
+  //////////////////////////////////////////////////////////////////////////
+  
+  if (analyzeFileContents)
+    AnalyzeData(pUncompressedData, fileSize);
 
   //////////////////////////////////////////////////////////////////////////
 
@@ -514,6 +529,7 @@ int main(int argc, char **pArgv)
           compressedSize = rle8_ultra_compress_only_max_frequency(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        default:
         case MemCopy:
           compressedSize = fileSize32;
           memcpy(pCompressedData, pUncompressedData, fileSize);
@@ -623,6 +639,7 @@ int main(int argc, char **pArgv)
           decompressedSize = rle8_ultra_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
+        default:
         case MemCopy:
           decompressedSize = fileSize32;
           memcpy(pDecompressedData, pCompressedData, fileSize);
@@ -1153,14 +1170,14 @@ double GetInformationRatio(const uint8_t *pData, const size_t length)
   uint64_t hist[256];
   memset(hist, 0, sizeof(hist));
 
-  for (int i = 0; i < length; i++)
+  for (size_t i = 0; i < length; i++)
     hist[pData[i]]++;
 
   const double lengthD = (double)length;
   double ret = 0;
   uint64_t histSymbolCount = 0;
 
-  for (int i = 0; i < 256; i++)
+  for (size_t i = 0; i < 256; i++)
   {
     if (hist[i] != 0)
     {
@@ -1171,4 +1188,282 @@ double GetInformationRatio(const uint8_t *pData, const size_t length)
   }
 
   return ret / log2((double)histSymbolCount);
+}
+
+void AnalyzeData(const uint8_t *pData, const size_t size)
+{
+  size_t hist[256];
+
+  typedef struct
+  {
+    size_t rleLengthByBits[64];
+    size_t rleLengthExact[64];
+    size_t emptyLengthByBits[64];
+    size_t emptyLengthExact[64];
+    size_t alignedRleLengthByBits[64];
+    size_t alignedRleLengthExact[64];
+    size_t alignedEmptyLengthByBits[64];
+    size_t alignedEmptyLengthExact[64];
+    uint8_t lastSymbol[16];
+    uint8_t alignedLastSymbol[16];
+    size_t recurringRleSymbolCount, totalRleCount, totalRleLength, totalEmptyLength, currentLength, currentNonLength;
+    size_t alignedRecurringRleSymbolCount, alignedTotalRleCount, alignedTotalRleLength, alignedTotalEmptyLength, alignedCurrentLength, alignedCurrentNonLength;
+  } rle_data_t;
+  
+  rle_data_t byRLE[16];
+
+  memset(hist, 0, sizeof(hist));
+  memset(byRLE, 0, sizeof(byRLE));
+
+  printf("\rAnalyzing Data...");
+
+  const size_t percentStep = size / 100;
+  size_t nextPercent = percentStep;
+  
+  for (size_t i = 0; i < size; i++)
+  {
+    hist[pData[i]]++;
+    
+    for (size_t j = 1; j <= 16; j++)
+    {
+      if (i < j)
+        continue;
+
+      const bool match = memcmp(pData + i, pData + i - j, j) == 0;
+
+      rle_data_t *pRLE = &byRLE[j - 1];
+
+      if (match)
+      {
+        if (pRLE->currentLength == 0)
+        {
+          if (memcmp(pRLE->lastSymbol, pData + i, j) == 0)
+            pRLE->recurringRleSymbolCount++;
+          else
+            memcpy(pRLE->lastSymbol, pData + i, j);
+
+          if (pRLE->currentNonLength)
+          {
+#ifdef _MSC_VER
+            unsigned long index;
+            _BitScanReverse64(&index, pRLE->currentNonLength);
+#else
+            const uint32_t index = 63 - __builtin_clz(pRLE->currentNonLength);
+#endif
+
+            pRLE->emptyLengthByBits[index]++;
+
+            if (pRLE->currentNonLength <= 64)
+              pRLE->emptyLengthExact[pRLE->currentNonLength - 1]++;
+
+            pRLE->totalEmptyLength += pRLE->currentNonLength;
+
+            pRLE->currentNonLength = 0;
+          }
+
+          pRLE->currentLength = j;
+        }
+        else
+        {
+          pRLE->currentLength++;
+        }
+      }
+      else
+      {
+        if (pRLE->currentLength)
+        {
+#ifdef _MSC_VER
+          unsigned long index;
+          _BitScanReverse64(&index, pRLE->currentLength);
+#else
+          const uint32_t index = 63 - __builtin_clz(pRLE->currentLength);
+#endif
+
+          pRLE->rleLengthByBits[index]++;
+
+          if (pRLE->currentLength <= 64)
+            pRLE->rleLengthExact[pRLE->currentLength - 1]++;
+
+          pRLE->totalRleLength += pRLE->currentLength;
+          pRLE->totalRleCount++;
+          pRLE->currentLength = 0;
+        }
+
+        pRLE->currentNonLength++;
+      }
+
+      if (i % j == 0)
+      {
+        if (match)
+        {
+          if (pRLE->alignedCurrentLength == 0)
+          {
+            if (memcmp(pRLE->alignedLastSymbol, pData + i, j) == 0)
+              pRLE->alignedRecurringRleSymbolCount++;
+            else
+              memcpy(pRLE->alignedLastSymbol, pData + i, j);
+
+            if (pRLE->alignedCurrentNonLength)
+            {
+#ifdef _MSC_VER
+              unsigned long index;
+              _BitScanReverse64(&index, pRLE->alignedCurrentNonLength);
+#else
+              const uint32_t index = 63 - __builtin_clz(pRLE->alignedCurrentNonLength);
+#endif
+
+              pRLE->alignedEmptyLengthByBits[index]++;
+
+              if (pRLE->alignedCurrentNonLength <= 64)
+                pRLE->alignedEmptyLengthExact[pRLE->alignedCurrentNonLength - 1]++;
+
+              pRLE->alignedTotalEmptyLength += pRLE->alignedCurrentNonLength;
+
+              pRLE->alignedCurrentNonLength = 0;
+            }
+
+            pRLE->alignedCurrentLength = 1;
+          }
+          else
+          {
+            pRLE->alignedCurrentLength++;
+          }
+        }
+        else
+        {
+          if (pRLE->alignedCurrentLength)
+          {
+#ifdef _MSC_VER
+            unsigned long index;
+            _BitScanReverse64(&index, pRLE->alignedCurrentLength);
+#else
+            const uint32_t index = 63 - __builtin_clz(pRLE->alignedCurrentLength);
+#endif
+
+            pRLE->alignedRleLengthByBits[index]++;
+
+            if (pRLE->alignedCurrentLength <= 64)
+              pRLE->alignedRleLengthExact[pRLE->alignedCurrentLength - 1]++;
+
+            pRLE->alignedTotalRleLength += pRLE->alignedCurrentLength;
+            pRLE->alignedTotalRleCount++;
+            pRLE->alignedCurrentLength = 0;
+          }
+
+          pRLE->alignedCurrentNonLength++;
+        }
+      }
+    }
+
+    if (i > nextPercent)
+    {
+      nextPercent += percentStep;
+
+      printf("\rAnalyzing Data... (%" PRIu64 " %%)", i * 100 / size);
+    }
+  }
+
+  printf("\rAnalysis Complete. %10" PRIu64 " Bytes Total.\n\n", size);
+
+  for (size_t i = 0; i < 16; i++)
+  {
+    rle_data_t *pRLE = &byRLE[i];
+
+    if (pRLE->currentNonLength)
+    {
+#ifdef _MSC_VER
+      unsigned long index;
+      _BitScanReverse64(&index, pRLE->currentNonLength);
+#else
+      const uint32_t index = 63 - __builtin_clz(pRLE->currentNonLength);
+#endif
+
+      pRLE->emptyLengthByBits[index]++;
+
+      if (pRLE->currentNonLength <= 64)
+        pRLE->emptyLengthExact[pRLE->currentNonLength - 1]++;
+
+      pRLE->totalEmptyLength += pRLE->currentNonLength;
+    }
+    else if (pRLE->currentLength)
+    {
+#ifdef _MSC_VER
+      unsigned long index;
+      _BitScanReverse64(&index, pRLE->currentLength);
+#else
+      const uint32_t index = 63 - __builtin_clz(pRLE->currentLength);
+#endif
+
+      pRLE->rleLengthByBits[index]++;
+
+      if (pRLE->currentLength <= 64)
+        pRLE->rleLengthExact[pRLE->currentLength - 1]++;
+
+      pRLE->totalRleLength += pRLE->currentLength;
+      pRLE->totalRleCount++;
+    }
+
+    if (pRLE->alignedCurrentNonLength)
+    {
+#ifdef _MSC_VER
+      unsigned long index;
+      _BitScanReverse64(&index, pRLE->alignedCurrentNonLength);
+#else
+      const uint32_t index = 63 - __builtin_clz(pRLE->alignedCurrentNonLength);
+#endif
+
+      pRLE->alignedEmptyLengthByBits[index]++;
+
+      if (pRLE->alignedCurrentNonLength <= 64)
+        pRLE->alignedEmptyLengthExact[pRLE->alignedCurrentNonLength - 1]++;
+
+      pRLE->alignedTotalEmptyLength += pRLE->alignedCurrentNonLength;
+    }
+    else if (pRLE->alignedCurrentLength)
+    {
+#ifdef _MSC_VER
+      unsigned long index;
+      _BitScanReverse64(&index, pRLE->alignedCurrentLength);
+#else
+      const uint32_t index = 63 - __builtin_clz(pRLE->alignedCurrentLength);
+#endif
+
+      pRLE->alignedRleLengthByBits[index]++;
+
+      if (pRLE->alignedCurrentLength <= 64)
+        pRLE->alignedRleLengthExact[pRLE->alignedCurrentLength - 1]++;
+
+      pRLE->alignedTotalRleLength += pRLE->alignedCurrentLength;
+      pRLE->alignedTotalRleCount++;
+    }
+
+    printf("RLE Length %2" PRIu64 "\n=============\n", i + 1);
+    printf("Non-Aligned: Repeating: %10" PRIu64 " (%15" PRIu64 " Bytes, %5.2f %%, %15" PRIu64 " Bytes Distinct), Recurring Symbol: %10" PRIu64 " (%5.2f %%)\n", pRLE->totalRleCount, pRLE->totalRleLength, pRLE->totalRleLength * 100.0 / size, pRLE->totalEmptyLength, pRLE->recurringRleSymbolCount, pRLE->recurringRleSymbolCount * 100.0 / (double)pRLE->totalRleCount);
+    printf("Aligned:     Repeating: %10" PRIu64 " (%15" PRIu64 " Bytes, %5.2f %%, %15" PRIu64 " Bytes Distinct), Recurring Symbol: %10" PRIu64 " (%5.2f %%)\n", pRLE->alignedTotalRleCount, pRLE->alignedTotalRleLength, pRLE->alignedTotalRleLength * 100.0 / size, pRLE->alignedTotalEmptyLength, pRLE->alignedRecurringRleSymbolCount, pRLE->alignedRecurringRleSymbolCount * 100.0 / (double)pRLE->alignedTotalRleCount);
+    puts("");
+    
+    printf("AprxLen | Repeating    | Distinct     || ExactLen  | Repeating    | Distinct     || AprxCnt | AlgnRepeat   | AlgnDistinct || Exact Count | AlgnRepeat   | AlgnDistinct\n");
+    printf("----------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+    
+    for (size_t j = 0; j < 64; j++)
+      printf("%2" PRIu64 " Bit: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Bytes: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Bit: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Symbols: | %12" PRIu64 " | %12" PRIu64 "\n", j + 1, pRLE->rleLengthByBits[j], pRLE->emptyLengthByBits[j], j + 1, pRLE->rleLengthExact[j], pRLE->emptyLengthExact[j], j + 1, pRLE->alignedRleLengthByBits[j], pRLE->alignedEmptyLengthByBits[j], j + 1, pRLE->alignedRleLengthExact[j], pRLE->alignedEmptyLengthExact[j]);
+    
+    puts("\n");
+  }
+
+  puts("Histogram:");
+  puts("% | 0     | 1     | 2     | 3     | 4     | 5     | 6     | 7     | 8     | 9     | A     | B     | C     | D     | E     | F     |");
+  puts("-----------------------------------------------------------------------------------------------------------------------------------");
+
+  for (uint8_t i = 0; i <= 0xF; i++)
+  {
+    printf("%" PRIX8 " | ", i);
+
+    for (uint8_t j = 0; j <= 0xF; j++)
+      printf("%5.2f | ", hist[(j << 4) | i] * 100.0 / (double)size);
+
+    puts("");
+  }
+
+  puts("\n\n");
 }
