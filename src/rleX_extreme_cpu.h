@@ -38,29 +38,75 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
   int64_t count = 0;
   symbol_t symbol = ~(*((symbol_t *)(pIn)));
 
-  for (; i < inSize; i++)
+  while (i < inSize)
   {
-    if (count && *(symbol_t *)&pIn[i] == symbol && i + sizeof(symbol_t) <= inSize)
+    if (count)
     {
-      count += sizeof(symbol_t);
-      i += sizeof(symbol_t) - 1;
-    }
-    else
-    {
-#ifdef UNBOUND
-      uint8_t symBytes[sizeof(symbol)];
-      memcpy(symBytes, &symbol, sizeof(symbol));
-
-      for (size_t j = 0; j < (sizeof(symbol) - 1); j++) // can't reach the absolute max.
+      if (i + sizeof(symbol_t) <= inSize)
       {
-        if (pIn[i] != symBytes[j])
-          break;
+        const symbol_t next = *(symbol_t *)&pIn[i];
 
-        count++;
-        i++;
-      }
+        if (next == symbol)
+        {
+          count += sizeof(symbol_t);
+          i += sizeof(symbol_t);
+          continue;
+        }
+        else
+        {
+#ifdef UNBOUND
+#if TYPE_SIZE == 16
+          uint8_t symBytes[sizeof(symbol)];
+          memcpy(symBytes, &symbol, sizeof(symbol));
+
+          if (symBytes[0] == pIn[i])
+          {
+            count++;
+            i++;
+          }
+#elif TYPE_SIZE == 32
+          const symbol_t diff = symbol ^ *(symbol_t *)&pIn[i];
+
+#ifdef _MSC_VER
+          unsigned long offset;
+          _BitScanForward(&offset, diff);
+#else
+          const uint32_t offset = __builtin_ctz(diff);
 #endif
 
+          i += (offset / 8);
+          count += (offset / 8);
+#elif TYPE_SIZE == 64
+          const symbol_t diff = symbol ^ *(symbol_t *)&pIn[i];
+
+#ifdef _MSC_VER
+          unsigned long offset;
+          _BitScanForward64(&offset, diff);
+#else
+          const uint32_t offset = __builtin_ctzl(diff);
+#endif
+
+          i += (offset / 8);
+          count += (offset / 8);
+#else // backup
+          uint8_t symBytes[sizeof(symbol)];
+          memcpy(symBytes, &symbol, sizeof(symbol));
+
+          for (size_t j = 0; j < (sizeof(symbol) - 1); j++) // can't reach the absolute max.
+          {
+            if (pIn[i] != symBytes[j])
+              break;
+
+            count++;
+            i++;
+          }
+#endif
+#endif
+        }
+      }
+    }
+
+    {
       {
         const int64_t range = i - lastRLE - count + 1;
 
@@ -141,11 +187,12 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
       if (i + sizeof(symbol_t) <= inSize && ((symbol_t *)(&pIn[i]))[1] == symbol)
       {
         count = sizeof(symbol_t) * 2;
-        i += sizeof(symbol_t) * 2 - 1;
+        i += sizeof(symbol_t) * 2;
       }
       else
       {
         count = 0;
+        i++;
       }
     }
   }

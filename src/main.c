@@ -30,6 +30,7 @@ const char ArgumentSingle[] = "--single";
 const char ArgumentUltra[] = "--ultra";
 const char ArgumentExtreme[] = "--extreme";
 const char ArgumentExtremeSize[] = "--x-size";
+const char ArgumentExtremeUnbound[] = "--unbound";
 const char ArgumentMinimumTime[] = "--min-time";
 const char ArgumentExtremeMMTF[] = "--extreme-mmtf";
 const char ArgumentMMTF[] = "--mmtf";
@@ -56,8 +57,12 @@ int main(int argc, char **pArgv)
     printf("Usage: rle8 <InputFileName>\n\n");
     printf("\t[%s <Run Count>]\n\t[%s <Minimum Benchmark Time in Seconds>]\n\n\t", ArgumentRuns, ArgumentMinimumTime);
     printf("OR:\n\n");
-    printf("\t[%s <Output File Name>]\n\n\t[%s]\n\t\tif '%s': [%s (8 | 16 | 24 | 32 | 48 | 64 | 128)] (symbol size)\n\n\t[%s (original rle8 codec)]\n\t\tif '%s': [%s <Sub Section Count>] \n\n\t[%s ('%s' optimized for fewer repititions)]\n\n", ArgumentTo, ArgumentExtreme, ArgumentExtreme, ArgumentExtremeSize, ArgumentNormal, ArgumentNormal, ArgumentSubSections, ArgumentUltra, ArgumentNormal);
-    printf("\t[%s]\n\t\tif '%s': [%s (128 | 256)] (mtf width)\n\n\t[%s (only transform, no compression)]\n\t\tif '%s': [%s(128 | 256)] (mtf width)\n\n", ArgumentExtremeMMTF, ArgumentExtremeMMTF, ArgumentExtremeSize, ArgumentMMTF, ArgumentMMTF, ArgumentExtremeSize);
+    printf("\t[%s <Output File Name>]\n\n", ArgumentTo);
+    printf("\t[%s]\n\t\tif '%s': [%s (8 | 16 | 24 | 32 | 48 | 64 | 128)] (symbol size)\n\t\tif '%s': [%s] (include unaligned repeats, capacity vs. accuracy tradeoff)\n\n", ArgumentExtreme, ArgumentExtreme, ArgumentExtremeSize, ArgumentExtreme, ArgumentExtremeUnbound);
+    printf("\t[%s (original rle8 codec)]\n\t\tif '%s': [%s <Sub Section Count>] \n\n", ArgumentNormal, ArgumentNormal, ArgumentSubSections);
+    printf("\t[%s ('%s' optimized for fewer repititions)]\n\n", ArgumentUltra, ArgumentNormal);
+    printf("\t[%s]\n\t\tif '%s': [%s (128 | 256)] (mtf width)\n\n", ArgumentExtremeMMTF, ArgumentExtremeMMTF, ArgumentExtremeSize);
+    printf("\t[%s (only transform, no compression)]\n\t\tif '%s': [%s(128 | 256)] (mtf width)\n\n", ArgumentMMTF, ArgumentMMTF, ArgumentExtremeSize);
     printf("\t[%s (separate bit packed header, doesn't support '%s')]\n\n", ArgumentSH, ArgumentSingle);
     printf("\t[%s (only rle most frequent symbol, only available for 8 bit modes)]\n\n\t[%s <Run Count>]\n", ArgumentSingle, ArgumentRuns);
     printf("\t[%s (analyze file contents for compressability)]n", ArgumentAnalyze);
@@ -82,6 +87,7 @@ int main(int argc, char **pArgv)
   bool shMode = false;
   bool benchmarkAll = false;
   bool analyzeFileContents = false;
+  bool unbound = false;
   uint64_t extremeSize = 8;
 
 #ifdef _WIN32
@@ -232,6 +238,24 @@ int main(int argc, char **pArgv)
 
         argIndex += 2;
         argsRemaining -= 2;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentExtremeUnbound, sizeof(ArgumentExtremeUnbound)) == 0)
+      {
+        if (!extremeMode)
+        {
+          printf("Invalid Parameter. Expected '%s' with '%s'.", ArgumentExtreme, ArgumentExtremeUnbound);
+          return 1;
+        }
+
+        if (extremeSize != 16 && extremeSize != 32 && extremeSize != 64)
+        {
+          printf("Not Supported. Expected '%s %s [16 / 32/ 64]' with '%s'.", ArgumentExtreme, ArgumentExtremeSize, ArgumentExtremeUnbound);
+          return 1;
+        }
+
+        unbound = true;
+        argIndex += 1;
+        argsRemaining -= 1;
       }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentMMTF, sizeof(ArgumentMMTF)) == 0)
       {
@@ -738,6 +762,9 @@ int main(int argc, char **pArgv)
       if ((!extremeMode || extremeSize == 8) && singleSymbol)
         fputs("Single-Symbol-Mode ", stdout);
 
+      if (extremeMode && unbound)
+        fputs("Unbound ", stdout);
+
       if (extremeMode)
         printf("with %" PRIu64 " Bit Symbols ", extremeSize);
       else if (mmtfMode || extremeMmtfMode)
@@ -782,36 +809,57 @@ int main(int argc, char **pArgv)
           }
           else
           {
-            switch (extremeSize)
+            if (!unbound)
             {
-            case 8:
-            default:
-              compressedSize = rle8_extreme_multi_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-              break;
+              switch (extremeSize)
+              {
+              case 8:
+              default:
+                compressedSize = rle8_extreme_multi_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
 
-            case 16:
-              compressedSize = rle16_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-              break;
+              case 16:
+                compressedSize = rle16_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
 
-            case 24:
-              compressedSize = rle24_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-              break;
+              case 24:
+                compressedSize = rle24_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
 
-            case 32:
-              compressedSize = rle32_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-              break;
+              case 32:
+                compressedSize = rle32_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
 
-            case 48:
-              compressedSize = rle48_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-              break;
+              case 48:
+                compressedSize = rle48_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
 
-            case 64:
-              compressedSize = rle64_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-              break;
+              case 64:
+                compressedSize = rle64_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
 
-            case 128:
-              compressedSize = rle128_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-              break;
+              case 128:
+                compressedSize = rle128_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+              }
+            }
+            else
+            {
+              switch (extremeSize)
+              {
+              default:
+              case 16:
+                compressedSize = rle16_extreme_unbound_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 32:
+                compressedSize = rle32_extreme_unbound_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 64:
+                compressedSize = rle64_extreme_unbound_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+              }
             }
           }
         }
@@ -919,36 +967,57 @@ int main(int argc, char **pArgv)
         }
         else if (extremeMode)
         {
-          switch (extremeSize)
+          if (!unbound)
           {
-          case 8:
-          default:
-            decompressedSize = rle8_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
-            break;
+            switch (extremeSize)
+            {
+            case 8:
+            default:
+              decompressedSize = rle8_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+              break;
 
-          case 16:
-            decompressedSize = rle16_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
-            break;
+            case 16:
+              decompressedSize = rle16_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+              break;
 
-          case 24:
-            decompressedSize = rle24_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
-            break;
+            case 24:
+              decompressedSize = rle24_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+              break;
 
-          case 32:
-            decompressedSize = rle32_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
-            break;
+            case 32:
+              decompressedSize = rle32_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+              break;
 
-          case 48:
-            decompressedSize = rle48_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
-            break;
+            case 48:
+              decompressedSize = rle48_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+              break;
 
-          case 64:
-            decompressedSize = rle64_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
-            break;
+            case 64:
+              decompressedSize = rle64_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+              break;
 
-          case 128:
-            decompressedSize = rle128_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
-            break;
+            case 128:
+              decompressedSize = rle128_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+              break;
+            }
+          }
+          else
+          {
+            switch (extremeSize)
+            {
+            default:
+            case 16:
+              decompressedSize = rle16_extreme_unbound_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+              break;
+
+            case 32:
+              decompressedSize = rle32_extreme_unbound_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+              break;
+
+            case 64:
+              decompressedSize = rle64_extreme_unbound_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+              break;
+            }
           }
         }
         else if (mmtfMode)
