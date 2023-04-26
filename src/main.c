@@ -428,6 +428,9 @@ int main(int argc, char **pArgv)
       Extreme16Unbound,
       Extreme32Unbound,
       Extreme64Unbound,
+      Extreme16Packed,
+      Extreme32Packed,
+      Extreme64Packed,
       Rle8SH,
       Extreme8MultiMTF128,
       MultiMTF128,
@@ -455,6 +458,9 @@ int main(int argc, char **pArgv)
       "Extreme Unbound 16 Bit ",
       "Extreme Unbound 32 Bit ",
       "Extreme Unbound 64 Bit ",
+      "Extreme Packed 16 Bit  ",
+      "Extreme Packed 32 Bit  ",
+      "Extreme Packed 64 Bit  ",
       "RLE 8 SH               ",
       "Extreme 8 MMTF 128     ",
       "Multi MTF 128 Bit      ",
@@ -537,6 +543,18 @@ int main(int argc, char **pArgv)
     
         case Extreme64Unbound:
           compressedSize = rle64_extreme_unbound_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme16Packed:
+          compressedSize = rle16_extreme_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme32Packed:
+          compressedSize = rle32_extreme_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme64Packed:
+          compressedSize = rle64_extreme_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme8MultiMTF128:
@@ -665,6 +683,18 @@ int main(int argc, char **pArgv)
 
         case Extreme64Unbound:
           decompressedSize = rle64_extreme_unbound_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Packed:
+          decompressedSize = rle16_extreme_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Packed:
+          decompressedSize = rle32_extreme_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Packed:
+          decompressedSize = rle64_extreme_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Extreme8MultiMTF128:
