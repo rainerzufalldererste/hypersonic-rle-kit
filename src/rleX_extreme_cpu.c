@@ -29,6 +29,10 @@
 
 #define PACKED
 
+#ifndef PREFER_7_BIT_OR_4_BYTE_COPY
+  #define PREFER_7_BIT_OR_4_BYTE_COPY
+#endif
+
 #define TYPE_SIZE 16
 #include "rleX_extreme_cpu.h"
 #undef TYPE_SIZE

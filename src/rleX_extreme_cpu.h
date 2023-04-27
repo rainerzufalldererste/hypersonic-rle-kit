@@ -125,7 +125,11 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
         const int64_t range = i - lastRLE - count + 1;
 
 #ifndef PACKED
+  #ifdef PREFER_7_BIT_OR_4_BYTE_COPY
+        if (range <= 127 && count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT)
+  #else
         if (range <= 255 && count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT)
+  #endif
 #else
         if (range <= 127 && ((count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT && symbol == lastSymbol) || (count >= RLEX_EXTREME_MULTI_MIN_RANGE_MEDIUM)))
 #endif
@@ -154,9 +158,6 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
             *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
             index += sizeof(uint32_t);
           }
-
-          pOut[index] = (uint8_t)range;
-          index++;
 #else
           const uint8_t isSameSymbolMask = ((symbol == lastSymbol) << 7);
           lastSymbol = symbol;
@@ -179,8 +180,13 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
             *(symbol_t *)(&pOut[index]) = symbol;
             index += sizeof(symbol_t);
           }
+#endif
 
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
           pOut[index] = (uint8_t)(range << 1);
+          index++;
+#else
+          pOut[index] = (uint8_t)range;
           index++;
 #endif
           const size_t copySize = i - count - lastRLE;
@@ -216,11 +222,6 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
             *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
             index += sizeof(uint32_t);
           }
-
-          pOut[index] = 0;
-          index++;
-          *((uint32_t *)&pOut[index]) = (uint32_t)range;
-          index += sizeof(uint32_t);
 #else
           const uint8_t isSameSymbolMask = ((symbol == lastSymbol) << 7);
           lastSymbol = symbol;
@@ -244,7 +245,15 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
             index += sizeof(symbol_t);
           }
 
+#endif
+
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
           *((uint32_t *)&pOut[index]) = (uint32_t)(range << 1) | 1;
+          index += sizeof(uint32_t);
+#else
+          pOut[index] = 0;
+          index++;
+          *((uint32_t *)&pOut[index]) = (uint32_t)range;
           index += sizeof(uint32_t);
 #endif
 
@@ -276,9 +285,13 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
     const int64_t range = i - lastRLE - count + 1;
 
 #ifndef PACKED
-    if (range <= 255 && count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT)
-#else
+  #ifdef PREFER_7_BIT_OR_4_BYTE_COPY
     if (range <= 127 && count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT)
+  #else
+    if (range <= 255 && count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT)
+  #endif
+#else
+    if (range <= 127 && ((count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT && symbol == lastSymbol) || (count >= RLEX_EXTREME_MULTI_MIN_RANGE_MEDIUM)))
 #endif
     {
 #ifndef PACKED
@@ -305,9 +318,6 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
         *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
         index += sizeof(uint32_t);
       }
-
-      pOut[index] = (uint8_t)range;
-      index++;
 #else
       const uint8_t isSameSymbolMask = ((symbol == lastSymbol) << 7);
       lastSymbol = symbol;
@@ -330,8 +340,13 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
         *(symbol_t *)(&pOut[index]) = symbol;
         index += sizeof(symbol_t);
       }
+#endif
 
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
       pOut[index] = (uint8_t)(range << 1);
+      index++;
+#else
+      pOut[index] = (uint8_t)range;
       index++;
 #endif
       
@@ -340,10 +355,29 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
       memcpy(pOut + index, pIn + lastRLE, copySize);
       index += copySize;
 
+#ifndef PACKED
+      *(symbol_t *)(&pOut[index]) = 0;
+      index += sizeof(symbol_t);
+      pOut[index] = 0;
+      index++;
+      *((uint32_t *)&pOut[index]) = 0;
+      index += sizeof(uint32_t);
+#else
       pOut[index] = 0b10000000;
       index++;
-      *((uint32_t *)&pOut[index]) = ((uint32_t)1 << 31);
+      *((uint32_t *)&pOut[index]) = 0;
       index += sizeof(uint32_t);
+#endif
+
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
+      *((uint32_t *)&pOut[index]) = 1;
+      index += sizeof(uint32_t);
+#else
+      pOut[index] = 0;
+      index++;
+      *((uint32_t *)&pOut[index]) = 0;
+      index += sizeof(uint32_t);
+#endif
 
       lastRLE = i;
     }
@@ -373,11 +407,6 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
         *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
         index += sizeof(uint32_t);
       }
-
-      pOut[index] = 0;
-      index++;
-      *((uint32_t *)&pOut[index]) = (uint32_t)(range << 1) | 1;
-      index += sizeof(uint32_t);
 #else
       const uint8_t isSameSymbolMask = ((symbol == lastSymbol) << 7);
       lastSymbol = symbol;
@@ -401,7 +430,15 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
         index += sizeof(symbol_t);
       }
 
-      *((uint32_t *)&pOut[index]) = (uint32_t)range | ((uint32_t)1 << 31);
+#endif
+
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
+      *((uint32_t *)&pOut[index]) = (uint32_t)(range << 1) | 1;
+      index += sizeof(uint32_t);
+#else
+      pOut[index] = 0;
+      index++;
+      *((uint32_t *)&pOut[index]) = (uint32_t)range;
       index += sizeof(uint32_t);
 #endif
 
@@ -417,14 +454,18 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
       index++;
       *((uint32_t *)&pOut[index]) = 0;
       index += sizeof(uint32_t);
+#else
+      pOut[index] = 1;
+      index++;
+#endif
+
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
+      *((uint32_t *)&pOut[index]) = 1;
+      index += sizeof(uint32_t);
+#else
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = 0;
-      index += sizeof(uint32_t);
-#else
-      pOut[index] = 0b10000000;
-      index++;
-      *((uint32_t *)&pOut[index]) = ((uint32_t)1 << 31);
       index += sizeof(uint32_t);
 #endif
 
@@ -439,16 +480,20 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
       index++;
       *((uint32_t *)&pOut[index]) = 0;
       index += sizeof(uint32_t);
-      pOut[index] = 0;
-      index++;
-      *((uint32_t *)&pOut[index]) = (uint32_t)range;
-      index += sizeof(uint32_t);
 #else
       pOut[index] = 0b10000000;
       index++;
       *((uint32_t *)&pOut[index]) = 0;
       index += sizeof(uint32_t);
+#endif
+
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
       *((uint32_t *)&pOut[index]) = (uint32_t)(range << 1) | 1;
+      index += sizeof(uint32_t);
+#else
+      pOut[index] = 0;
+      index++;
+      *((uint32_t *)&pOut[index]) = (uint32_t)range;
       index += sizeof(uint32_t);
 #endif
 
@@ -485,20 +530,6 @@ void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_sse))(IN const uint8_
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
-
-    offset = (size_t)*pInStart;
-    pInStart++;
-
-    if (offset == 0)
-    {
-      offset = *(uint32_t *)pInStart;
-      pInStart += sizeof(uint32_t);
-
-      if (offset == 0)
-        return;
-    }
-
-    offset--;
 #else
     symbolCount = (size_t)*pInStart;
     pInStart++;
@@ -518,7 +549,9 @@ void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_sse))(IN const uint8_
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
+#endif
 
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
     offset = (size_t)*pInStart;
 
     if (offset & 1)
@@ -533,6 +566,20 @@ void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_sse))(IN const uint8_
     {
       pInStart++;
       offset >>= 1;
+    }
+
+    offset--;
+#else
+    offset = (size_t)*pInStart;
+    pInStart++;
+
+    if (offset == 0)
+    {
+      offset = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
     }
 
     offset--;
@@ -578,20 +625,6 @@ void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_sse41))(IN const uint
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
-
-    offset = (size_t)*pInStart;
-    pInStart++;
-
-    if (offset == 0)
-    {
-      offset = *(uint32_t *)pInStart;
-      pInStart += sizeof(uint32_t);
-
-      if (offset == 0)
-        return;
-    }
-
-    offset--;
 #else
     symbolCount = (size_t)*pInStart;
     pInStart++;
@@ -611,7 +644,9 @@ void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_sse41))(IN const uint
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
+#endif
 
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
     offset = (size_t)*pInStart;
 
     if (offset & 1)
@@ -626,6 +661,20 @@ void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_sse41))(IN const uint
     {
       pInStart++;
       offset >>= 1;
+    }
+
+    offset--;
+#else
+    offset = (size_t)*pInStart;
+    pInStart++;
+
+    if (offset == 0)
+    {
+      offset = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
     }
 
     offset--;
@@ -671,20 +720,6 @@ void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx))(IN const uint8_
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
-
-    offset = (size_t)*pInStart;
-    pInStart++;
-
-    if (offset == 0)
-    {
-      offset = *(uint32_t *)pInStart;
-      pInStart += sizeof(uint32_t);
-
-      if (offset == 0)
-        return;
-    }
-
-    offset--;
 #else
     symbolCount = (size_t)*pInStart;
     pInStart++;
@@ -704,7 +739,9 @@ void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx))(IN const uint8_
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
+#endif
 
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
     offset = (size_t)*pInStart;
 
     if (offset & 1)
@@ -719,6 +756,20 @@ void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx))(IN const uint8_
     {
       pInStart++;
       offset >>= 1;
+    }
+
+    offset--;
+#else
+    offset = (size_t)*pInStart;
+    pInStart++;
+
+    if (offset == 0)
+    {
+      offset = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
     }
 
     offset--;
@@ -764,20 +815,6 @@ void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx2))(IN const uint8
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
-
-    offset = (size_t)*pInStart;
-    pInStart++;
-
-    if (offset == 0)
-    {
-      offset = *(uint32_t *)pInStart;
-      pInStart += sizeof(uint32_t);
-
-      if (offset == 0)
-        return;
-    }
-
-    offset--;
 #else
     symbolCount = (size_t)*pInStart;
     pInStart++;
@@ -797,7 +834,9 @@ void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx2))(IN const uint8
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
+#endif
 
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
     offset = (size_t)*pInStart;
 
     if (offset & 1)
@@ -812,6 +851,20 @@ void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx2))(IN const uint8
     {
       pInStart++;
       offset >>= 1;
+    }
+
+    offset--;
+#else
+    offset = (size_t)*pInStart;
+    pInStart++;
+
+    if (offset == 0)
+    {
+      offset = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
     }
 
     offset--;
@@ -857,20 +910,6 @@ void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx512f))(IN const ui
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
-
-    offset = (size_t)*pInStart;
-    pInStart++;
-
-    if (offset == 0)
-    {
-      offset = *(uint32_t *)pInStart;
-      pInStart += sizeof(uint32_t);
-
-      if (offset == 0)
-        return;
-    }
-
-    offset--;
 #else
     symbolCount = (size_t)*pInStart;
     pInStart++;
@@ -889,7 +928,9 @@ void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx512f))(IN const ui
       symbol = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(*(symbol_t *)pInStart);
       pInStart += sizeof(symbol_t);
     }
+#endif
 
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
     offset = (size_t)*pInStart;
 
     if (offset & 1)
@@ -904,6 +945,20 @@ void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx512f))(IN const ui
     {
       pInStart++;
       offset >>= 1;
+    }
+
+    offset--;
+#else
+    offset = (size_t)*pInStart;
+    pInStart++;
+
+    if (offset == 0)
+    {
+      offset = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
     }
 
     offset--;
