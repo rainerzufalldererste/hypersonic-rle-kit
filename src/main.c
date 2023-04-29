@@ -833,7 +833,7 @@ int main(int argc, char **pArgv)
       if (extremeMode && packed)
         fputs("Packed ", stdout);
 
-      if (extremeMode && unbound)
+      if (extremeMode && unbound && extremeSize != 8)
         fputs("Unbound ", stdout);
 
       if (extremeMode)
@@ -874,90 +874,86 @@ int main(int argc, char **pArgv)
         }
         else if (extremeMode)
         {
-          if (singleSymbol)
+          if (!unbound)
           {
-            compressedSize = rle8_extreme_single_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+            switch (extremeSize)
+            {
+            case 8:
+            default:
+              if (singleSymbol)
+                compressedSize = rle8_extreme_single_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+              else
+                compressedSize = rle8_extreme_multi_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+              break;
+
+            case 16:
+              compressedSize = rle16_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+              break;
+
+            case 24:
+              compressedSize = rle24_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+              break;
+
+            case 32:
+              compressedSize = rle32_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+              break;
+
+            case 48:
+              compressedSize = rle48_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+              break;
+
+            case 64:
+              compressedSize = rle64_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+              break;
+
+            case 128:
+              compressedSize = rle128_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+              break;
+            }
           }
           else
           {
-            if (!unbound)
+            if (packed)
             {
               switch (extremeSize)
               {
-              case 8:
               default:
-                compressedSize = rle8_extreme_multi_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+              case 8:
+                if (singleSymbol)
+                  compressedSize = rle8_extreme_packed_single_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                else
+                  compressedSize = rle8_extreme_packed_multi_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
                 break;
 
               case 16:
-                compressedSize = rle16_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-                break;
-
-              case 24:
-                compressedSize = rle24_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                compressedSize = rle16_extreme_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
                 break;
 
               case 32:
-                compressedSize = rle32_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-                break;
-
-              case 48:
-                compressedSize = rle48_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                compressedSize = rle32_extreme_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
                 break;
 
               case 64:
-                compressedSize = rle64_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-                break;
-
-              case 128:
-                compressedSize = rle128_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                compressedSize = rle64_extreme_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
                 break;
               }
             }
             else
             {
-              if (packed)
+              switch (extremeSize)
               {
-                switch (extremeSize)
-                {
-                default:
-                case 8:
-                  if (singleSymbol)
-                    decompressedSize = rle8_extreme_packed_single_compress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
-                  else
-                    decompressedSize = rle8_extreme_packed_multi_compress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
-                  break;
+              default:
+              case 16:
+                compressedSize = rle16_extreme_unbound_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
 
-                case 16:
-                  compressedSize = rle16_extreme_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-                  break;
+              case 32:
+                compressedSize = rle32_extreme_unbound_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
 
-                case 32:
-                  compressedSize = rle32_extreme_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-                  break;
-
-                case 64:
-                  compressedSize = rle64_extreme_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-                  break;
-                }
-              }
-              else
-              {
-                switch (extremeSize)
-                {
-                default:
-                case 16:
-                  compressedSize = rle16_extreme_unbound_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-                  break;
-
-                case 32:
-                  compressedSize = rle32_extreme_unbound_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-                  break;
-
-                case 64:
-                  compressedSize = rle64_extreme_unbound_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-                  break;
-                }
+              case 64:
+                compressedSize = rle64_extreme_unbound_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
               }
             }
           }

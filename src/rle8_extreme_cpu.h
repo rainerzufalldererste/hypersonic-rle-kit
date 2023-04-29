@@ -19,7 +19,8 @@
   #define RLE8_EXTREME_SINGLE_SIZE_OF_SYMBOL_HEADER (1 + 1)
   #define RLE8_EXTREME_SINGLE_MAX_SIZE_OF_SYMBOL_HEADER (4 + 4 + 1)
   #define RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT (1 + 1)
-  #define RLE8_EXTREME_SINGLE_MIN_RANGE_LONG (4 + 4 + 1)
+  #define RLE8_EXTREME_SINGLE_MIN_RANGE_MEDIUM (1 + 1 + 4)
+  #define RLE8_EXTREME_SINGLE_MIN_RANGE_LONG (1 + 4 + 1 + 4)
 #endif
 
 #define RLE8_EXTREME_MODE_MULTI 0
@@ -30,6 +31,10 @@
 #else
   #define CODEC extreme_packed
 #endif
+
+//#ifdef PACKED
+//  #define SINGLE_PREFER_7_BIT_OR_4_BYTE_RLE
+//#endif
 
 #ifdef _MSC_VER
 #pragma pack(1)
@@ -61,8 +66,6 @@ __attribute__((packed))
 static int64_t CONCAT3(rle8_, CODEC, _compress_multi_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE);
 static int64_t CONCAT3(rle8_, CODEC, _compress_multi_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE);
 
-static uint8_t CONCAT3(rle8_, CODEC, _single_compress_get_approx_optimal_symbol_sse2)(IN const uint8_t *pIn, const size_t inSize);
-static uint8_t CONCAT3(rle8_, CODEC, _single_compress_get_approx_optimal_symbol_avx2)(IN const uint8_t *pIn, const size_t inSize);
 static int64_t CONCAT3(rle8_, CODEC, _compress_single_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, const uint8_t maxFreqSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE);
 static int64_t CONCAT3(rle8_, CODEC, _compress_single_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, const uint8_t maxFreqSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE);
 
@@ -121,12 +124,17 @@ uint32_t CONCAT3(rle8_, CODEC, _multi_compress)(IN const uint8_t *pIn, const uin
     }
     else
     {
+#ifndef PACKED
       if (count >= RLE8_EXTREME_MULTI_MIN_RANGE_SHORT)
+#else
+      if (count >= RLE8_EXTREME_MULTI_MIN_RANGE_LONG)
+#endif
       {
+        const int64_t storedCount = count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1;
+
+#ifndef PACKED
         pOut[index] = symbol;
         index++;
-
-        const int64_t storedCount = count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1;
 
         if (storedCount <= 255)
         {
@@ -140,9 +148,27 @@ uint32_t CONCAT3(rle8_, CODEC, _multi_compress)(IN const uint8_t *pIn, const uin
           *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
           index += sizeof(uint32_t);
         }
+#else
+        if (storedCount <= 127)
+        {
+          pOut[index] = (uint8_t)(storedCount << 1);
+          index++;
+        }
+        else
+        {
+          pOut[index] = 0;
+          index++;
+          *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+          index += sizeof(uint32_t);
+        }
+
+        pOut[index] = symbol;
+        index++;
+#endif
 
         const int64_t range = i - lastRLE - count + 1;
 
+#ifndef PREFER_7_BIT_OR_4_BYTE_COPY
         if (range > 255)
         {
           pOut[index] = 0;
@@ -155,6 +181,18 @@ uint32_t CONCAT3(rle8_, CODEC, _multi_compress)(IN const uint8_t *pIn, const uin
           pOut[index] = (uint8_t)range;
           index++;
         }
+#else
+        if (range <= 127)
+        {
+          pOut[index] = (uint8_t)(range << 1);
+          index++;
+        }
+        else
+        {
+          *((uint32_t *)&pOut[index]) = (uint32_t)(range << 1) | (uint32_t)1;
+          index += sizeof(uint32_t);
+        }
+#endif
 
         const size_t copySize = i - count - lastRLE;
 
@@ -173,12 +211,17 @@ uint32_t CONCAT3(rle8_, CODEC, _multi_compress)(IN const uint8_t *pIn, const uin
   {
     const int64_t range = i - lastRLE - count + 1;
 
+#ifndef PACKED
     if (count >= RLE8_EXTREME_MULTI_MIN_RANGE_SHORT)
+#else
+    if (count >= RLE8_EXTREME_MULTI_MIN_RANGE_LONG)
+#endif
     {
+      const int64_t storedCount = count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1;
+
+#ifndef PACKED
       pOut[index] = symbol;
       index++;
-
-      const int64_t storedCount = count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1;
 
       if (storedCount <= 255)
       {
@@ -192,7 +235,25 @@ uint32_t CONCAT3(rle8_, CODEC, _multi_compress)(IN const uint8_t *pIn, const uin
         *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
         index += sizeof(uint32_t);
       }
+#else
+      if (storedCount <= 127)
+      {
+        pOut[index] = (uint8_t)(storedCount << 1);
+        index++;
+      }
+      else
+      {
+        pOut[index] = 0;
+        index++;
+        *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+        index += sizeof(uint32_t);
+      }
 
+      pOut[index] = symbol;
+      index++;
+#endif
+
+#ifndef PREFER_7_BIT_OR_4_BYTE_COPY
       if (range > 255)
       {
         pOut[index] = 0;
@@ -205,6 +266,18 @@ uint32_t CONCAT3(rle8_, CODEC, _multi_compress)(IN const uint8_t *pIn, const uin
         pOut[index] = (uint8_t)range;
         index++;
       }
+#else
+      if (range <= 127)
+      {
+        pOut[index] = (uint8_t)(range << 1);
+        index++;
+      }
+      else
+      {
+        *((uint32_t *)&pOut[index]) = (uint32_t)(range << 1) | (uint32_t)1;
+        index += sizeof(uint32_t);
+      }
+#endif
 
       const size_t copySize = i - count - lastRLE;
 
@@ -213,31 +286,57 @@ uint32_t CONCAT3(rle8_, CODEC, _multi_compress)(IN const uint8_t *pIn, const uin
 
       lastRLE = i;
 
+#ifndef PACKED
       pOut[index] = 0;
       index++;
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = 0;
       index += sizeof(uint32_t);
+#else
+      pOut[index] = 0b10000000;
+      index++;
+      *((uint32_t *)&pOut[index]) = 0;
+      index += sizeof(uint32_t);
+#endif
+
+#ifndef PREFER_7_BIT_OR_4_BYTE_COPY
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = 0;
       index += sizeof(uint32_t);
+#else
+      *((uint32_t *)&pOut[index]) = (uint32_t)1;
+      index += sizeof(uint32_t);
+#endif
 
       lastRLE = i;
     }
     else
     {
+#ifndef PACKED
       pOut[index] = 0;
       index++;
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = 0;
       index += sizeof(uint32_t);
+#else
+      pOut[index] = 0b10000000;
+      index++;
+      *((uint32_t *)&pOut[index]) = 0;
+      index += sizeof(uint32_t);
+#endif
+
+#ifndef PREFER_7_BIT_OR_4_BYTE_COPY
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = (uint32_t)range;
       index += sizeof(uint32_t);
+#else
+      *((uint32_t *)&pOut[index]) = (uint32_t)(range << 1) | (uint32_t)1;
+      index += sizeof(uint32_t);
+#endif
 
       const size_t copySize = i - lastRLE;
 
@@ -269,9 +368,9 @@ uint32_t CONCAT3(rle8_, CODEC, _single_compress)(IN const uint8_t *pIn, const ui
 
   // The AVX2 variant appears to be slower, so we're just always calling the SSE2 version.
   //if (avx2Supported)
-  //  maxFreqSymbol = CONCAT3(rle8_, CODEC, _single_compress_get_approx_optimal_symbol_avx2)(pIn, inSize);
+  //  maxFreqSymbol = rle8_extreme_single_compress_get_approx_optimal_symbol_avx2(pIn, inSize);
   //else
-  maxFreqSymbol = CONCAT3(rle8_, CODEC, _single_compress_get_approx_optimal_symbol_sse2)(pIn, inSize);
+  maxFreqSymbol = rle8_extreme_single_compress_get_approx_optimal_symbol_sse2(pIn, inSize);
 
   size_t index = sizeof(rle_extreme_t);
 
@@ -300,10 +399,15 @@ uint32_t CONCAT3(rle8_, CODEC, _single_compress)(IN const uint8_t *pIn, const ui
       {
         const int64_t range = i - lastRLE - count + 1;
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
         if (range <= 255 && count >= RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT)
+#else
+        if (range <= 127 && count >= RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT)
+#endif
         {
           const int64_t storedCount = count - RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT + 1;
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_RLE
           if (storedCount <= 255)
           {
             pOut[index] = (uint8_t)storedCount;
@@ -316,9 +420,26 @@ uint32_t CONCAT3(rle8_, CODEC, _single_compress)(IN const uint8_t *pIn, const ui
             *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
             index += sizeof(uint32_t);
           }
+#else
+          if (storedCount <= 127)
+          {
+            pOut[index] = (uint8_t)(storedCount << 1);
+            index++;
+          }
+          else
+          {
+            *(uint32_t *)&(pOut[index]) = (uint32_t)(storedCount << 1) | (uint32_t)1;
+            index += sizeof(uint32_t);
+          }
+#endif
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
           pOut[index] = (uint8_t)range;
           index++;
+#else
+          pOut[index] = (uint8_t)(range << 1);
+          index++;
+#endif
 
           const size_t copySize = i - count - lastRLE;
 
@@ -331,6 +452,7 @@ uint32_t CONCAT3(rle8_, CODEC, _single_compress)(IN const uint8_t *pIn, const ui
         {
           const int64_t storedCount = count - RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT + 1;
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_RLE
           if (storedCount <= 255)
           {
             pOut[index] = (uint8_t)storedCount;
@@ -343,11 +465,44 @@ uint32_t CONCAT3(rle8_, CODEC, _single_compress)(IN const uint8_t *pIn, const ui
             *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
             index += sizeof(uint32_t);
           }
+#else
+          if (storedCount <= 127)
+          {
+            pOut[index] = (uint8_t)(storedCount << 1);
+            index++;
+          }
+          else
+          {
+            *(uint32_t *)&(pOut[index]) = (uint32_t)(storedCount << 1) | (uint32_t)1;
+            index += sizeof(uint32_t);
+          }
+#endif
 
-          pOut[index] = 0;
-          index++;
-          *((uint32_t *)&pOut[index]) = (uint32_t)range;
-          index += sizeof(uint32_t);
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
+          //if (range <= 255)
+          //{
+          //  pOut[index] = (uint8_t)range;
+          //  index++;
+          //}
+          //else
+          {
+            pOut[index] = 0;
+            index++;
+            *((uint32_t *)&pOut[index]) = (uint32_t)range;
+            index += sizeof(uint32_t);
+          }
+#else
+          //if (range <= 127)
+          //{
+          //  pOut[index] = (uint8_t)(range << 1);
+          //  index++;
+          //}
+          //else
+          {
+            *((uint32_t *)&pOut[index]) = (uint32_t)(range << 1) | (uint32_t)1;
+            index += sizeof(uint32_t);
+          }
+#endif
 
           const size_t copySize = i - count - lastRLE;
 
@@ -365,10 +520,15 @@ uint32_t CONCAT3(rle8_, CODEC, _single_compress)(IN const uint8_t *pIn, const ui
   {
     const int64_t range = i - lastRLE - count + 1;
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
     if (range <= 255 && count >= RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT)
+#else
+    if (range <= 127 && count >= RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT)
+#endif
     {
       const int64_t storedCount = count - RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT + 1;
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_RLE
       if (storedCount <= 255)
       {
         pOut[index] = (uint8_t)storedCount;
@@ -381,23 +541,51 @@ uint32_t CONCAT3(rle8_, CODEC, _single_compress)(IN const uint8_t *pIn, const ui
         *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
         index += sizeof(uint32_t);
       }
+#else
+      if (storedCount <= 127)
+      {
+        pOut[index] = (uint8_t)(storedCount << 1);
+        index++;
+      }
+      else
+      {
+        *(uint32_t *)&(pOut[index]) = (uint32_t)(storedCount << 1) | (uint32_t)1;
+        index += sizeof(uint32_t);
+      }
+#endif
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
       pOut[index] = (uint8_t)range;
       index++;
+#else
+      pOut[index] = (uint8_t)(range << 1);
+      index++;
+#endif
 
       const size_t copySize = i - count - lastRLE;
 
       memcpy(pOut + index, pIn + lastRLE, copySize);
       index += copySize;
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_RLE
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = 0;
       index += sizeof(uint32_t);
+#else
+      pOut[index] = 0;
+      index++;
+#endif
+
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = 0;
       index += sizeof(uint32_t);
+#else
+      pOut[index] = 0;
+      index++;
+#endif
 
       lastRLE = i;
     }
@@ -405,6 +593,7 @@ uint32_t CONCAT3(rle8_, CODEC, _single_compress)(IN const uint8_t *pIn, const ui
     {
       const int64_t storedCount = count - RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT + 1;
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_RLE
       if (storedCount <= 255)
       {
         pOut[index] = (uint8_t)storedCount;
@@ -417,38 +606,93 @@ uint32_t CONCAT3(rle8_, CODEC, _single_compress)(IN const uint8_t *pIn, const ui
         *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
         index += sizeof(uint32_t);
       }
+#else
+      if (storedCount <= 127)
+      {
+        pOut[index] = (uint8_t)(storedCount << 1);
+        index++;
+      }
+      else
+      {
+        *(uint32_t *)&(pOut[index]) = (uint32_t)(storedCount << 1) | (uint32_t)1;
+        index += sizeof(uint32_t);
+      }
+#endif
 
-      pOut[index] = 0;
-      index++;
-      *((uint32_t *)&pOut[index]) = (uint32_t)range;
-      index += sizeof(uint32_t);
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
+      //if (range <= 255)
+      //{
+      //  pOut[index] = (uint8_t)range;
+      //  index++;
+      //}
+      //else
+      {
+        pOut[index] = 0;
+        index++;
+        *((uint32_t *)&pOut[index]) = (uint32_t)range;
+        index += sizeof(uint32_t);
+      }
+#else
+      //if (range <= 127)
+      //{
+      //  pOut[index] = (uint8_t)(range << 1);
+      //  index++;
+      //}
+      //else
+      {
+        *((uint32_t *)&pOut[index]) = (uint32_t)(range << 1) | (uint32_t)1;
+        index += sizeof(uint32_t);
+      }
+#endif
 
       const size_t copySize = i - count - lastRLE;
 
       memcpy(pOut + index, pIn + lastRLE, copySize);
       index += copySize;
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_RLE
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = 0;
       index += sizeof(uint32_t);
+#else
+      pOut[index] = 0;
+      index++;
+#endif
+
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = 0;
       index += sizeof(uint32_t);
+#else
+      pOut[index] = 0;
+      index++;
+#endif
 
       lastRLE = i;
     }
     else
     {
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_RLE
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = 0;
       index += sizeof(uint32_t);
+#else
+      pOut[index] = 0;
+      index++;
+#endif
+
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = (uint32_t)(range + count);
       index += sizeof(uint32_t);
+#else
+      *((uint32_t *)&pOut[index]) = (uint32_t)((range + count) << 1) | (uint32_t)1;
+      index += sizeof(uint32_t);
+#endif
 
       const size_t copySize = i - lastRLE;
 
@@ -539,9 +783,13 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_multi_sse2)(IN const uint8_t *pIn
   int64_t count = 0;
   int64_t lastRLE = 0;
 
+#ifdef PACKED
+  uint8_t lastSymbol = 0;
+#endif
+
   while (i < endInSize128)
   {
-    const uint32_t mask = _mm_movemask_epi8(_mm_cmpeq_epi8(symbol128, _mm_loadu_si128((const __m128i *) & (pIn[i]))));
+    const uint32_t mask = _mm_movemask_epi8(_mm_cmpeq_epi8(symbol128, _mm_loadu_si128((const __m128i *)&(pIn[i]))));
 
     if (0xFFFF == mask)
     {
@@ -562,12 +810,19 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_multi_sse2)(IN const uint8_t *pIn
         count += _zero;
         i += _zero;
 
+#ifndef PACKED
         if (count >= RLE8_EXTREME_MULTI_MIN_RANGE_SHORT)
+#else
+        const int64_t range = i - lastRLE - count + 1;
+
+        if (count >= RLE8_EXTREME_MULTI_MIN_RANGE_LONG || (range <= 127 && ((symbol == lastSymbol && count >= RLE8_EXTREME_MULTI_MIN_RANGE_SHORT) || (count >= RLE8_EXTREME_MULTI_MIN_RANGE_MEDIUM))))
+#endif
         {
+          const int64_t storedCount = count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1;
+
+#ifndef PACKED
           pOut[index] = symbol;
           index++;
-
-          const int64_t storedCount = count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1;
 
           if (storedCount <= 255)
           {
@@ -581,9 +836,35 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_multi_sse2)(IN const uint8_t *pIn
             *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
             index += sizeof(uint32_t);
           }
+#else
+          const uint8_t isSameSymbolMask = ((symbol == lastSymbol) << 7);
+          lastSymbol = symbol;
 
+          if (storedCount <= 127)
+          {
+            pOut[index] = (uint8_t)(storedCount << 1) | isSameSymbolMask;
+            index++;
+          }
+          else
+          {
+            pOut[index] = isSameSymbolMask;
+            index++;
+            *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+            index += sizeof(uint32_t);
+          }
+
+          if (!isSameSymbolMask)
+          {
+            pOut[index] = symbol;
+            index++;
+          }
+#endif
+
+#ifndef PACKED
           const int64_t range = i - lastRLE - count + 1;
+#endif
 
+#ifndef PREFER_7_BIT_OR_4_BYTE_COPY
           if (range > 255)
           {
             pOut[index] = 0;
@@ -596,6 +877,18 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_multi_sse2)(IN const uint8_t *pIn
             pOut[index] = (uint8_t)range;
             index++;
           }
+#else
+          if (range <= 127)
+          {
+            pOut[index] = (uint8_t)(range << 1);
+            index++;
+          }
+          else
+          {
+            *((uint32_t *)&pOut[index]) = (uint32_t)(range << 1) | (uint32_t)1;
+            index += sizeof(uint32_t);
+          }
+#endif
 
           const size_t copySize = i - count - lastRLE;
 
@@ -658,9 +951,13 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_multi_avx2)(IN const uint8_t *pIn
   int64_t count = 0;
   int64_t lastRLE = 0;
 
+#ifdef PACKED
+  uint8_t lastSymbol = 0;
+#endif
+
   while (i < endInSize256)
   {
-    const uint32_t mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(symbol256, _mm256_loadu_si256((const __m256i *) & (pIn[i]))));
+    const uint32_t mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(symbol256, _mm256_loadu_si256((const __m256i *)&(pIn[i]))));
 
     if (0xFFFFFFFF == mask)
     {
@@ -681,12 +978,19 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_multi_avx2)(IN const uint8_t *pIn
         count += _zero;
         i += _zero;
 
+#ifndef PACKED
         if (count >= RLE8_EXTREME_MULTI_MIN_RANGE_SHORT)
+#else
+        const int64_t range = i - lastRLE - count + 1;
+
+        if (count >= RLE8_EXTREME_MULTI_MIN_RANGE_LONG || (range <= 127 && ((symbol == lastSymbol && count >= RLE8_EXTREME_MULTI_MIN_RANGE_SHORT) || (count >= RLE8_EXTREME_MULTI_MIN_RANGE_MEDIUM))))
+#endif
         {
+          const int64_t storedCount = count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1;
+
+#ifndef PACKED
           pOut[index] = symbol;
           index++;
-
-          const int64_t storedCount = count - RLE8_EXTREME_MULTI_MIN_RANGE_SHORT + 1;
 
           if (storedCount <= 255)
           {
@@ -700,9 +1004,35 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_multi_avx2)(IN const uint8_t *pIn
             *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
             index += sizeof(uint32_t);
           }
+#else
+          const uint8_t isSameSymbolMask = ((symbol == lastSymbol) << 7);
+          lastSymbol = symbol;
 
+          if (storedCount <= 127)
+          {
+            pOut[index] = (uint8_t)(storedCount << 1) | isSameSymbolMask;
+            index++;
+          }
+          else
+          {
+            pOut[index] = isSameSymbolMask;
+            index++;
+            *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+            index += sizeof(uint32_t);
+          }
+
+          if (!isSameSymbolMask)
+          {
+            pOut[index] = symbol;
+            index++;
+          }
+#endif
+
+#ifndef PACKED
           const int64_t range = i - lastRLE - count + 1;
+#endif
 
+#ifndef PREFER_7_BIT_OR_4_BYTE_COPY
           if (range > 255)
           {
             pOut[index] = 0;
@@ -715,6 +1045,18 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_multi_avx2)(IN const uint8_t *pIn
             pOut[index] = (uint8_t)range;
             index++;
           }
+#else
+          if (range <= 127)
+          {
+            pOut[index] = (uint8_t)(range << 1);
+            index++;
+          }
+          else
+          {
+            *((uint32_t *)&pOut[index]) = (uint32_t)(range << 1) | (uint32_t)1;
+            index += sizeof(uint32_t);
+          }
+#endif
 
           const size_t copySize = i - count - lastRLE;
 
@@ -764,213 +1106,7 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_multi_avx2)(IN const uint8_t *pIn
   return i;
 }
 
-static uint8_t CONCAT3(rle8_, CODEC, _single_compress_get_approx_optimal_symbol_sse2)(IN const uint8_t *pIn, const size_t inSize)
-{
-  uint32_t prob[256];
-  uint32_t pcount[256];
-  bool consumed[256];
-
-  memset(prob, 0, sizeof(prob));
-  memset(pcount, 0, sizeof(pcount));
-  memset(consumed, 0, sizeof(consumed));
-
-  uint8_t lastSymbol = 0;
-  uint32_t count = 0;
-
-  if (pIn[0] != lastSymbol)
-    pcount[lastSymbol] = (uint32_t)-1;
-
-  int64_t inIndex = 0;
-  lastSymbol = ~pIn[0];
-  __m128i lastSymbol128 = _mm_set1_epi8(lastSymbol);
-  const int64_t endInSize128 = inSize - sizeof(lastSymbol128);
-
-  // This is far from optimal, but a lot faster than what we had previously. If you prefer accuracy, use what the normal rle8 uses.
-  for (; inIndex < endInSize128; inIndex++)
-  {
-    const uint32_t mask = _mm_movemask_epi8(_mm_cmpeq_epi8(lastSymbol128, _mm_loadu_si128((const __m128i *) & (pIn[inIndex]))));
-
-    if (0xFFFF == mask)
-    {
-      count += sizeof(lastSymbol128) - 1;
-      inIndex += sizeof(lastSymbol128) - 1;
-    }
-    else
-    {
-      if (mask != 0 || count > 1)
-      {
-#ifdef _MSC_VER
-        unsigned long _zero;
-        _BitScanForward64(&_zero, ~mask);
-#else
-        const uint64_t _zero = __builtin_ctzl(~mask);
-#endif
-
-        count += _zero;
-        inIndex += _zero;
-
-        prob[lastSymbol] += count;
-        pcount[lastSymbol]++;
-      }
-
-      while (inIndex < endInSize128)
-      {
-        const __m128i current = _mm_loadu_si128((const __m128i *)(&pIn[inIndex]));
-        const __m128i next = _mm_bsrli_si128(current, 1);
-        const int32_t cmp = 0x7FFF & _mm_movemask_epi8(_mm_cmpeq_epi8(current, next));
-
-        if (cmp == 0)
-        {
-          inIndex += sizeof(lastSymbol128) - 1;
-        }
-        else
-        {
-#ifdef _MSC_VER
-          unsigned long _zero;
-          _BitScanForward64(&_zero, cmp);
-#else
-          const uint64_t _zero = __builtin_ctzl(cmp);
-#endif
-
-          inIndex += _zero;
-          break;
-        }
-      }
-
-      count = 1;
-      lastSymbol = pIn[inIndex];
-      lastSymbol128 = _mm_set1_epi8(lastSymbol);
-    }
-  }
-
-  prob[lastSymbol] += count;
-  pcount[lastSymbol]++;
-
-  size_t maxBytesSaved = 0;
-  size_t maxBytesSavedIndexIndex = 0;
-
-  for (size_t i = 0; i < 256; i++)
-  {
-    if (pcount[i] > 0 && prob[i] / pcount[i] > 2)
-    {
-      const size_t saved = prob[i] - (pcount[i] * 2);
-
-      if (saved > maxBytesSaved)
-      {
-        maxBytesSaved = saved;
-        maxBytesSavedIndexIndex = i;
-      }
-    }
-  }
-
-  return (uint8_t)maxBytesSavedIndexIndex;
-}
-
-// This appears to be slower than the SSE2 variant, so it's not being used currently.
-#ifndef _MSC_VER
-__attribute__((target("avx2")))
-#endif
-static uint8_t CONCAT3(rle8_, CODEC, _single_compress_get_approx_optimal_symbol_avx2)(IN const uint8_t *pIn, const size_t inSize)
-{
-  uint32_t prob[256];
-  uint32_t pcount[256];
-  bool consumed[256];
-
-  memset(prob, 0, sizeof(prob));
-  memset(pcount, 0, sizeof(pcount));
-  memset(consumed, 0, sizeof(consumed));
-
-  uint8_t lastSymbol = 0;
-  uint32_t count = 0;
-
-  if (pIn[0] != lastSymbol)
-    pcount[lastSymbol] = (uint32_t)-1;
-
-  int64_t inIndex = 0;
-  lastSymbol = ~pIn[0];
-  __m256i lastSymbol256 = _mm256_set1_epi8(lastSymbol);
-  const int64_t endInSize256 = inSize - sizeof(lastSymbol256);
-
-  // This is far from optimal, but a lot faster than what we had previously. If you prefer accuracy, use what the normal rle8 uses.
-  for (; inIndex < endInSize256; inIndex++)
-  {
-    const uint32_t mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(lastSymbol256, _mm256_loadu_si256((const __m256i *) & (pIn[inIndex]))));
-
-    if (0xFFFFFFFF == mask)
-    {
-      count += sizeof(lastSymbol256) - 1;
-      inIndex += sizeof(lastSymbol256) - 1;
-    }
-    else
-    {
-      if (mask != 0 || count > 1)
-      {
-#ifdef _MSC_VER
-        unsigned long _zero;
-        _BitScanForward64(&_zero, ~mask);
-#else
-        const uint64_t _zero = __builtin_ctzl(~mask);
-#endif
-
-        count += _zero;
-        inIndex += _zero;
-
-        prob[lastSymbol] += count;
-        pcount[lastSymbol]++;
-      }
-
-      while (inIndex < endInSize256)
-      {
-        const __m256i current = _mm256_loadu_si256((const __m256i *)(&pIn[inIndex]));
-        const __m256i next = _mm256_loadu_si256((const __m256i *)(&pIn[inIndex + 1]));
-        const int32_t cmp = 0x7FFFFFFF & _mm256_movemask_epi8(_mm256_cmpeq_epi8(current, next));
-
-        if (cmp == 0)
-        {
-          inIndex += sizeof(lastSymbol256) - 1;
-        }
-        else
-        {
-#ifdef _MSC_VER
-          unsigned long _zero;
-          _BitScanForward64(&_zero, cmp);
-#else
-          const uint64_t _zero = __builtin_ctzl(cmp);
-#endif
-
-          inIndex += _zero;
-          break;
-        }
-      }
-
-      count = 1;
-      lastSymbol = pIn[inIndex];
-      lastSymbol256 = _mm256_set1_epi8(lastSymbol);
-    }
-  }
-
-  prob[lastSymbol] += count;
-  pcount[lastSymbol]++;
-
-  size_t maxBytesSaved = 0;
-  size_t maxBytesSavedIndexIndex = 0;
-
-  for (size_t i = 0; i < 256; i++)
-  {
-    if (pcount[i] > 0 && prob[i] / pcount[i] > 2)
-    {
-      const size_t saved = prob[i] - (pcount[i] * 2);
-
-      if (saved > maxBytesSaved)
-      {
-        maxBytesSaved = saved;
-        maxBytesSavedIndexIndex = i;
-      }
-    }
-  }
-
-  return (uint8_t)maxBytesSavedIndexIndex;
-}
+//////////////////////////////////////////////////////////////////////////
 
 static int64_t CONCAT3(rle8_, CODEC, _compress_single_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, const uint8_t maxFreqSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE)
 {
@@ -1011,10 +1147,15 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_single_sse2)(IN const uint8_t *pI
 
         if (count >= RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT)
         {
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
           if (range <= 255)
+#else
+          if (range <= 127)
+#endif
           {
             const int64_t storedCount = count - RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT + 1;
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_RLE
             if (storedCount <= 255)
             {
               pOut[index] = (uint8_t)storedCount;
@@ -1027,9 +1168,26 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_single_sse2)(IN const uint8_t *pI
               *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
               index += sizeof(uint32_t);
             }
+#else
+            if (storedCount <= 127)
+            {
+              pOut[index] = (uint8_t)(storedCount << 1);
+              index++;
+            }
+            else
+            {
+              *(uint32_t *)&(pOut[index]) = (uint32_t)(storedCount << 1) | (uint32_t)1;
+              index += sizeof(uint32_t);
+            }
+#endif
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
             pOut[index] = (uint8_t)range;
             index++;
+#else
+            pOut[index] = (uint8_t)(range << 1);
+            index++;
+#endif
 
             const size_t copySize = i - count - lastRLE;
 
@@ -1039,10 +1197,15 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_single_sse2)(IN const uint8_t *pI
             lastRLE = i;
             wastedChances = 0;
           }
+#ifndef PACKED
           else if (count >= RLE8_EXTREME_SINGLE_MIN_RANGE_LONG)
+#else
+          else if ((count >= RLE8_EXTREME_SINGLE_MIN_RANGE_LONG) || (count - RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT + 1 <= 255 && count >= RLE8_EXTREME_SINGLE_MIN_RANGE_MEDIUM))
+#endif
           {
             const int64_t storedCount = count - RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT + 1;
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_RLE
             if (storedCount <= 255)
             {
               pOut[index] = (uint8_t)storedCount;
@@ -1055,11 +1218,28 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_single_sse2)(IN const uint8_t *pI
               *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
               index += sizeof(uint32_t);
             }
+#else
+            if (storedCount <= 127)
+            {
+              pOut[index] = (uint8_t)(storedCount << 1);
+              index++;
+            }
+            else
+            {
+              *(uint32_t *)&(pOut[index]) = (uint32_t)(storedCount << 1) | (uint32_t)1;
+              index += sizeof(uint32_t);
+            }
+#endif
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
             pOut[index] = 0;
             index++;
             *((uint32_t *)&pOut[index]) = (uint32_t)range;
             index += sizeof(uint32_t);
+#else
+            *((uint32_t *)&pOut[index]) = (uint32_t)(range << 1) | (uint32_t)1;
+            index += sizeof(uint32_t);
+#endif
 
             const size_t copySize = i - count - lastRLE;
 
@@ -1069,6 +1249,7 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_single_sse2)(IN const uint8_t *pI
             lastRLE = i;
             wastedChances = 0;
           }
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_RLE
           else
           {
             wastedChances++;
@@ -1109,6 +1290,7 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_single_sse2)(IN const uint8_t *pI
               lastRLE = i;
             }
           }
+#endif
         }
       }
 
@@ -1188,10 +1370,15 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_single_avx2)(IN const uint8_t *pI
 
         if (count >= RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT)
         {
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
           if (range <= 255)
+#else
+          if (range <= 127)
+#endif
           {
             const int64_t storedCount = count - RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT + 1;
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_RLE
             if (storedCount <= 255)
             {
               pOut[index] = (uint8_t)storedCount;
@@ -1204,9 +1391,26 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_single_avx2)(IN const uint8_t *pI
               *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
               index += sizeof(uint32_t);
             }
+#else
+            if (storedCount <= 127)
+            {
+              pOut[index] = (uint8_t)(storedCount << 1);
+              index++;
+            }
+            else
+            {
+              *(uint32_t *)&(pOut[index]) = (uint32_t)(storedCount << 1) | (uint32_t)1;
+              index += sizeof(uint32_t);
+            }
+#endif
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
             pOut[index] = (uint8_t)range;
             index++;
+#else
+            pOut[index] = (uint8_t)(range << 1);
+            index++;
+#endif
 
             const size_t copySize = i - count - lastRLE;
 
@@ -1221,6 +1425,7 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_single_avx2)(IN const uint8_t *pI
           {
             const int64_t storedCount = count - RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT + 1;
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_RLE
             if (storedCount <= 255)
             {
               pOut[index] = (uint8_t)storedCount;
@@ -1233,11 +1438,28 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_single_avx2)(IN const uint8_t *pI
               *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
               index += sizeof(uint32_t);
             }
+#else
+            if (storedCount <= 127)
+            {
+              pOut[index] = (uint8_t)(storedCount << 1);
+              index++;
+            }
+            else
+            {
+              *(uint32_t *)&(pOut[index]) = (uint32_t)(storedCount << 1) | (uint32_t)1;
+              index += sizeof(uint32_t);
+            }
+#endif
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
             pOut[index] = 0;
             index++;
             *((uint32_t *)&pOut[index]) = (uint32_t)range;
             index += sizeof(uint32_t);
+#else
+            *((uint32_t *)&pOut[index]) = (uint32_t)(range << 1) | (uint32_t)1;
+            index += sizeof(uint32_t);
+#endif
 
             const size_t copySize = i - count - lastRLE;
 
@@ -1247,6 +1469,7 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_single_avx2)(IN const uint8_t *pI
             lastRLE = i;
             wastedChances = 0;
           }
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_RLE
           else
           {
             wastedChances++;
@@ -1287,6 +1510,7 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_single_avx2)(IN const uint8_t *pI
               lastRLE = i;
             }
           }
+#endif
         }
       }
 
