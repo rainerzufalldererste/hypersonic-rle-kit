@@ -2024,6 +2024,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_sse)(IN const uint8_t *pInS
     (void)pSymbol;
 #endif
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_RLE
     symbolCount = (size_t)*pInStart;
     pInStart++;
 
@@ -2032,7 +2033,22 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_sse)(IN const uint8_t *pInS
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
+#else
+    symbolCount = (size_t)*pInStart;
 
+    if (symbolCount & 1)
+    {
+      symbolCount = (*(uint32_t *)pInStart) >> 1;
+      pInStart += sizeof(uint32_t);
+    }
+    else
+    {
+      pInStart++;
+      symbolCount >>= 1;
+    }
+#endif
+
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
     offset = (size_t)*pInStart;
     pInStart++;
 
@@ -2046,6 +2062,25 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_sse)(IN const uint8_t *pInS
     }
 
     offset--;
+#else
+    offset = (size_t)*pInStart;
+
+    if (offset & 1)
+    {
+      offset = (*(uint32_t *)pInStart) >> 1;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
+    }
+    else
+    {
+      pInStart++;
+      offset >>= 1;
+    }
+
+    offset--;
+#endif
 
     // memcpy.
     MEMCPY_SSE;
@@ -2075,6 +2110,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_sse41)(IN const uint8_t *pI
     (void)pSymbol;
 #endif
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_RLE
     symbolCount = (size_t)*pInStart;
     pInStart++;
 
@@ -2083,7 +2119,22 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_sse41)(IN const uint8_t *pI
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
+#else
+    symbolCount = (size_t)*pInStart;
 
+    if (symbolCount & 1)
+    {
+      symbolCount = (*(uint32_t *)pInStart) >> 1;
+      pInStart += sizeof(uint32_t);
+    }
+    else
+    {
+      pInStart++;
+      symbolCount >>= 1;
+    }
+#endif
+
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
     offset = (size_t)*pInStart;
     pInStart++;
 
@@ -2097,6 +2148,25 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_sse41)(IN const uint8_t *pI
     }
 
     offset--;
+#else
+    offset = (size_t)*pInStart;
+
+    if (offset & 1)
+    {
+      offset = (*(uint32_t *)pInStart) >> 1;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
+    }
+    else
+    {
+      pInStart++;
+      offset >>= 1;
+    }
+
+    offset--;
+#endif
 
     // memcpy.
     MEMCPY_SSE41;
@@ -2126,6 +2196,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_avx)(IN const uint8_t *pInS
     (void)pSymbol;
 #endif
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_RLE
     symbolCount = (size_t)*pInStart;
     pInStart++;
 
@@ -2134,7 +2205,22 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_avx)(IN const uint8_t *pInS
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
+#else
+    symbolCount = (size_t)*pInStart;
 
+    if (symbolCount & 1)
+    {
+      symbolCount = (*(uint32_t *)pInStart) >> 1;
+      pInStart += sizeof(uint32_t);
+    }
+    else
+    {
+      pInStart++;
+      symbolCount >>= 1;
+    }
+#endif
+
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
     offset = (size_t)*pInStart;
     pInStart++;
 
@@ -2148,6 +2234,25 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_avx)(IN const uint8_t *pInS
     }
 
     offset--;
+#else
+    offset = (size_t)*pInStart;
+
+    if (offset & 1)
+    {
+      offset = (*(uint32_t *)pInStart) >> 1;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
+    }
+    else
+    {
+      pInStart++;
+      offset >>= 1;
+    }
+
+    offset--;
+#endif
 
     // memcpy.
     MEMCPY_AVX;
@@ -2177,6 +2282,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_avx2)(IN const uint8_t *pIn
     (void)pSymbol;
 #endif
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_RLE
     symbolCount = (size_t)*pInStart;
     pInStart++;
 
@@ -2185,7 +2291,22 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_avx2)(IN const uint8_t *pIn
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
+#else
+    symbolCount = (size_t)*pInStart;
 
+    if (symbolCount & 1)
+    {
+      symbolCount = (*(uint32_t *)pInStart) >> 1;
+      pInStart += sizeof(uint32_t);
+    }
+    else
+    {
+      pInStart++;
+      symbolCount >>= 1;
+    }
+#endif
+
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
     offset = (size_t)*pInStart;
     pInStart++;
 
@@ -2199,6 +2320,25 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_avx2)(IN const uint8_t *pIn
     }
 
     offset--;
+#else
+    offset = (size_t)*pInStart;
+
+    if (offset & 1)
+    {
+      offset = (*(uint32_t *)pInStart) >> 1;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
+    }
+    else
+    {
+      pInStart++;
+      offset >>= 1;
+    }
+
+    offset--;
+#endif
 
     // memcpy.
     MEMCPY_AVX2;
@@ -2229,6 +2369,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_avx512f)(IN const uint8_t *
     (void)pSymbol;
 #endif
 
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_RLE
     symbolCount = (size_t)*pInStart;
     pInStart++;
 
@@ -2237,7 +2378,22 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_avx512f)(IN const uint8_t *
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
+#else
+    symbolCount = (size_t)*pInStart;
 
+    if (symbolCount & 1)
+    {
+      symbolCount = (*(uint32_t *)pInStart) >> 1;
+      pInStart += sizeof(uint32_t);
+    }
+    else
+    {
+      pInStart++;
+      symbolCount >>= 1;
+    }
+#endif
+
+#ifndef SINGLE_PREFER_7_BIT_OR_4_BYTE_COPY
     offset = (size_t)*pInStart;
     pInStart++;
 
@@ -2251,6 +2407,25 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_avx512f)(IN const uint8_t *
     }
 
     offset--;
+#else
+    offset = (size_t)*pInStart;
+
+    if (offset & 1)
+    {
+      offset = (*(uint32_t *)pInStart) >> 1;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
+    }
+    else
+    {
+      pInStart++;
+      offset >>= 1;
+    }
+
+    offset--;
+#endif
 
     // memcpy.
     MEMCPY_AVX512;
