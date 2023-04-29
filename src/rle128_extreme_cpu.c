@@ -237,7 +237,7 @@ uint32_t rle128_extreme_compress(IN const uint8_t *pIn, const uint32_t inSize, O
 	return (uint32_t)index;
 }
 
-void rle128_extreme_decompress_sse(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+static void rle128_extreme_decompress_sse(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
 	size_t offset, symbolCount;
 	__m128i symbol;
@@ -287,7 +287,7 @@ void rle128_extreme_decompress_sse(IN const uint8_t *pInStart, OUT uint8_t *pOut
 #ifndef _MSC_VER
 __attribute__((target("avx")))
 #endif
-void rle128_extreme_decompress_avx(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+static void rle128_extreme_decompress_avx(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
 	size_t offset, symbolCount;
 	__m256i symbol;
@@ -337,7 +337,7 @@ void rle128_extreme_decompress_avx(IN const uint8_t *pInStart, OUT uint8_t *pOut
 #ifndef _MSC_VER
 __attribute__((target("avx512f")))
 #endif
-void rle128_extreme_decompress_avx512f(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+static void rle128_extreme_decompress_avx512f(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
 	size_t offset, symbolCount;
 	__m512i symbol;

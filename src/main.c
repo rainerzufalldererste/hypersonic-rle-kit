@@ -267,7 +267,7 @@ int main(int argc, char **pArgv)
           return 1;
         }
 
-        if (extremeSize != 16 && extremeSize != 32 && extremeSize != 64)
+        if (extremeSize != 8 && extremeSize != 16 && extremeSize != 32 && extremeSize != 64)
         {
           printf("Not Supported. Expected '%s %s [16 / 32/ 64]' with '%s'.", ArgumentExtreme, ArgumentExtremeSize, ArgumentExtremePacked);
           return 1;
@@ -449,6 +449,8 @@ int main(int argc, char **pArgv)
       Extreme16Unbound,
       Extreme32Unbound,
       Extreme64Unbound,
+      Extreme8Packed,
+      Extreme8PackedSingle,
       Extreme16Packed,
       Extreme32Packed,
       Extreme64Packed,
@@ -468,29 +470,31 @@ int main(int argc, char **pArgv)
 
     const char *codecNames[] = 
     {
-      "Extreme 8 Bit          ",
-      "Extreme 8 Bit Single   ",
-      "Extreme 16 Bit         ",
-      "Extreme 24 Bit         ",
-      "Extreme 32 Bit         ",
-      "Extreme 48 Bit         ",
-      "Extreme 64 Bit         ",
-      "Extreme 128 Bit        ",
-      "Extreme Unbound 16 Bit ",
-      "Extreme Unbound 32 Bit ",
-      "Extreme Unbound 64 Bit ",
-      "Extreme Packed 16 Bit  ",
-      "Extreme Packed 32 Bit  ",
-      "Extreme Packed 64 Bit  ",
-      "RLE 8 SH               ",
-      "Extreme 8 MMTF 128     ",
-      "Multi MTF 128 Bit      ",
-      "Multi MTF 256 Bit      ",
-      "Normal (old)           ",
-      "Normal Single (old)    ",
-      "Ultra (old)            ",
-      "Ultra Single (old)     ",
-      "memcpy                 ",
+      "Extreme 8 Bit               ",
+      "Extreme 8 Bit Single        ",
+      "Extreme 16 Bit              ",
+      "Extreme 24 Bit              ",
+      "Extreme 32 Bit              ",
+      "Extreme 48 Bit              ",
+      "Extreme 64 Bit              ",
+      "Extreme 128 Bit             ",
+      "Extreme Unbound 16 Bit      ",
+      "Extreme Unbound 32 Bit      ",
+      "Extreme Unbound 64 Bit      ",
+      "Extreme Packed 8 Bit        ",
+      "Extreme Packed 8 Bit Single ",
+      "Extreme Packed 16 Bit       ",
+      "Extreme Packed 32 Bit       ",
+      "Extreme Packed 64 Bit       ",
+      "RLE 8 SH                    ",
+      "Extreme 8 MMTF 128          ",
+      "Multi MTF 128 Bit           ",
+      "Multi MTF 256 Bit           ",
+      "Normal (old)                ",
+      "Normal Single (old)         ",
+      "Ultra (old)                 ",
+      "Ultra Single (old)          ",
+      "memcpy                      ",
     };
 
     _STATIC_ASSERT(ARRAYSIZE(codecNames) == CodecCount);
@@ -498,8 +502,8 @@ int main(int argc, char **pArgv)
     uint32_t fileSize32 = (uint32_t)fileSize;
 
     printf("\nBenchmarking File '%s' (%" PRIu64 " Bytes)\n\n"
-      "Codec                    Ratio      Encoder Throughput (Maximum)    Decoder Throughput (Maximum)    R*H/log2(|S|)\n"
-      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n", pArgv[1], fileSize);
+      "Codec                         Ratio      Encoder Throughput (Maximum)    Decoder Throughput (Maximum)    R*H/log2(|S|)\n"
+      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n", pArgv[1], fileSize);
 
     for (; currentCodec < CodecCount; currentCodec++)
     {
@@ -564,6 +568,14 @@ int main(int argc, char **pArgv)
     
         case Extreme64Unbound:
           compressedSize = rle64_extreme_unbound_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme8Packed:
+          compressedSize = rle8_extreme_packed_multi_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme8PackedSingle:
+          compressedSize = rle8_extreme_packed_single_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
     
         case Extreme16Packed:
@@ -704,6 +716,11 @@ int main(int argc, char **pArgv)
 
         case Extreme64Unbound:
           decompressedSize = rle64_extreme_unbound_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8Packed:
+        case Extreme8PackedSingle:
+          decompressedSize = rle8_extreme_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Extreme16Packed:
@@ -904,6 +921,13 @@ int main(int argc, char **pArgv)
                 switch (extremeSize)
                 {
                 default:
+                case 8:
+                  if (singleSymbol)
+                    decompressedSize = rle8_extreme_packed_single_compress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                  else
+                    decompressedSize = rle8_extreme_packed_multi_compress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                  break;
+
                 case 16:
                   compressedSize = rle16_extreme_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
                   break;
@@ -1083,6 +1107,10 @@ int main(int argc, char **pArgv)
               switch (extremeSize)
               {
               default:
+              case 8:
+                decompressedSize = rle8_extreme_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
               case 16:
                 decompressedSize = rle16_extreme_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
                 break;

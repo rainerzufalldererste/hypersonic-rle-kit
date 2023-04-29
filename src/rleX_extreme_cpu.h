@@ -7,12 +7,6 @@
   #define RLEX_EXTREME_MULTI_MIN_RANGE_LONG ((sizeof(symbol_t) + 1 + 4 + 4) + 1)
 #endif
 
-#define CONCAT_LITERALS3(a, b, c) a ## b ## c
-#define CONCAT3(a, b, c) CONCAT_LITERALS3(a, b, c)
-
-#define CONCAT_LITERALS2(a, b) a ## b
-#define CONCAT2(a, b) CONCAT_LITERALS2(a, b)
-
 #if TYPE_SIZE == 64
   #define _mm_set1_epi64 _mm_set1_epi64x
   #define _mm256_set1_epi64 _mm256_set1_epi64x
@@ -510,7 +504,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
   return (uint32_t)index;
 }
 
-void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_sse))(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_sse))(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
   __m128i symbol;
@@ -605,7 +599,7 @@ void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_sse))(IN const uint8_
 #ifndef _MSC_VER
 __attribute__((target("sse4.1")))
 #endif
-void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_sse41))(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_sse41))(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
   __m128i symbol;
@@ -700,7 +694,7 @@ void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_sse41))(IN const uint
 #ifndef _MSC_VER
 __attribute__((target("avx")))
 #endif
-void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx))(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx))(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
   __m256i symbol;
@@ -795,7 +789,7 @@ void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx))(IN const uint8_
 #ifndef _MSC_VER
 __attribute__((target("avx2")))
 #endif
-void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx2))(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx2))(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
   __m256i symbol;
@@ -890,7 +884,7 @@ void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx2))(IN const uint8
 #ifndef _MSC_VER
 __attribute__((target("avx512f")))
 #endif
-void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx512f))(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx512f))(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
   __m512i symbol;
@@ -1018,12 +1012,6 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress))(IN const uint8_
 #ifdef RLEX_EXTREME_MULTI_MIN_RANGE_SAME_SYMBOL_SHORT
   #undef RLEX_EXTREME_MULTI_MIN_RANGE_SAME_SYMBOL_SHORT
 #endif
-
-#undef CONCAT_LITERALS3
-#undef CONCAT3
-
-#undef CONCAT_LITERALS2
-#undef CONCAT2
 
 #if TYPE_SIZE == 64
   #undef _mm_set1_epi64
