@@ -151,7 +151,7 @@ uint32_t CONCAT3(rle8_, CODEC, _multi_compress)(IN const uint8_t *pIn, const uin
 #else
         if (storedCount <= 127)
         {
-          pOut[index] = (uint8_t)(storedCount << 1);
+          pOut[index] = (uint8_t)storedCount;
           index++;
         }
         else
@@ -238,7 +238,7 @@ uint32_t CONCAT3(rle8_, CODEC, _multi_compress)(IN const uint8_t *pIn, const uin
 #else
       if (storedCount <= 127)
       {
-        pOut[index] = (uint8_t)(storedCount << 1);
+        pOut[index] = (uint8_t)storedCount;
         index++;
       }
       else
@@ -842,7 +842,7 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_multi_sse2)(IN const uint8_t *pIn
 
           if (storedCount <= 127)
           {
-            pOut[index] = (uint8_t)(storedCount << 1) | isSameSymbolMask;
+            pOut[index] = (uint8_t)storedCount | isSameSymbolMask;
             index++;
           }
           else
@@ -1010,7 +1010,7 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_multi_avx2)(IN const uint8_t *pIn
 
           if (storedCount <= 127)
           {
-            pOut[index] = (uint8_t)(storedCount << 1) | isSameSymbolMask;
+            pOut[index] = (uint8_t)storedCount | isSameSymbolMask;
             index++;
           }
           else
@@ -1057,6 +1057,8 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_multi_avx2)(IN const uint8_t *pIn
             index += sizeof(uint32_t);
           }
 #endif
+
+          //printf("> count: %" PRIu64 ", range: %" PRIu64 "\n", storedCount, range);
 
           const size_t copySize = i - count - lastRLE;
 
@@ -1551,7 +1553,7 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_single_avx2)(IN const uint8_t *pI
 static void CONCAT3(rle8_, CODEC, _decompress_multi_sse)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
-  __m128i symbol;
+  __m128i symbol = _mm_setzero_si128();
 
   while (true)
   {
@@ -1560,6 +1562,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_sse)(IN const uint8_t *pInSt
     (void)pSymbol;
 #endif
 
+#ifndef PACKED
     symbol = _mm_set1_epi8(*pInStart);
     pInStart++;
     symbolCount = (size_t)*pInStart;
@@ -1570,7 +1573,27 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_sse)(IN const uint8_t *pInSt
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
+#else
+    symbolCount = (size_t)*pInStart;
+    pInStart++;
 
+    const uint8_t sameSymbol = (symbolCount & 0b10000000);
+    symbolCount &= 0b01111111;
+
+    if (symbolCount == 0)
+    {
+      symbolCount = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+    }
+
+    if (!sameSymbol)
+    {
+      symbol = _mm_set1_epi8(*pInStart);
+      pInStart++;
+    }
+#endif
+
+#ifndef PREFER_7_BIT_OR_4_BYTE_COPY
     offset = (size_t)*pInStart;
     pInStart++;
 
@@ -1584,6 +1607,25 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_sse)(IN const uint8_t *pInSt
     }
 
     offset--;
+#else
+    offset = (size_t)*pInStart;
+
+    if (offset & 1)
+    {
+      offset = (*(uint32_t *)pInStart) >> 1;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
+    }
+    else
+    {
+      pInStart++;
+      offset >>= 1;
+    }
+
+    offset--;
+#endif
 
     // memcpy.
     MEMCPY_SSE;
@@ -1604,7 +1646,7 @@ __attribute__((target("sse4.1")))
 static void CONCAT3(rle8_, CODEC, _decompress_multi_sse41)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
-  __m128i symbol;
+  __m128i symbol = _mm_setzero_si128();
 
   while (true)
   {
@@ -1613,6 +1655,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_sse41)(IN const uint8_t *pIn
     (void)pSymbol;
 #endif
 
+#ifndef PACKED
     symbol = _mm_set1_epi8(*pInStart);
     pInStart++;
     symbolCount = (size_t)*pInStart;
@@ -1623,7 +1666,27 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_sse41)(IN const uint8_t *pIn
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
+#else
+    symbolCount = (size_t)*pInStart;
+    pInStart++;
 
+    const uint8_t sameSymbol = (symbolCount & 0b10000000);
+    symbolCount &= 0b01111111;
+
+    if (symbolCount == 0)
+    {
+      symbolCount = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+    }
+
+    if (!sameSymbol)
+    {
+      symbol = _mm_set1_epi8(*pInStart);
+      pInStart++;
+    }
+#endif
+
+#ifndef PREFER_7_BIT_OR_4_BYTE_COPY
     offset = (size_t)*pInStart;
     pInStart++;
 
@@ -1637,6 +1700,25 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_sse41)(IN const uint8_t *pIn
     }
 
     offset--;
+#else
+    offset = (size_t)*pInStart;
+
+    if (offset & 1)
+    {
+      offset = (*(uint32_t *)pInStart) >> 1;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
+    }
+    else
+    {
+      pInStart++;
+      offset >>= 1;
+    }
+
+    offset--;
+#endif
 
     // memcpy.
     MEMCPY_SSE41;
@@ -1657,7 +1739,7 @@ __attribute__((target("avx")))
 static void CONCAT3(rle8_, CODEC, _decompress_multi_avx)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
-  __m256i symbol;
+  __m256i symbol = _mm256_setzero_si256();
 
   while (true)
   {
@@ -1666,6 +1748,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_avx)(IN const uint8_t *pInSt
     (void)pSymbol;
 #endif
 
+#ifndef PACKED
     symbol = _mm256_set1_epi8(*pInStart);
     pInStart++;
     symbolCount = (size_t)*pInStart;
@@ -1676,7 +1759,27 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_avx)(IN const uint8_t *pInSt
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
+#else
+    symbolCount = (size_t)*pInStart;
+    pInStart++;
 
+    const uint8_t sameSymbol = (symbolCount & 0b10000000);
+    symbolCount &= 0b01111111;
+
+    if (symbolCount == 0)
+    {
+      symbolCount = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+    }
+
+    if (!sameSymbol)
+    {
+      symbol = _mm256_set1_epi8(*pInStart);
+      pInStart++;
+    }
+#endif
+
+#ifndef PREFER_7_BIT_OR_4_BYTE_COPY
     offset = (size_t)*pInStart;
     pInStart++;
 
@@ -1690,6 +1793,25 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_avx)(IN const uint8_t *pInSt
     }
 
     offset--;
+#else
+    offset = (size_t)*pInStart;
+
+    if (offset & 1)
+    {
+      offset = (*(uint32_t *)pInStart) >> 1;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
+    }
+    else
+    {
+      pInStart++;
+      offset >>= 1;
+    }
+
+    offset--;
+#endif
 
     // memcpy.
     MEMCPY_AVX;
@@ -1710,7 +1832,7 @@ __attribute__((target("avx2")))
 static void CONCAT3(rle8_, CODEC, _decompress_multi_avx2)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
-  __m256i symbol;
+  __m256i symbol = _mm256_setzero_si256();
 
   while (true)
   {
@@ -1719,6 +1841,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_avx2)(IN const uint8_t *pInS
     (void)pSymbol;
 #endif
 
+#ifndef PACKED
     symbol = _mm256_set1_epi8(*pInStart);
     pInStart++;
     symbolCount = (size_t)*pInStart;
@@ -1729,7 +1852,27 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_avx2)(IN const uint8_t *pInS
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
+#else
+    symbolCount = (size_t)*pInStart;
+    pInStart++;
 
+    const uint8_t sameSymbol = (symbolCount & 0b10000000);
+    symbolCount &= 0b01111111;
+
+    if (symbolCount == 0)
+    {
+      symbolCount = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+    }
+
+    if (!sameSymbol)
+    {
+      symbol = _mm256_set1_epi8(*pInStart);
+      pInStart++;
+    }
+#endif
+
+#ifndef PREFER_7_BIT_OR_4_BYTE_COPY
     offset = (size_t)*pInStart;
     pInStart++;
 
@@ -1743,6 +1886,25 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_avx2)(IN const uint8_t *pInS
     }
 
     offset--;
+#else
+    offset = (size_t)*pInStart;
+
+    if (offset & 1)
+    {
+      offset = (*(uint32_t *)pInStart) >> 1;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
+    }
+    else
+    {
+      pInStart++;
+      offset >>= 1;
+    }
+
+    offset--;
+#endif
 
     // memcpy.
     MEMCPY_AVX2;
@@ -1763,7 +1925,7 @@ __attribute__((target("avx512f")))
 static void CONCAT3(rle8_, CODEC, _decompress_multi_avx512f)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
-  __m512i symbol;
+  __m512i symbol = _mm512_setzero_si512();
 
   while (true)
   {
@@ -1772,6 +1934,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_avx512f)(IN const uint8_t *p
     (void)pSymbol;
 #endif
 
+#ifndef PACKED
     symbol = _mm512_set1_epi8(*pInStart);
     pInStart++;
     symbolCount = (size_t)*pInStart;
@@ -1782,7 +1945,27 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_avx512f)(IN const uint8_t *p
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
+#else
+    symbolCount = (size_t)*pInStart;
+    pInStart++;
 
+    const uint8_t sameSymbol = (symbolCount & 0b10000000);
+    symbolCount &= 0b01111111;
+
+    if (symbolCount == 0)
+    {
+      symbolCount = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+    }
+
+    if (!sameSymbol)
+    {
+      symbol = _mm512_set1_epi8(*pInStart);
+      pInStart++;
+    }
+#endif
+
+#ifndef PREFER_7_BIT_OR_4_BYTE_COPY
     offset = (size_t)*pInStart;
     pInStart++;
 
@@ -1796,6 +1979,25 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_avx512f)(IN const uint8_t *p
     }
 
     offset--;
+#else
+    offset = (size_t)*pInStart;
+
+    if (offset & 1)
+    {
+      offset = (*(uint32_t *)pInStart) >> 1;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
+    }
+    else
+    {
+      pInStart++;
+      offset >>= 1;
+    }
+
+    offset--;
+#endif
 
     // memcpy.
     MEMCPY_AVX512;

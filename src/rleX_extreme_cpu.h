@@ -507,7 +507,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
 static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_sse))(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
-  __m128i symbol;
+  __m128i symbol = _mm_setzero_si128();
 
   typedef CONCAT3(uint, TYPE_SIZE, _t) symbol_t;
 
@@ -528,20 +528,19 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_sse))(IN const
     symbolCount = (size_t)*pInStart;
     pInStart++;
 
-    if (symbolCount & 0b10000000)
-    {
-      symbolCount &= 0b01111111;
-    }
-    else
-    {
-      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(symbol_t *)pInStart);
-      pInStart += sizeof(symbol_t);
-    }
+    const uint8_t sameSymbol = (symbolCount & 0b10000000);
+    symbolCount &= 0b01111111;
 
     if (symbolCount == 0)
     {
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
+    }
+
+    if (!sameSymbol)
+    {
+      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(symbol_t *)pInStart);
+      pInStart += sizeof(symbol_t);
     }
 #endif
 
@@ -623,20 +622,19 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_sse41))(IN con
     symbolCount = (size_t)*pInStart;
     pInStart++;
 
-    if (symbolCount & 0b10000000)
-    {
-      symbolCount &= 0b01111111;
-    }
-    else
-    {
-      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(symbol_t *)pInStart);
-      pInStart += sizeof(symbol_t);
-    }
+    const uint8_t sameSymbol = (symbolCount & 0b10000000);
+    symbolCount &= 0b01111111;
 
     if (symbolCount == 0)
     {
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
+    }
+
+    if (!sameSymbol)
+    {
+      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(symbol_t *)pInStart);
+      pInStart += sizeof(symbol_t);
     }
 #endif
 
@@ -697,7 +695,7 @@ __attribute__((target("avx")))
 static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx))(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
-  __m256i symbol;
+  __m256i symbol = _mm256_setzero_si256();
 
   typedef CONCAT3(uint, TYPE_SIZE, _t) symbol_t;
 
@@ -718,20 +716,19 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx))(IN const
     symbolCount = (size_t)*pInStart;
     pInStart++;
 
-    if (symbolCount & 0b10000000)
-    {
-      symbolCount &= 0b01111111;
-    }
-    else
-    {
-      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(symbol_t *)pInStart);
-      pInStart += sizeof(symbol_t);
-    }
+    const uint8_t sameSymbol = (symbolCount & 0b10000000);
+    symbolCount &= 0b01111111;
 
     if (symbolCount == 0)
     {
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
+    }
+
+    if (!sameSymbol)
+    {
+      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(symbol_t *)pInStart);
+      pInStart += sizeof(symbol_t);
     }
 #endif
 
@@ -792,7 +789,7 @@ __attribute__((target("avx2")))
 static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx2))(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
-  __m256i symbol;
+  __m256i symbol = _mm256_setzero_si256();
 
   typedef CONCAT3(uint, TYPE_SIZE, _t) symbol_t;
 
@@ -813,20 +810,19 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx2))(IN cons
     symbolCount = (size_t)*pInStart;
     pInStart++;
 
-    if (symbolCount & 0b10000000)
-    {
-      symbolCount &= 0b01111111;
-    }
-    else
-    {
-      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(symbol_t *)pInStart);
-      pInStart += sizeof(symbol_t);
-    }
+    const uint8_t sameSymbol = (symbolCount & 0b10000000);
+    symbolCount &= 0b01111111;
 
     if (symbolCount == 0)
     {
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
+    }
+
+    if (!sameSymbol)
+    {
+      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(symbol_t *)pInStart);
+      pInStart += sizeof(symbol_t);
     }
 #endif
 
@@ -887,7 +883,7 @@ __attribute__((target("avx512f")))
 static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress_avx512f))(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
-  __m512i symbol;
+  __m512i symbol = _mm512_setzero_si512();
 
   typedef CONCAT3(uint, TYPE_SIZE, _t) symbol_t;
 

@@ -1412,6 +1412,7 @@ double GetInformationRatio(const uint8_t *pData, const size_t length)
 void AnalyzeData(const uint8_t *pData, const size_t size)
 {
   size_t hist[256];
+  size_t rle8hist[256];
 
   typedef struct
   {
@@ -1432,6 +1433,7 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
   rle_data_t byRLE[16];
 
   memset(hist, 0, sizeof(hist));
+  memset(rle8hist, 0, sizeof(rle8hist));
   memset(byRLE, 0, sizeof(byRLE));
 
   printf("\rAnalyzing Data...");
@@ -1460,6 +1462,9 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
             pRLE->recurringRleSymbolCount++;
           else
             memcpy(pRLE->lastSymbol, pData + i, j);
+
+          if (j == 1)
+            rle8hist[pData[i]]++;
 
           if (pRLE->currentNonLength)
           {
@@ -1667,7 +1672,26 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
     for (size_t j = 0; j < 64; j++)
       printf("%2" PRIu64 " Bit: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Bytes: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Bit: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Symbols: | %12" PRIu64 " | %12" PRIu64 "\n", j + 1, pRLE->rleLengthByBits[j], pRLE->emptyLengthByBits[j], j + 1, pRLE->rleLengthExact[j], pRLE->emptyLengthExact[j], j + 1, pRLE->alignedRleLengthByBits[j], pRLE->alignedEmptyLengthByBits[j], j + 1, pRLE->alignedRleLengthExact[j], pRLE->alignedEmptyLengthExact[j]);
     
-    puts("\n");
+    puts("");
+
+    if (i == 0)
+    {
+      puts("RLE-Symbol Histogram:");
+      puts("% | 0     | 1     | 2     | 3     | 4     | 5     | 6     | 7     | 8     | 9     | A     | B     | C     | D     | E     | F     |");
+      puts("-----------------------------------------------------------------------------------------------------------------------------------");
+
+      for (uint8_t i = 0; i <= 0xF; i++)
+      {
+        printf("%" PRIX8 " | ", i);
+
+        for (uint8_t j = 0; j <= 0xF; j++)
+          printf("%5.2f | ", rle8hist[(j << 4) | i] * 100.0 / (double)pRLE->totalRleCount);
+
+        puts("");
+      }
+
+      puts("\n");
+    }
   }
 
   puts("Histogram:");
