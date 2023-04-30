@@ -249,9 +249,9 @@ int main(int argc, char **pArgv)
           return 1;
         }
 
-        if (extremeSize != 16 && extremeSize != 24 && extremeSize != 32 && extremeSize != 64)
+        if (extremeSize != 16 && extremeSize != 24 && extremeSize != 32 && extremeSize != 48 && extremeSize != 64)
         {
-          printf("Not Supported. Expected '%s %s [16 / 24 / 32/ 64]' with '%s'.", ArgumentExtreme, ArgumentExtremeSize, ArgumentExtremeUnbound);
+          printf("Not Supported. Expected '%s %s [16 / 24 / 32 / 48 / 64]' with '%s'.", ArgumentExtreme, ArgumentExtremeSize, ArgumentExtremeUnbound);
           return 1;
         }
 
@@ -267,9 +267,9 @@ int main(int argc, char **pArgv)
           return 1;
         }
 
-        if (extremeSize != 8 && extremeSize != 16 && extremeSize != 24 && extremeSize != 32 && extremeSize != 64)
+        if (extremeSize != 8 && extremeSize != 16 && extremeSize != 24 && extremeSize != 32 && extremeSize != 48 && extremeSize != 64)
         {
-          printf("Not Supported. Expected '%s %s [8 / 16 / 24 / 32/ 64]' with '%s'.", ArgumentExtreme, ArgumentExtremeSize, ArgumentExtremePacked);
+          printf("Not Supported. Expected '%s %s [8 / 16 / 24 / 32 / 48 / 64]' with '%s'.", ArgumentExtreme, ArgumentExtremeSize, ArgumentExtremePacked);
           return 1;
         }
 
@@ -449,12 +449,14 @@ int main(int argc, char **pArgv)
       Extreme16Unbound,
       Extreme24Unbound,
       Extreme32Unbound,
+      Extreme48Unbound,
       Extreme64Unbound,
       Extreme8Packed,
       Extreme8PackedSingle,
       Extreme16Packed,
       Extreme24Packed,
       Extreme32Packed,
+      Extreme48Packed,
       Extreme64Packed,
       Rle8SH,
       Extreme8MultiMTF128,
@@ -483,12 +485,14 @@ int main(int argc, char **pArgv)
       "Extreme Unbound 16 Bit      ",
       "Extreme Unbound 24 Bit      ",
       "Extreme Unbound 32 Bit      ",
+      "Extreme Unbound 48 Bit      ",
       "Extreme Unbound 64 Bit      ",
       "Extreme Packed 8 Bit        ",
       "Extreme Packed 8 Bit Single ",
       "Extreme Packed 16 Bit       ",
       "Extreme Packed 24 Bit       ",
       "Extreme Packed 32 Bit       ",
+      "Extreme Packed 48 Bit       ",
       "Extreme Packed 64 Bit       ",
       "RLE 8 SH                    ",
       "Extreme 8 MMTF 128          ",
@@ -574,6 +578,10 @@ int main(int argc, char **pArgv)
           compressedSize = rle32_extreme_unbound_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
     
+        case Extreme48Unbound:
+          compressedSize = rle48_extreme_unbound_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
         case Extreme64Unbound:
           compressedSize = rle64_extreme_unbound_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
@@ -596,6 +604,10 @@ int main(int argc, char **pArgv)
     
         case Extreme32Packed:
           compressedSize = rle32_extreme_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme48Packed:
+          compressedSize = rle48_extreme_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
     
         case Extreme64Packed:
@@ -730,6 +742,10 @@ int main(int argc, char **pArgv)
           decompressedSize = rle32_extreme_unbound_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
+        case Extreme48Unbound:
+          decompressedSize = rle48_extreme_unbound_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
         case Extreme64Unbound:
           decompressedSize = rle64_extreme_unbound_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
@@ -749,6 +765,10 @@ int main(int argc, char **pArgv)
 
         case Extreme32Packed:
           decompressedSize = rle32_extreme_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Packed:
+          decompressedSize = rle48_extreme_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Extreme64Packed:
@@ -957,6 +977,10 @@ int main(int argc, char **pArgv)
                 compressedSize = rle32_extreme_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
                 break;
 
+              case 48:
+                compressedSize = rle48_extreme_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
               case 64:
                 compressedSize = rle64_extreme_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
                 break;
@@ -977,6 +1001,10 @@ int main(int argc, char **pArgv)
 
               case 32:
                 compressedSize = rle32_extreme_unbound_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 48:
+                compressedSize = rle48_extreme_unbound_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
                 break;
 
               case 64:
@@ -1147,6 +1175,10 @@ int main(int argc, char **pArgv)
                 decompressedSize = rle32_extreme_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
                 break;
 
+              case 48:
+                decompressedSize = rle48_extreme_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
               case 64:
                 decompressedSize = rle64_extreme_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
                 break;
@@ -1167,6 +1199,10 @@ int main(int argc, char **pArgv)
 
               case 32:
                 decompressedSize = rle32_extreme_unbound_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
+              case 48:
+                decompressedSize = rle48_extreme_unbound_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
                 break;
 
               case 64:
