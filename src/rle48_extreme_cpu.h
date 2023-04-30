@@ -38,25 +38,69 @@ uint32_t CONCAT3(rle48_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_t
   int64_t count = 0;
   symbol_t symbol = (~(*((symbol_t *)(pIn)))) & symbolMask;
 
+#ifdef PACKED
+  symbol_t lastSymbol = 0;
+#endif
+
   while (i < inSize)
   {
-    if (count && ((*(symbol_t *)&pIn[i]) & symbolMask) == symbol && i + symbolSize <= inSize)
+    if (count)
     {
-      count += symbolSize;
-      i += symbolSize;
+      if (i + symbolSize <= inSize)
+      {
+        const symbol_t next = ((*(symbol_t *)&pIn[i]) & symbolMask);
+
+        if (next == symbol)
+        {
+          count += symbolSize;
+          i += symbolSize;
+          continue;
+        }
+#ifdef UNBOUND
+        else
+        {
+          const symbol_t diff = symbol ^ *(symbol_t *)&pIn[i];
+
+#ifdef _MSC_VER
+          unsigned long offset;
+          _BitScanForward64(&offset, diff);
+#else
+          const uint32_t offset = __builtin_ctzl(diff);
+#endif
+
+          i += (offset / 8);
+          count += (offset / 8);
+        }
+#endif
+      }
     }
-    else
+
     {
       {
         const int64_t range = i - lastRLE - count + 1;
 
+#ifndef PACKED
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
+        if (range <= 127 && count >= RLE48_EXTREME_MULTI_MIN_RANGE_SHORT)
+#else
         if (range <= 255 && count >= RLE48_EXTREME_MULTI_MIN_RANGE_SHORT)
+#endif
+#else
+        if (range <= 127 && ((count >= RLE48_EXTREME_MULTI_MIN_RANGE_SHORT && symbol == lastSymbol) || (count >= RLE48_EXTREME_MULTI_MIN_RANGE_MEDIUM)))
+#endif
         {
+#ifndef PACKED
           *(symbol_t *)(&pOut[index]) = symbol;
           index += symbolSize;
+#endif
 
+#ifndef UNBOUND
           const int64_t storedCount = (count / symbolSize) - (RLE48_EXTREME_MULTI_MIN_RANGE_SHORT / symbolSize) + 1;
+#else
+          const int64_t storedCount = count - (RLE48_EXTREME_MULTI_MIN_RANGE_SHORT) + 1;
+#endif
 
+#ifndef PACKED
           if (storedCount <= 255)
           {
             pOut[index] = (uint8_t)storedCount;
@@ -69,9 +113,37 @@ uint32_t CONCAT3(rle48_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_t
             *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
             index += sizeof(uint32_t);
           }
+#else
+          const uint8_t isSameSymbolMask = ((symbol == lastSymbol) << 7);
+          lastSymbol = symbol;
 
+          if (storedCount <= 0b01111111)
+          {
+            pOut[index] = (uint8_t)storedCount | isSameSymbolMask;
+            index++;
+          }
+          else
+          {
+            pOut[index] = isSameSymbolMask;
+            index++;
+            *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+            index += sizeof(uint32_t);
+          }
+
+          if (!isSameSymbolMask)
+          {
+            *(symbol_t *)(&pOut[index]) = symbol;
+            index += symbolSize;
+          }
+#endif
+
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
+          pOut[index] = (uint8_t)(range << 1);
+          index++;
+#else
           pOut[index] = (uint8_t)range;
           index++;
+#endif
 
           const size_t copySize = i - count - lastRLE;
 
@@ -82,11 +154,18 @@ uint32_t CONCAT3(rle48_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_t
         }
         else if (count >= RLE48_EXTREME_MULTI_MIN_RANGE_LONG)
         {
+#ifndef PACKED
           *(symbol_t *)(&pOut[index]) = symbol;
           index += symbolSize;
-
+#endif
+          
+#ifndef UNBOUND
           const int64_t storedCount = (count / symbolSize) - (RLE48_EXTREME_MULTI_MIN_RANGE_SHORT / symbolSize) + 1;
+#else
+          const int64_t storedCount = count - (RLE48_EXTREME_MULTI_MIN_RANGE_SHORT) + 1;
+#endif
 
+#ifndef PACKED
           if (storedCount <= 255)
           {
             pOut[index] = (uint8_t)storedCount;
@@ -99,11 +178,39 @@ uint32_t CONCAT3(rle48_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_t
             *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
             index += sizeof(uint32_t);
           }
+#else
+          const uint8_t isSameSymbolMask = ((symbol == lastSymbol) << 7);
+          lastSymbol = symbol;
 
+          if (storedCount <= 0b01111111)
+          {
+            pOut[index] = (uint8_t)storedCount | isSameSymbolMask;
+            index++;
+          }
+          else
+          {
+            pOut[index] = isSameSymbolMask;
+            index++;
+            *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+            index += sizeof(uint32_t);
+          }
+
+          if (!isSameSymbolMask)
+          {
+            *(symbol_t *)(&pOut[index]) = symbol;
+            index += symbolSize;
+          }
+#endif
+
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
+          *((uint32_t *)&pOut[index]) = (uint32_t)(range << 1) | 1;
+          index += sizeof(uint32_t);
+#else
           pOut[index] = 0;
           index++;
           *((uint32_t *)&pOut[index]) = (uint32_t)range;
           index += sizeof(uint32_t);
+#endif
 
           const size_t copySize = i - count - lastRLE;
 
@@ -132,13 +239,28 @@ uint32_t CONCAT3(rle48_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_t
   {
     const int64_t range = i - lastRLE - count + 1;
 
+#ifndef PACKED
+  #ifdef PREFER_7_BIT_OR_4_BYTE_COPY
+    if (range <= 127 && count >= RLE48_EXTREME_MULTI_MIN_RANGE_SHORT)
+  #else
     if (range <= 255 && count >= RLE48_EXTREME_MULTI_MIN_RANGE_SHORT)
+  #endif
+#else
+    if (range <= 127 && ((count >= RLE48_EXTREME_MULTI_MIN_RANGE_SHORT && symbol == lastSymbol) || (count >= RLE48_EXTREME_MULTI_MIN_RANGE_MEDIUM)))
+#endif
     {
+#ifndef PACKED
       *(symbol_t *)(&pOut[index]) = symbol;
       index += symbolSize;
-
+#endif
+      
+#ifndef UNBOUND
       const int64_t storedCount = (count / symbolSize) - (RLE48_EXTREME_MULTI_MIN_RANGE_SHORT / symbolSize) + 1;
+#else
+      const int64_t storedCount = count - (RLE48_EXTREME_MULTI_MIN_RANGE_SHORT) + 1;
+#endif
 
+#ifndef PACKED
       if (storedCount <= 255)
       {
         pOut[index] = (uint8_t)storedCount;
@@ -151,35 +273,83 @@ uint32_t CONCAT3(rle48_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_t
         *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
         index += sizeof(uint32_t);
       }
+#else
+      const uint8_t isSameSymbolMask = ((symbol == lastSymbol) << 7);
+      lastSymbol = symbol;
 
+      if (storedCount <= 0b01111111)
+      {
+        pOut[index] = (uint8_t)storedCount | isSameSymbolMask;
+        index++;
+      }
+      else
+      {
+        pOut[index] = isSameSymbolMask;
+        index++;
+        *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+        index += sizeof(uint32_t);
+      }
+
+      if (!isSameSymbolMask)
+      {
+        *(symbol_t *)(&pOut[index]) = symbol;
+        index += symbolSize;
+      }
+#endif
+
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
+      pOut[index] = (uint8_t)(range << 1);
+      index++;
+#else
       pOut[index] = (uint8_t)range;
       index++;
+#endif
 
       const size_t copySize = i - count - lastRLE;
 
       memcpy(pOut + index, pIn + lastRLE, copySize);
       index += copySize;
 
+#ifndef PACKED
       *(symbol_t *)(&pOut[index]) = 0;
       index += symbolSize;
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = 0;
       index += sizeof(uint32_t);
+#else
+      pOut[index] = 0b10000000;
+      index++;
+      *((uint32_t *)&pOut[index]) = 0;
+      index += sizeof(uint32_t);
+#endif
+
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
+      *((uint32_t *)&pOut[index]) = 1;
+      index += sizeof(uint32_t);
+#else
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = 0;
       index += sizeof(uint32_t);
+#endif
 
       lastRLE = i;
     }
     else if (count >= RLE48_EXTREME_MULTI_MIN_RANGE_LONG)
     {
+#ifndef PACKED
       *(symbol_t *)(&pOut[index]) = symbol;
       index += symbolSize;
+#endif
 
+#ifndef UNBOUND
       const int64_t storedCount = (count / symbolSize) - (RLE48_EXTREME_MULTI_MIN_RANGE_SHORT / symbolSize) + 1;
+#else
+      const int64_t storedCount = count - (RLE48_EXTREME_MULTI_MIN_RANGE_SHORT)+1;
+#endif
 
+#ifndef PACKED
       if (storedCount <= 255)
       {
         pOut[index] = (uint8_t)storedCount;
@@ -192,42 +362,96 @@ uint32_t CONCAT3(rle48_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_t
         *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
         index += sizeof(uint32_t);
       }
+#else
+      const uint8_t isSameSymbolMask = ((symbol == lastSymbol) << 7);
+      lastSymbol = symbol;
 
+      if (storedCount <= 0b01111111)
+      {
+        pOut[index] = (uint8_t)storedCount | isSameSymbolMask;
+        index++;
+      }
+      else
+      {
+        pOut[index] = isSameSymbolMask;
+        index++;
+        *(uint32_t *)&(pOut[index]) = (uint32_t)storedCount;
+        index += sizeof(uint32_t);
+      }
+
+      if (!isSameSymbolMask)
+      {
+        *(symbol_t *)(&pOut[index]) = symbol;
+        index += symbolSize;
+      }
+#endif
+
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
+      *((uint32_t *)&pOut[index]) = (uint32_t)(range << 1) | 1;
+      index += sizeof(uint32_t);
+#else
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = (uint32_t)range;
       index += sizeof(uint32_t);
+#endif
 
       const size_t copySize = i - count - lastRLE;
 
       memcpy(pOut + index, pIn + lastRLE, copySize);
       index += copySize;
 
+#ifndef PACKED
       *(symbol_t *)(&pOut[index]) = 0;
       index += symbolSize;
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = 0;
       index += sizeof(uint32_t);
+#else
+      pOut[index] = 0b10000000;
+      index++;
+      *((uint32_t *)&pOut[index]) = 0;
+      index += sizeof(uint32_t);
+#endif
+
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
+      *((uint32_t *)&pOut[index]) = 1;
+      index += sizeof(uint32_t);
+#else
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = 0;
       index += sizeof(uint32_t);
+#endif
 
       lastRLE = i;
     }
     else
     {
+#ifndef PACKED
       *(symbol_t *)(&pOut[index]) = 0;
       index += symbolSize;
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = 0;
       index += sizeof(uint32_t);
+#else
+      pOut[index] = 0b10000000;
+      index++;
+      *((uint32_t *)&pOut[index]) = 0;
+      index += sizeof(uint32_t);
+#endif
+
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
+      *((uint32_t *)&pOut[index]) = (uint32_t)(range << 1) | 1;
+      index += sizeof(uint32_t);
+#else
       pOut[index] = 0;
       index++;
       *((uint32_t *)&pOut[index]) = (uint32_t)range;
       index += sizeof(uint32_t);
+#endif
 
       const size_t copySize = i - lastRLE;
 
@@ -245,7 +469,7 @@ uint32_t CONCAT3(rle48_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_t
 static void CONCAT3(rle48_, CODEC, _decompress_sse2)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
-  __m128i symbol;
+  __m128i symbol = _mm_setzero_si128();
   
   const __m128i pattern00 = _mm_set_epi8( 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, -1, -1, -1, -1, -1, -1);
   const __m128i pattern10 = _mm_set_epi8( 0,  0, -1, -1, -1, -1, -1, -1,  0,  0,  0,  0,  0,  0,  0,  0);
@@ -264,8 +488,13 @@ static void CONCAT3(rle48_, CODEC, _decompress_sse2)(IN const uint8_t *pInStart,
   typedef uint64_t symbol_t;
   const size_t symbolSize = 6;
 
+#ifdef PACKED
+  __m128i symbol0 = symbol, symbol1 = symbol, symbol2 = symbol;
+#endif
+
   while (true)
   {
+#ifndef PACKED
     symbol = _mm_set1_epi64x(*(symbol_t *)pInStart);
 
     pInStart += symbolSize;
@@ -277,7 +506,61 @@ static void CONCAT3(rle48_, CODEC, _decompress_sse2)(IN const uint8_t *pInStart,
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
+#else
+    symbolCount = (size_t)*pInStart;
+    pInStart++;
 
+    const uint8_t sameSymbol = (symbolCount & 0b10000000);
+    symbolCount &= 0b01111111;
+
+    if (symbolCount == 0)
+    {
+      symbolCount = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+    }
+
+    if (!sameSymbol)
+    {
+      symbol = _mm_set1_epi32(*(symbol_t *)pInStart);
+      pInStart += symbolSize;
+
+      const __m128i shift2 = _mm_or_si128(_mm_srli_si128(symbol, 2), _mm_slli_si128(symbol, 14));
+
+      symbol0 = _mm_or_si128(_mm_and_si128(symbol, pattern00), _mm_and_si128(shift2, pattern02));
+      const __m128i symbol1a = _mm_or_si128(_mm_and_si128(symbol, pattern10), _mm_and_si128(shift2, pattern12));
+
+      const __m128i shift4 = _mm_or_si128(_mm_srli_si128(symbol, 4), _mm_slli_si128(symbol, 12));
+
+      symbol0 = _mm_or_si128(symbol0, _mm_and_si128(shift4, pattern04));
+      symbol2 = _mm_or_si128(_mm_and_si128(shift2, pattern22), _mm_and_si128(shift4, pattern24));
+
+      const __m128i shift6 = _mm_or_si128(_mm_srli_si128(symbol, 6), _mm_slli_si128(symbol, 10));
+
+      const __m128i symbol1b = _mm_or_si128(_mm_and_si128(shift4, pattern14), _mm_and_si128(shift6, pattern16));
+      symbol2 = _mm_or_si128(symbol2, _mm_and_si128(shift6, pattern26));
+      symbol1 = _mm_or_si128(symbol1a, symbol1b);
+    }
+#endif
+
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
+    offset = (size_t)*pInStart;
+
+    if (offset & 1)
+    {
+      offset = (*(uint32_t *)pInStart) >> 1;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
+    }
+    else
+    {
+      pInStart++;
+      offset >>= 1;
+    }
+
+    offset--;
+#else
     offset = (size_t)*pInStart;
     pInStart++;
 
@@ -291,6 +574,7 @@ static void CONCAT3(rle48_, CODEC, _decompress_sse2)(IN const uint8_t *pInStart,
     }
 
     offset--;
+#endif
 
     // memcpy.
     MEMCPY_SSE_MULTI;
@@ -298,13 +582,18 @@ static void CONCAT3(rle48_, CODEC, _decompress_sse2)(IN const uint8_t *pInStart,
     if (!symbolCount)
       return;
 
+#ifndef UNBOUND
     symbolCount = (symbolCount + (RLE48_EXTREME_MULTI_MIN_RANGE_SHORT / symbolSize) - 1) * symbolSize;
+#else
+    symbolCount = (symbolCount + RLE48_EXTREME_MULTI_MIN_RANGE_SHORT - 1);
+#endif
 
     // memset.
     {
       uint8_t *pCOut = pOut;
       uint8_t *pCOutEnd = pOut + symbolCount;
 
+#ifndef PACKED
       const __m128i shift2 = _mm_or_si128(_mm_srli_si128(symbol, 2), _mm_slli_si128(symbol, 14));
 
       __m128i symbol0 = _mm_or_si128(_mm_and_si128(symbol, pattern00), _mm_and_si128(shift2, pattern02));
@@ -320,6 +609,7 @@ static void CONCAT3(rle48_, CODEC, _decompress_sse2)(IN const uint8_t *pInStart,
       const __m128i symbol1b = _mm_or_si128(_mm_and_si128(shift4, pattern14), _mm_and_si128(shift6, pattern16));
       symbol2 = _mm_or_si128(symbol2, _mm_and_si128(shift6, pattern26));
       const __m128i symbol1 = _mm_or_si128(symbol1a, symbol1b);
+#endif
 
       while (pCOut < pCOutEnd)
       {
@@ -342,7 +632,7 @@ __attribute__((target("ssse3")))
 static void CONCAT3(rle48_, CODEC, _decompress_ssse3)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
-  __m128i symbol;
+  __m128i symbol = _mm_setzero_si128();
 
   const __m128i shuffle0 = _mm_set_epi8(3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0);
   const __m128i shuffle1 = _mm_set_epi8(1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4);
@@ -351,8 +641,13 @@ static void CONCAT3(rle48_, CODEC, _decompress_ssse3)(IN const uint8_t *pInStart
   typedef uint64_t symbol_t;
   const size_t symbolSize = 6;
 
+#ifdef PACKED
+  __m128i symbol0 = symbol, symbol1 = symbol, symbol2 = symbol;
+#endif
+
   while (true)
   {
+#ifndef PACKED
     symbol = _mm_set1_epi64x(*(symbol_t *)pInStart);
 
     pInStart += symbolSize;
@@ -364,7 +659,49 @@ static void CONCAT3(rle48_, CODEC, _decompress_ssse3)(IN const uint8_t *pInStart
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
+#else
+    symbolCount = (size_t)*pInStart;
+    pInStart++;
 
+    const uint8_t sameSymbol = (symbolCount & 0b10000000);
+    symbolCount &= 0b01111111;
+
+    if (symbolCount == 0)
+    {
+      symbolCount = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+    }
+
+    if (!sameSymbol)
+    {
+      symbol = _mm_set1_epi32(*(symbol_t *)pInStart);
+      pInStart += symbolSize;
+
+      symbol0 = _mm_shuffle_epi8(symbol, shuffle0);
+      symbol1 = _mm_shuffle_epi8(symbol, shuffle1);
+      symbol2 = _mm_shuffle_epi8(symbol, shuffle2);
+    }
+#endif
+
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
+    offset = (size_t)*pInStart;
+
+    if (offset & 1)
+    {
+      offset = (*(uint32_t *)pInStart) >> 1;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
+    }
+    else
+    {
+      pInStart++;
+      offset >>= 1;
+    }
+
+    offset--;
+#else
     offset = (size_t)*pInStart;
     pInStart++;
 
@@ -378,6 +715,7 @@ static void CONCAT3(rle48_, CODEC, _decompress_ssse3)(IN const uint8_t *pInStart
     }
 
     offset--;
+#endif
 
     // memcpy.
     MEMCPY_SSE_MULTI;
@@ -385,16 +723,22 @@ static void CONCAT3(rle48_, CODEC, _decompress_ssse3)(IN const uint8_t *pInStart
     if (!symbolCount)
       return;
 
+#ifndef UNBOUND
     symbolCount = (symbolCount + (RLE48_EXTREME_MULTI_MIN_RANGE_SHORT / symbolSize) - 1) * symbolSize;
+#else
+    symbolCount = (symbolCount + RLE48_EXTREME_MULTI_MIN_RANGE_SHORT - 1);
+#endif
 
     // memset.
     {
       uint8_t *pCOut = pOut;
       uint8_t *pCOutEnd = pOut + symbolCount;
 
+#ifndef PACKED
       const __m128i symbol0 = _mm_shuffle_epi8(symbol, shuffle0);
       const __m128i symbol1 = _mm_shuffle_epi8(symbol, shuffle1);
       const __m128i symbol2 = _mm_shuffle_epi8(symbol, shuffle2);
+#endif
 
       while (pCOut < pCOutEnd)
       {
@@ -417,7 +761,7 @@ __attribute__((target("avx2")))
 static void CONCAT3(rle48_, CODEC, _decompress_avx2)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
-  __m256i symbol;
+  __m256i symbol = _mm256_setzero_si256();
 
   const __m256i shuffle0 = _mm256_set_epi8(1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0);
   const __m256i shuffle1 = _mm256_set_epi8(3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2);
@@ -426,8 +770,13 @@ static void CONCAT3(rle48_, CODEC, _decompress_avx2)(IN const uint8_t *pInStart,
   typedef uint64_t symbol_t;
   const size_t symbolSize = 6;
 
+#ifdef PACKED
+  __m256i symbol0 = symbol, symbol1 = symbol, symbol2 = symbol;
+#endif
+
   while (true)
   {
+#ifndef PACKED
     symbol = _mm256_set1_epi64x(*(symbol_t *)pInStart);
 
     pInStart += symbolSize;
@@ -439,7 +788,49 @@ static void CONCAT3(rle48_, CODEC, _decompress_avx2)(IN const uint8_t *pInStart,
       symbolCount = *(uint32_t *)pInStart;
       pInStart += sizeof(uint32_t);
     }
+#else
+    symbolCount = (size_t)*pInStart;
+    pInStart++;
 
+    const uint8_t sameSymbol = (symbolCount & 0b10000000);
+    symbolCount &= 0b01111111;
+
+    if (symbolCount == 0)
+    {
+      symbolCount = *(uint32_t *)pInStart;
+      pInStart += sizeof(uint32_t);
+    }
+
+    if (!sameSymbol)
+    {
+      symbol = _mm256_set1_epi64x(*(symbol_t *)pInStart);
+      pInStart += symbolSize;
+
+      symbol0 = _mm256_shuffle_epi8(symbol, shuffle0);
+      symbol1 = _mm256_shuffle_epi8(symbol, shuffle1);
+      symbol2 = _mm256_shuffle_epi8(symbol, shuffle2);
+    }
+#endif
+
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
+    offset = (size_t)*pInStart;
+
+    if (offset & 1)
+    {
+      offset = (*(uint32_t *)pInStart) >> 1;
+      pInStart += sizeof(uint32_t);
+
+      if (offset == 0)
+        return;
+    }
+    else
+    {
+      pInStart++;
+      offset >>= 1;
+    }
+
+    offset--;
+#else
     offset = (size_t)*pInStart;
     pInStart++;
 
@@ -453,6 +844,7 @@ static void CONCAT3(rle48_, CODEC, _decompress_avx2)(IN const uint8_t *pInStart,
     }
 
     offset--;
+#endif
 
     // memcpy.
     MEMCPY_AVX_MULTI;
@@ -460,16 +852,22 @@ static void CONCAT3(rle48_, CODEC, _decompress_avx2)(IN const uint8_t *pInStart,
     if (!symbolCount)
       return;
 
+#ifndef UNBOUND
     symbolCount = (symbolCount + (RLE48_EXTREME_MULTI_MIN_RANGE_SHORT / symbolSize) - 1) * symbolSize;
+#else
+    symbolCount = (symbolCount + RLE48_EXTREME_MULTI_MIN_RANGE_SHORT - 1);
+#endif
 
     // memset.
     {
       uint8_t *pCOut = pOut;
       uint8_t *pCOutEnd = pOut + symbolCount;
 
+#ifndef PACKED
       const __m256i symbol0 = _mm256_shuffle_epi8(symbol, shuffle0);
       const __m256i symbol1 = _mm256_shuffle_epi8(symbol, shuffle1);
       const __m256i symbol2 = _mm256_shuffle_epi8(symbol, shuffle2);
+#endif
 
       while (pCOut < pCOutEnd)
       {
