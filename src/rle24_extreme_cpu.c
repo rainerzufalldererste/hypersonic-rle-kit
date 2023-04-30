@@ -25,12 +25,12 @@ uint32_t rle24_extreme_compress(IN const uint8_t *pIn, const uint32_t inSize, OU
   int64_t count = 0;
   symbol_t symbol = (~(*((symbol_t *)(pIn)))) & symbolMask;
 
-  for (; i < inSize; i++)
+  while (i < inSize)
   {
     if (count && ((*(symbol_t *)&pIn[i]) & symbolMask) == symbol && i + symbolSize <= inSize)
     {
       count += symbolSize;
-      i += symbolSize - 1;
+      i += symbolSize;
     }
     else
     {
@@ -106,11 +106,12 @@ uint32_t rle24_extreme_compress(IN const uint8_t *pIn, const uint32_t inSize, OU
       if (i + symbolSize <= inSize && ((*(symbol_t *)((&pIn[i]) + symbolSize)) & symbolMask) == symbol)
       {
         count = symbolSize * 2;
-        i += symbolSize * 2 - 1;
+        i += symbolSize * 2;
       }
       else
       {
         count = 0;
+        i++;
       }
     }
   }
