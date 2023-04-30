@@ -152,6 +152,22 @@ uint32_t rle128_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize,
 
 //////////////////////////////////////////////////////////////////////////
 
+uint32_t rle24_extreme_unbound_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle24_extreme_unbound_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+//uint32_t rle48_extreme_unbound_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+//uint32_t rle48_extreme_unbound_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+//////////////////////////////////////////////////////////////////////////
+
+uint32_t rle24_extreme_packed_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle24_extreme_packed_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+//uint32_t rle48_extreme_packed_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+//uint32_t rle48_extreme_packed_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+//////////////////////////////////////////////////////////////////////////
+
 uint32_t rle_mmtf_bounds(const uint32_t inSize);
 
 // If SSE2 is not available, both of these functions will fail and return 0.

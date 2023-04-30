@@ -60,9 +60,9 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
           i += sizeof(symbol_t);
           continue;
         }
+#ifdef UNBOUND
         else
         {
-#ifdef UNBOUND
 #if TYPE_SIZE == 16
           uint8_t symBytes[sizeof(symbol)];
           memcpy(symBytes, &symbol, sizeof(symbol));
@@ -109,8 +109,8 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
             i++;
           }
 #endif
-#endif
         }
+#endif
       }
     }
 
