@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>hypersonic rle kit</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div class="main">
+      <div class="header">
+        <h1>hypersonic rle kit</h1>
+        <h2>the fastest decoding run-length-encoding for x64</h2>
+      </div>
+      <div class="text">
+        <ul>
+            <li>Single Core Decompression Speeds > 33 GiB/s have been observed.</li>
+            <li>Many different variants optimized for various scenarios.</li>
+            <li>Written in C.</li>
+            <li>SIMD Variants for AVX-512F, AVX2, AVX, SSSE3 and SSE2 are available for the decoder. Automatically picked by the en- & decoder based on the extensions available on the current platform.</li>
+            <li>Specialized versions for various different scenarios. (Single RLE Symbol, Short Strings of RLE Symbol, 8 Bit, 16 Bit, 24 Bit, 32 Bit, 48 Bit, 64 Bit, 128 Bit)</li>
+            <li>OpenCL variant available for some of the decoders.</li>
+        </ul>
+      </div>
+      <script>
+function reveal() {
+  var reveals = document.querySelectorAll(".revealable");
+  
+  for (var i = 0; i < reveals.length; i++) {
+    var windowHeight = window.innerHeight;
+    var elementTop = reveals[i].getBoundingClientRect().top;
+    var elementVisible = 150;
+  
+    if (elementTop < windowHeight - elementVisible) {
+      reveals[i].classList.add("active");
+    } else {
+      reveals[i].classList.remove("active");
+    }
+  }
+}
+
+window.addEventListener("scroll", reveal);
+      </script>
+      <div class="tooltip_hidden" id="tooltip"><p id="tooltip_text">headline</p><p id="tooltip_sub1">text1</p><p id="tooltip_sub2">text2</p></div>
+      <script>
+          function point(ctx, x, y, radius, fillStyle, strokeStyle, lineWidth) {
+              ctx.beginPath();
+              ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
+              ctx.fillStyle = fillStyle;
+              ctx.fill();
+              ctx.strokeStyle = strokeStyle;
+              ctx.lineWidth = lineWidth;
+              ctx.stroke();
+          }
+
+          function line(ctx, sX, sY, tX, tY, strokeStyle, lineWidth) {
+              ctx.beginPath();
+              ctx.moveTo(sX, sY);
+              ctx.moveTo(tX, tY);
+              ctx.strokeStyle = strokeStyle;
+              ctx.lineWidth = lineWidth;
+              ctx.stroke();
+          }
+
+          function init_obj(obj) {
+            obj.minX = 0;
+            obj.maxX = 0;
+            obj.minY = 0;
+            obj.maxY = 0;
+            obj.points = [];
+            obj.lines = [];
+          }
+
+          function add_point(obj, x, y, label, isForeign = false) {
+            if (x > obj.maxX) obj.maxX = x;
+            if (y > obj.maxY) obj.maxY = y;
+            if (x < obj.minX) obj.minX = x;
+            if (y < obj.minY) obj.minY = y;
+
+            obj.points[label] = { x: x, y: y, foreign: !!isForeign };
+          }
+
+          function add_line(obj, labels, color) {
+            let points = [];
+
+            for (let i = 0; i < labels.length; i++)
+                points[points.length] = obj.points[labels[i]];
+
+            obj.lines[obj.lines.length] = { points: points, color: color };
+          }
+
+          function transformX(obj, x, rangeX, offsetX) {
+            return offsetX + (x - obj.minX) / rangeX;
+          }
+
+          function transformY(obj, y, rangeY, offsetY) {
+            return offsetY + (y - obj.minY) / rangeY;
+          }
+
+          function draw_point(ctx, obj, p, rangeX, rangeY, offsetX, offsetY) {
+            point(ctx, transformX(obj, p.x, rangeX, offsetX), transformY(obj, p.y, rangeY, offsetY), 6 * window.devicePixelRatio, p.foreign ? "#333" : "#FFF", p.foreign ? "#777" : "#DDD", 2 * window.devicePixelRatio);
+          }
+
+          function draw_line(ctx, obj, l, rangeX, rangeY, offsetX, offsetY, lineWidth) {
+            let points = l.points;
+
+            ctx.beginPath();
+            ctx.moveTo(transformX(obj, l.points[0].x, rangeX, offsetX), transformY(obj, l.points[0].y, rangeY, offsetY));
+            
+            for (let i = 1; i < points.length; i++)
+                ctx.lineTo(transformX(obj, l.points[i].x, rangeX, offsetX), transformY(obj, l.points[i].y, rangeY, offsetY));
+
+            ctx.strokeStyle = l.color;
+            ctx.lineWidth = lineWidth * window.devicePixelRatio * (l.pareto == true ? 4 : 1);
+            ctx.stroke();
+          }
+
+          function draw_label(ctx, obj, x, y, text, rangeX, rangeY, offsetX, offsetY, font, fillStyle) {
+            ctx.font = font;
+            ctx.fillStyle = fillStyle;
+            ctx.fillText(text, transformX(obj, x, rangeX, offsetX), transformY(obj, y, rangeY, offsetY));
+          }
+
+          function calc_pareto_line(obj) {
+            let points = [];
+            let n = { x: 0, y: 0 };
+
+            for (let p in obj.points) {
+                if (obj.points[p].x > n.x)
+                    n = obj.points[p];
+            }
+
+            let found = false;
+
+            do {
+                points[points.length] = n;
+                found = false;
+
+                let last = n;
+                n = { x: 0, y: 0 };
+
+                for (let p in obj.points) {
+                    if (obj.points[p].x > n.x && obj.points[p].y < last.y && obj.points[p].x < last.x) {
+                        n = obj.points[p];
+                        found = true
+                    }
+                }
+            } while (found);
+
+            obj.lines[obj.lines.length] = { points: points, color: "#88FF2211", pareto: true };
+          }
+
+          function draw_obj(ctx, obj) {
+            obj.width = obj.scrollWidth * 2;
+            obj.height = obj.scrollHeight * 2;
+
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            let borderX = 75;
+            let borderY = 50;
+
+            let topX = 50;
+            let topY = 10;
+
+            let rangeX = (obj.maxX - obj.minX) / (obj.width - borderX);
+            let rangeY = (obj.maxY - obj.minY) / (obj.height - borderY);
+            
+            // X Axis.
+            for (let x = obj.minX; x <= obj.maxX; x += 2500) {
+                draw_line(ctx, obj, { points: [{ y: obj.minY, x: x }, { y: obj.maxY, x: x }], color: x == obj.minX ? "#555" : "#333" }, rangeX, rangeY, topX, topY, x == obj.minX ? 4 : 2);
+            }
+
+            // Y Axis.
+            for (let y = obj.minY; y <= obj.maxY; y += 5) {
+                draw_line(ctx, obj, { points: [{ x: obj.minX, y: y }, { x: obj.maxX, y: y }], color: y == obj.minY ? "#555" : "#333" }, rangeX, rangeY, topX, topY, y == obj.minY ? 4 : 2);
+            }
+            
+            // X Axis.
+            for (let x = obj.minX; x <= obj.maxX; x += 2500) {
+                if (x > 0) draw_label(ctx, obj, x, obj.minY, x + " MiB/s", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
+            }
+
+            // Y Axis.
+            for (let y = obj.minY; y <= obj.maxY; y += 5) {
+                if (y > 0) draw_label(ctx, obj, obj.minX, y, y + "%", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
+            }
+
+            for (i in obj.lines)
+                draw_line(ctx, obj, obj.lines[i], rangeX, rangeY, topX, topY, 4);
+
+            for (i in obj.points)
+                draw_point(ctx, obj, obj.points[i], rangeX, rangeY, topX, topY);
+          }
+
+          function handle_mouseover(event, obj) {
+            event = event || window.event;
+
+            if (event.pageX == null && event.clientX != null) {
+                var eventDoc = (event.target && event.target.ownerDocument) || document;
+                var doc = eventDoc.documentElement;
+                var body = eventDoc.body;
+
+                event.pageX = event.clientX + (doc && doc.offsetLeft || body && body.offsetLeft || 0) - (doc && doc.clientLeft || body && body.clientLeft || 0);
+                event.pageY = event.clientY + (doc && doc.offsetTop  || body && body.offsetTop  || 0) - (doc && doc.clientTop  || body && body.clientTop  || 0);
+            }
+
+            var mouseX = event.pageX;
+            var mouseY = event.pageY;
+        
+            if (obj.offsetTop <= mouseY && obj.offsetLeft <= mouseX && obj.offsetTop + obj.offsetHeight >= mouseY && obj.offsetLeft + obj.offsetWidth >= mouseX) {
+                var internalX = (mouseX - obj.offsetLeft) * 2; // because the canvas is scaled internally by factor 2
+                var internalY = (mouseY - obj.offsetTop) * 2; // because the canvas is scaled internally by factor 2
+
+                var borderX = 75;
+                var borderY = 50;
+
+                var topX = 50;
+                var topY = -15;
+
+                var rangeX = (obj.maxX - obj.minX) / (obj.width - borderX);
+                var rangeY = (obj.maxY - obj.minY) / (obj.height - borderY);
+
+                function dist(x, y) {
+                    let dx = transformX(obj, x, rangeX, topX) - internalX;
+                    let dy = transformY(obj, y, rangeY, topY) - internalY;
+
+                    return Math.sqrt(dx * dx + dy * dy);
+                }
+
+                var found = false;
+
+                for (let p in obj.points) {
+                    if (dist(obj.points[p].x, obj.points[p].y) <= 50 * window.devicePixelRatio) {
+                        var tooltip = document.getElementById("tooltip");
+                        tooltip.style.left = mouseX + "px";
+                        tooltip.style.top = mouseY + "px";
+                        tooltip.className = "tooltip_visible";
+                        document.getElementById("tooltip_text").innerText = p + (obj.points[p].foreign ? " (foreign codec)" : "");
+                        document.getElementById("tooltip_sub1").innerText = "decoder throughput: " + obj.points[p].x + " MiB/s";
+                        document.getElementById("tooltip_sub2").innerText = "compression ratio: " + obj.points[p].y + "%";
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    var tooltip = document.getElementById("tooltip");
+                    tooltip.style.left = "0px";
+                    tooltip.style.top = "0px";
+                    tooltip.className = "tooltip_hidden";
+                }
+            }
+          }
+      </script>
+      <hr/>
+      <h2>benchmarks</h2>
+      <div class="graph_container">
+        <h3>video_frame.raw (heavily quantized video frame dcts)</h3>
+        <canvas id="video_frame" class="chart"></canvas>
+        <script>
+            var obj = document.getElementById("video_frame");
+            var ctx = obj.getContext("2d");
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            init_obj(obj);
+
+            add_point(obj, 25268.0,  19.34, "Extreme 8 Bit");
+            add_point(obj, 23401.1,  18.31, "Extreme 8 Bit Single");
+            add_point(obj, 22197.5,  20.32, "Extreme 16 Bit");
+            add_point(obj, 25207.6,  21.50, "Extreme 24 Bit");
+            add_point(obj, 23261.1,  22.01, "Extreme 32 Bit");
+            add_point(obj, 25579.0,  23.41, "Extreme 48 Bit");
+            add_point(obj, 25125.8,  24.53, "Extreme 64 Bit");
+            add_point(obj, 27110.2,  27.60, "Extreme 128 Bit");
+            add_point(obj, 22127.1,  20.11, "Extreme Unbound 16 Bit");
+            add_point(obj, 24114.0,  20.81, "Extreme Unbound 24 Bit");
+            add_point(obj, 23127.2,  21.40, "Extreme Unbound 32 Bit");
+            add_point(obj, 26511.3,  22.67, "Extreme Unbound 48 Bit");
+            add_point(obj, 25649.8,  23.67, "Extreme Unbound 64 Bit");
+            add_point(obj, 27533.9,  26.46, "Extreme Unbound 128 Bit");
+            add_point(obj, 19693.5,  17.95, "Extreme Packed 8 Bit");
+            add_point(obj, 17675.0,  17.96, "Extreme Packed 8 Bit Single");
+            add_point(obj, 19295.4,  18.44, "Extreme Packed 16 Bit");
+            add_point(obj, 21457.5,  19.17, "Extreme Packed 24 Bit");
+            add_point(obj, 23198.4,  19.79, "Extreme Packed 32 Bit");
+            add_point(obj, 25542.6,  20.81, "Extreme Packed 48 Bit");
+            add_point(obj, 25762.6,  21.60, "Extreme Packed 64 Bit");
+            add_point(obj, 27517.8,  23.83, "Extreme Packed 128 Bit");
+            add_point(obj,  1656.7,  12.51, "RLE 8 SH");
+            add_point(obj,  3741.4,  21.05, "Extreme 8 MMTF 128");
+            //add_point(obj,  3641.6, 100.00, "Multi MTF 128 Bit");
+            //add_point(obj,  5613.3, 100.00, "Multi MTF 256 Bit");
+            add_point(obj,  2687.6,  19.93, "Normal (old)");
+            add_point(obj,  4377.4,  19.96, "Normal Single (old)");
+            add_point(obj,  2825.0,  24.08, "Ultra (old)");
+            add_point(obj,  5294.7,  24.11, "Ultra Single (old)");
+            //add_point(obj, 28435.9, 100.00, "memcpy");
+
+            add_point(obj,  4109.9, 16.0, "trle", true);
+            add_point(obj,  9175.2, 17.8, "srle 0", true);
+            add_point(obj,  9198.3, 18.7, "srle 8", true);
+            add_point(obj, 10667.0, 21.3, "srle 16", true);
+            add_point(obj, 14922.9, 24.2, "srle 32", true);
+            add_point(obj, 20526.3, 27.5, "srle 64", true);
+            add_point(obj,  2570.0, 19.7, "mrle", true);
+
+            add_line(obj, ["Extreme 8 Bit", "Extreme 16 Bit", "Extreme 24 Bit", "Extreme 32 Bit", "Extreme 48 Bit", "Extreme 64 Bit", "Extreme 128 Bit"], "#ece12e33");
+            add_line(obj, ["Extreme Unbound 16 Bit", "Extreme Unbound 24 Bit", "Extreme Unbound 32 Bit", "Extreme Unbound 48 Bit", "Extreme Unbound 64 Bit", "Extreme Unbound 128 Bit"], "#ffaa0f33");
+            add_line(obj, ["Extreme Packed 8 Bit", "Extreme Packed 16 Bit", "Extreme Packed 24 Bit", "Extreme Packed 32 Bit", "Extreme Packed 48 Bit", "Extreme Packed 64 Bit", "Extreme Packed 128 Bit"], "#ff673d33");
+            //add_line(obj, ["Multi MTF 128 Bit", "Multi MTF 256 Bit"], "#ff006d33");
+            add_line(obj, ["Normal (old)", "Ultra (old)"], "#e200a033");
+            add_line(obj, ["Normal Single (old)", "Ultra Single (old)"], "#7f1ccc33");
+            add_line(obj, ["srle 0", "srle 8", "srle 16", "srle 32", "srle 64"], "#55555533");
+
+            calc_pareto_line(obj);
+
+            window.addEventListener("resize", () => { draw_obj(document.getElementById("video_frame").getContext("2d"), document.getElementById("video_frame")); });
+            window.addEventListener("load", () => { draw_obj(document.getElementById("video_frame").getContext("2d"), document.getElementById("video_frame")); });
+            obj.addEventListener("mousemove", (e) => { handle_mouseover(e, document.getElementById("video_frame")); });
+        </script>
+      </div>
+      <div class="graph_container">
+        <h3>1034.db (checkers program &quot;end game table base&quot;)</h3>
+        <canvas id="1034" class="chart"></canvas>
+        <script>
+            var obj = document.getElementById("1034");
+            var ctx = obj.getContext("2d");
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            init_obj(obj);
+
+            add_point(obj, 21124.2,  23.02, "Extreme 8 Bit");
+            add_point(obj, 18439.5,  20.59, "Extreme 8 Bit Single");
+            add_point(obj, 16915.6,  24.89, "Extreme 16 Bit");
+            add_point(obj, 20030.2,  27.27, "Extreme 24 Bit");
+            add_point(obj, 17190.9,  28.39, "Extreme 32 Bit");
+            add_point(obj, 21067.1,  31.22, "Extreme 48 Bit");
+            add_point(obj, 20641.7,  33.36, "Extreme 64 Bit");
+            add_point(obj, 23510.2,  39.84, "Extreme 128 Bit");
+            add_point(obj, 17301.0,  24.39, "Extreme Unbound 16 Bit");
+            add_point(obj, 19736.9,  25.90, "Extreme Unbound 24 Bit");
+            add_point(obj, 17547.6,  27.15, "Extreme Unbound 32 Bit");
+            add_point(obj, 21812.4,  29.77, "Extreme Unbound 48 Bit");
+            add_point(obj, 20816.8,  31.66, "Extreme Unbound 64 Bit");
+            add_point(obj, 23849.0,  37.25, "Extreme Unbound 128 Bit");
+            add_point(obj, 15155.5,  20.10, "Extreme Packed 8 Bit");
+            add_point(obj, 14203.1,  20.16, "Extreme Packed 8 Bit Single");
+            add_point(obj, 15433.0,  20.65, "Extreme Packed 16 Bit");
+            add_point(obj, 17624.7,  22.05, "Extreme Packed 24 Bit");
+            add_point(obj, 17902.1,  23.44, "Extreme Packed 32 Bit");
+            add_point(obj, 21608.5,  25.85, "Extreme Packed 48 Bit");
+            add_point(obj, 21641.1,  27.27, "Extreme Packed 64 Bit");
+            add_point(obj, 23962.5,  31.21, "Extreme Packed 128 Bit");
+            add_point(obj,  1426.5,  16.76, "RLE 8 SH");
+            add_point(obj,  2805.3,  26.61, "Extreme 8 MMTF 128");
+            //add_point(obj,  2657.3, 100.00, "Multi MTF 128 Bit");
+            //add_point(obj,  4077.0, 100.00, "Multi MTF 256 Bit");
+            add_point(obj,  4230.2,  21.15, "Normal (old)");
+            add_point(obj,  4211.7,  21.15, "Normal Single (old)");
+            add_point(obj,  5327.5,  24.87, "Ultra (old)");
+            add_point(obj,  5309.1,  24.87, "Ultra Single (old)");
+            //add_point(obj, 25829.0, 100.00, "memcpy");
+
+            add_point(obj,  4291.4, 17.4, "trle", true);
+            add_point(obj,  9113.0, 20.2, "srle 0", true);
+            add_point(obj,  9092.7, 22.0, "srle 8", true);
+            add_point(obj, 10108.9, 27.1, "srle 16", true);
+            add_point(obj, 13160.2, 32.7, "srle 32", true);
+            add_point(obj, 19314.2, 39.5, "srle 64", true);
+            add_point(obj,  3182.7, 21.0, "mrle", true);
+
+            add_line(obj, ["Extreme 8 Bit", "Extreme 16 Bit", "Extreme 24 Bit", "Extreme 32 Bit", "Extreme 48 Bit", "Extreme 64 Bit", "Extreme 128 Bit"], "#ece12e33");
+            add_line(obj, ["Extreme Unbound 16 Bit", "Extreme Unbound 24 Bit", "Extreme Unbound 32 Bit", "Extreme Unbound 48 Bit", "Extreme Unbound 64 Bit", "Extreme Unbound 128 Bit"], "#ffaa0f33");
+            add_line(obj, ["Extreme Packed 8 Bit", "Extreme Packed 16 Bit", "Extreme Packed 24 Bit", "Extreme Packed 32 Bit", "Extreme Packed 48 Bit", "Extreme Packed 64 Bit", "Extreme Packed 128 Bit"], "#ff673d33");
+            //add_line(obj, ["Multi MTF 128 Bit", "Multi MTF 256 Bit"], "#ff006d33");
+            add_line(obj, ["Normal (old)", "Ultra (old)"], "#e200a033");
+            add_line(obj, ["Normal Single (old)", "Ultra Single (old)"], "#7f1ccc33");
+            add_line(obj, ["srle 0", "srle 8", "srle 16", "srle 32", "srle 64"], "#55555533");
+
+            calc_pareto_line(obj);
+
+            window.addEventListener("resize", () => { draw_obj(document.getElementById("1034").getContext("2d"), document.getElementById("1034")); });
+            window.addEventListener("load", () => { draw_obj(document.getElementById("1034").getContext("2d"), document.getElementById("1034")); });
+            obj.addEventListener("mousemove", (e) => { handle_mouseover(e, document.getElementById("1034")); });
+        </script>
+      </div>
+      <div class="graph_container">
+        <h3>enwiki.btw (wikipedia extract encoded using libdivsufsort)</h3>
+        <canvas id="enwiki" class="chart"></canvas>
+        <script>
+            var obj = document.getElementById("enwiki");
+            var ctx = obj.getContext("2d");
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            init_obj(obj);
+
+            add_point(obj, 15809.6,  48.80, "Extreme 8 Bit");
+            add_point(obj, 14840.5,  88.75, "Extreme 8 Bit Single");
+            add_point(obj, 12615.3,  51.49, "Extreme 16 Bit");
+            add_point(obj, 15490.7,  54.90, "Extreme 24 Bit");
+            add_point(obj, 13920.5,  55.92, "Extreme 32 Bit");
+            add_point(obj, 16260.3,  59.24, "Extreme 48 Bit");
+            add_point(obj, 17053.6,  61.69, "Extreme 64 Bit");
+            add_point(obj, 19157.8,  66.89, "Extreme 128 Bit");
+            add_point(obj, 13061.0,  50.77, "Extreme Unbound 16 Bit");
+            add_point(obj, 14730.4,  52.76, "Extreme Unbound 24 Bit");
+            add_point(obj, 13822.9,  54.30, "Extreme Unbound 32 Bit");
+            add_point(obj, 17728.2,  57.62, "Extreme Unbound 48 Bit");
+            add_point(obj, 17686.0,  59.97, "Extreme Unbound 64 Bit");
+            add_point(obj, 20718.3,  65.39, "Extreme Unbound 128 Bit");
+            add_point(obj,  7418.6,  44.86, "Extreme Packed 8 Bit");
+            add_point(obj, 13943.5,  88.59, "Extreme Packed 8 Bit Single");
+            add_point(obj,  8168.4,  46.93, "Extreme Packed 16 Bit");
+            add_point(obj, 10041.2,  49.32, "Extreme Packed 24 Bit");
+            add_point(obj, 12016.1,  51.55, "Extreme Packed 32 Bit");
+            add_point(obj, 15487.2,  54.91, "Extreme Packed 48 Bit");
+            add_point(obj, 16424.0,  57.23, "Extreme Packed 64 Bit");
+            add_point(obj, 20015.2,  62.94, "Extreme Packed 128 Bit");
+            add_point(obj,  1219.8,  42.52, "RLE 8 SH");
+            add_point(obj,  1289.0,  63.49, "Extreme 8 MMTF 128");
+            //add_point(obj,  1291.6, 100.00, "Multi MTF 128 Bit");
+            //add_point(obj,  1967.1, 100.00, "Multi MTF 256 Bit");
+            add_point(obj,   903.6,  64.19, "Normal (old)");
+            add_point(obj,  7447.4,  89.22, "Normal Single (old)");
+            add_point(obj,  1411.7,  66.17, "Ultra (old)");
+            add_point(obj,  9721.2,  89.65, "Ultra Single (old)");
+            //add_point(obj, 25689.3, 100.00, "memcpy");
+
+            add_point(obj,  2341.0, 42.4, "trle", true);
+            add_point(obj,  6341.4, 46.9, "srle 0", true);
+            add_point(obj,  6310.3, 46.9, "srle 8", true);
+            add_point(obj,  8818.9, 54.4, "srle 16", true);
+            add_point(obj, 13030.9, 61.0, "srle 32", true);
+            add_point(obj, 18660.4, 66.8, "srle 64", true);
+            add_point(obj,  1131.5, 64.1, "mrle", true);
+
+            add_line(obj, ["Extreme 8 Bit", "Extreme 16 Bit", "Extreme 24 Bit", "Extreme 32 Bit", "Extreme 48 Bit", "Extreme 64 Bit", "Extreme 128 Bit"], "#ece12e33");
+            add_line(obj, ["Extreme Unbound 16 Bit", "Extreme Unbound 24 Bit", "Extreme Unbound 32 Bit", "Extreme Unbound 48 Bit", "Extreme Unbound 64 Bit", "Extreme Unbound 128 Bit"], "#ffaa0f33");
+            add_line(obj, ["Extreme Packed 8 Bit", "Extreme Packed 16 Bit", "Extreme Packed 24 Bit", "Extreme Packed 32 Bit", "Extreme Packed 48 Bit", "Extreme Packed 64 Bit", "Extreme Packed 128 Bit"], "#ff673d33");
+            //add_line(obj, ["Multi MTF 128 Bit", "Multi MTF 256 Bit"], "#ff006d33");
+            add_line(obj, ["Normal (old)", "Ultra (old)"], "#e200a033");
+            add_line(obj, ["Normal Single (old)", "Ultra Single (old)"], "#7f1ccc33");
+            add_line(obj, ["srle 0", "srle 8", "srle 16", "srle 32", "srle 64"], "#55555533");
+
+            calc_pareto_line(obj);
+
+            window.addEventListener("resize", () => { draw_obj(document.getElementById("enwiki").getContext("2d"), document.getElementById("enwiki")); });
+            window.addEventListener("load", () => { draw_obj(document.getElementById("enwiki").getContext("2d"), document.getElementById("enwiki")); });
+            obj.addEventListener("mousemove", (e) => { handle_mouseover(e, document.getElementById("enwiki")); });
+        </script>
+      </div>
+      <div class="graph_container">
+        <h3>high resolution pixel art bitmap image (no, the graph isn't broken)</h3>
+        <canvas id="bitmap" class="chart"></canvas>
+        <script>
+            var obj = document.getElementById("bitmap");
+            var ctx = obj.getContext("2d");
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            init_obj(obj);
+
+            add_point(obj, 18271.4,  99.99, "Extreme 8 Bit");
+            add_point(obj, 17828.5, 100.00, "Extreme 8 Bit Single");
+            add_point(obj, 18858.4,  99.99, "Extreme 16 Bit");
+            add_point(obj, 32217.3,   1.84, "Extreme 24 Bit");
+            add_point(obj, 19010.0,  99.99, "Extreme 32 Bit");
+            add_point(obj, 32175.6,   2.78, "Extreme 48 Bit");
+            add_point(obj, 19211.7,  99.99, "Extreme 64 Bit");
+            add_point(obj, 19039.7,  99.99, "Extreme 128 Bit");
+            add_point(obj, 19249.9,  99.99, "Extreme Unbound 16 Bit");
+            add_point(obj, 32219.8,   2.13, "Extreme Unbound 24 Bit");
+            add_point(obj, 19287.2,  99.99, "Extreme Unbound 32 Bit");
+            add_point(obj, 32190.3,   3.16, "Extreme Unbound 48 Bit");
+            add_point(obj, 18729.2,  99.99, "Extreme Unbound 64 Bit");
+            add_point(obj, 19167.4,  99.99, "Extreme Unbound 128 Bit");
+            add_point(obj, 18477.9,  99.99, "Extreme Packed 8 Bit");
+            add_point(obj, 17887.4, 100.00, "Extreme Packed 8 Bit Single");
+            add_point(obj, 19157.9,  99.99, "Extreme Packed 16 Bit");
+            add_point(obj, 31894.2,   2.32, "Extreme Packed 24 Bit");
+            add_point(obj, 19247.0,  99.99, "Extreme Packed 32 Bit");
+            add_point(obj, 31897.4,   3.35, "Extreme Packed 48 Bit");
+            add_point(obj, 19042.3,  99.99, "Extreme Packed 64 Bit");
+            add_point(obj, 19271.3,  99.99, "Extreme Packed 128 Bit");
+            add_point(obj, 26368.3,  99.98, "RLE 8 SH");
+            add_point(obj,  5377.7,  17.70, "Extreme 8 MMTF 128");
+            add_point(obj,  3497.9, 100.00, "Multi MTF 128 Bit");
+            add_point(obj,  5060.2, 100.00, "Multi MTF 256 Bit");
+            add_point(obj, 27070.5, 100.00, "Normal (old)");
+            add_point(obj, 27122.1, 100.00, "Normal Single (old)");
+            add_point(obj, 27116.3, 100.00, "Ultra (old)");
+            add_point(obj, 27272.3, 100.00, "Ultra Single (old)");
+            add_point(obj, 27517.8, 100.00, "memcpy");
+
+            add_point(obj,  5558.8, 100.0, "trle", true);
+            add_point(obj, 19632.5, 100.0, "srle 0", true);
+            add_point(obj, 19482.1, 100.0, "srle 8", true);
+            add_point(obj, 20315.8, 100.0, "srle 16", true);
+            add_point(obj, 20287.0, 100.0, "srle 32", true);
+            add_point(obj, 19643.0, 100.0, "srle 64", true);
+            add_point(obj,  2595.1, 100.0, "mrle", true);
+
+            calc_pareto_line(obj);
+
+            window.addEventListener("resize", () => { draw_obj(document.getElementById("bitmap").getContext("2d"), document.getElementById("bitmap")); });
+            window.addEventListener("load", () => { draw_obj(document.getElementById("bitmap").getContext("2d"), document.getElementById("bitmap")); });
+            obj.addEventListener("mousemove", (e) => { handle_mouseover(e, document.getElementById("bitmap")); });
+        </script>
+      </div>
+    </div>
+  </body>
+</html>
