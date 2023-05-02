@@ -14,3 +14,11 @@
 #endif
 
 #include "rle48_extreme_cpu.h"
+
+#undef UNBOUND
+
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
+  #undef PREFER_7_BIT_OR_4_BYTE_COPY
+#endif
+
+#include "rle48_extreme_cpu.h"

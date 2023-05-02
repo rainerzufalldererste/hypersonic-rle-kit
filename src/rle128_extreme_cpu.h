@@ -1,14 +1,26 @@
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
+  #define RLE128_EXTREME_MAX_COPY_RANGE (127)
+  #define RLE128_EXTRRME_FULL_COPY_SIZE (4 + 1)
+#else
+  #define RLE128_EXTREME_MAX_COPY_RANGE (255)
+  #define RLE128_EXTRRME_FULL_COPY_SIZE (4)
+#endif
+
 #ifndef PACKED
 	#define RLE128_EXTREME_MULTI_MIN_RANGE_SHORT ((16 + 1 + 1) + 2)
-	#define RLE128_EXTREME_MULTI_MIN_RANGE_LONG ((16 + 1 + 4 + 1 + 4) + 2)
+	#define RLE128_EXTREME_MULTI_MIN_RANGE_LONG ((16 + 1 + 4 + RLE128_EXTRRME_FULL_COPY_SIZE) + 2)
 #else
 	#define RLE128_EXTREME_MULTI_MIN_RANGE_SHORT ((1 + 1) + 1)
 	#define RLE128_EXTREME_MULTI_MIN_RANGE_MEDIUM ((16 + 1 + 1) + 1)
-	#define RLE128_EXTREME_MULTI_MIN_RANGE_LONG ((16 + 1 + 4 + 4) + 1)
+	#define RLE128_EXTREME_MULTI_MIN_RANGE_LONG ((16 + 1 + 4 + RLE128_EXTRRME_FULL_COPY_SIZE) + 1)
 #endif
 
 #ifndef UNBOUND
-  #define CODEC sym
+  #ifdef PACKED
+    #define CODEC sym_packed
+  #else
+    #define CODEC sym
+  #endif
 #else
   #ifdef PACKED
     #define CODEC byte_packed
@@ -78,13 +90,9 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 				const int64_t range = i - lastRLE - count + 1;
 				
 #ifndef PACKED
-  #ifdef PREFER_7_BIT_OR_4_BYTE_COPY
-        if (range <= 127 && count >= RLE128_EXTREME_MULTI_MIN_RANGE_SHORT)
-  #else
-        if (range <= 255 && count >= RLE128_EXTREME_MULTI_MIN_RANGE_SHORT)
-  #endif
+        if (range <= RLE128_EXTREME_MAX_COPY_RANGE && count >= RLE128_EXTREME_MULTI_MIN_RANGE_SHORT)
 #else
-        if (range <= 127 && ((count >= RLE128_EXTREME_MULTI_MIN_RANGE_SHORT && _mm_movemask_epi8(_mm_cmpeq_epi8(symbol, lastSymbol)) == 0xFFFF) || (count >= RLE128_EXTREME_MULTI_MIN_RANGE_MEDIUM)))
+        if (range <= RLE128_EXTREME_MAX_COPY_RANGE && ((count >= RLE128_EXTREME_MULTI_MIN_RANGE_SHORT && _mm_movemask_epi8(_mm_cmpeq_epi8(symbol, lastSymbol)) == 0xFFFF) || (count >= RLE128_EXTREME_MULTI_MIN_RANGE_MEDIUM)))
 #endif
 				{
 #ifndef PACKED
@@ -238,13 +246,9 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 		const int64_t range = i - lastRLE - count + 1;
 
 #ifndef PACKED
-	#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
-		if (range <= 127 && count >= RLE128_EXTREME_MULTI_MIN_RANGE_SHORT)
-	#else
-		if (range <= 255 && count >= RLE128_EXTREME_MULTI_MIN_RANGE_SHORT)
-	#endif
+		if (range <= RLE128_EXTREME_MAX_COPY_RANGE && count >= RLE128_EXTREME_MULTI_MIN_RANGE_SHORT)
 #else
-		if (range <= 127 && ((count >= RLE128_EXTREME_MULTI_MIN_RANGE_SHORT && _mm_movemask_epi8(_mm_cmpeq_epi8(symbol, lastSymbol)) == 0xFFFF) || (count >= RLE128_EXTREME_MULTI_MIN_RANGE_MEDIUM)))
+		if (range <= RLE128_EXTREME_MAX_COPY_RANGE && ((count >= RLE128_EXTREME_MULTI_MIN_RANGE_SHORT && _mm_movemask_epi8(_mm_cmpeq_epi8(symbol, lastSymbol)) == 0xFFFF) || (count >= RLE128_EXTREME_MULTI_MIN_RANGE_MEDIUM)))
 #endif
 		{
 #ifndef PACKED
@@ -763,7 +767,14 @@ uint32_t CONCAT3(rle128_, CODEC, _decompress)(IN const uint8_t *pIn, const uint3
 	return (uint32_t)expectedOutSize;
 }
 
+#undef RLE128_EXTREME_MAX_COPY_RANGE
+#undef RLE128_EXTRRME_FULL_COPY_SIZE
+
 #undef RLE128_EXTREME_MULTI_MIN_RANGE_SHORT
 #undef RLE128_EXTREME_MULTI_MIN_RANGE_LONG
+
+#ifdef RLE128_EXTREME_MULTI_MIN_RANGE_MEDIUM
+  #undef RLE128_EXTREME_MULTI_MIN_RANGE_MEDIUM
+#endif
 
 #undef CODEC

@@ -439,37 +439,41 @@ int main(int argc, char **pArgv)
     {
       Extreme8,
       Extreme8Single,
-      Extreme16Sym,
-      Extreme24Sym,
-      Extreme32Sym,
-      Extreme48Sym,
-      Extreme64Sym,
-      Extreme128Sym,
-      Extreme16SymPacked,
-      Extreme32SymPacked,
-      Extreme64SymPacked,
-      Extreme16Byte,
-      Extreme24Byte,
-      Extreme32Byte,
-      Extreme48Byte,
-      Extreme64Byte,
-      Extreme128Byte,
       Extreme8Packed,
       Extreme8PackedSingle,
+      Extreme16Sym,
+      Extreme16SymPacked,
+      Extreme16Byte,
       Extreme16BytePacked,
+      Extreme24Sym,
+      Extreme24SymPacked,
+      Extreme24Byte,
       Extreme24BytePacked,
+      Extreme32Sym,
+      Extreme32SymPacked,
+      Extreme32Byte,
       Extreme32BytePacked,
+      Extreme48Sym,
+      Extreme48SymPacked,
+      Extreme48Byte,
       Extreme48BytePacked,
+      Extreme64Sym,
+      Extreme64SymPacked,
+      Extreme64Byte,
       Extreme64BytePacked,
+      Extreme128Sym,
+      Extreme128SymPacked,
+      Extreme128Byte,
       Extreme128BytePacked,
       Rle8SH,
       Extreme8MultiMTF128,
-      MultiMTF128,
-      MultiMTF256,
       LowEntropy,
       LowEntropySingle,
       LowEntropyShort,
       LowEntropyShortSingle,
+
+      MultiMTF128,
+      MultiMTF256,
 
       MemCopy,
 
@@ -480,37 +484,40 @@ int main(int argc, char **pArgv)
     {
       "8 Bit                         ",
       "8 Bit Single                  ",
-      "16 Bit (Symbol Bound)         ",
-      "24 Bit (Symbol Bound)         ",
-      "32 Bit (Symbol Bound)         ",
-      "48 Bit (Symbol Bound)         ",
-      "64 Bit (Symbol Bound)         ",
-      "128 Bit (Symbol Bound)        ",
-      "16 Bit Packed (Symbol Bound)  ",
-      "32 Bit Packed (Symbol Bound)  ",
-      "64 Bit Packed (Symbol Bound)  ",
-      "16 Bit (Byte Bound)           ",
-      "24 Bit (Byte Bound)           ",
-      "32 Bit (Byte Bound)           ",
-      "48 Bit (Byte Bound)           ",
-      "64 Bit (Byte Bound)           ",
-      "128 Bit (Byte Bound)          ",
       "8 Bit Packed                  ",
       "8 Bit Packed Single           ",
-      "16 Bit (Byte Bound) Packed    ",
-      "24 Bit (Byte Bound) Packed    ",
-      "32 Bit (Byte Bound) Packed    ",
-      "48 Bit (Byte Bound) Packed    ",
-      "64 Bit (Byte Bound) Packed    ",
-      "128 Bit (Byte Bound) Packed   ",
-      "RLE 8 SH                      ",
+      "16 Bit (Symbol Bound)         ",
+      "16 Bit Packed (Symbol Bound)  ",
+      "16 Bit (Byte Bound)           ",
+      "16 Bit Packed (Byte Bound)    ",
+      "24 Bit (Symbol Bound)         ",
+      "24 Bit Packed (Symbol Bound)  ",
+      "24 Bit (Byte Bound)           ",
+      "24 Bit Packed (Byte Bound)    ",
+      "32 Bit (Symbol Bound)         ",
+      "32 Bit Packed (Symbol Bound)  ",
+      "32 Bit (Byte Bound)           ",
+      "32 Bit Packed (Byte Bound)    ",
+      "48 Bit (Symbol Bound)         ",
+      "48 Bit Packed (Symbol Bound)  ",
+      "48 Bit (Byte Bound)           ",
+      "48 Bit Packed (Byte Bound)    ",
+      "64 Bit (Symbol Bound)         ",
+      "64 Bit Packed (Symbol Bound)  ",
+      "64 Bit (Byte Bound)           ",
+      "64 Bit Packed (Byte Bound)    ",
+      "128 Bit (Symbol Bound)        ",
+      "128 Bit Packed (Symbol Bound) ",
+      "128 Bit (Byte Bound)          ",
+      "128 Bit Packed (Byte Bound)   ",
+      "8 Bit RLE + Huffman-esque     ",
       "8 Bit MMTF 128                ",
-      "Multi MTF 128 Bit             ",
-      "Multi MTF 256 Bit             ",
       "Low Entropy                   ",
       "Low Entropy Single            ",
       "Low Entropy Short             ",
       "Low Entropy Short Single      ",
+      "Multi MTF 128 Bit (Transform) ",
+      "Multi MTF 256 Bit (Transform) ",
       "memcpy                        ",
     };
 
@@ -579,12 +586,24 @@ int main(int argc, char **pArgv)
           compressedSize = rle16_sym_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme24SymPacked:
+          compressedSize = rle24_sym_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme32SymPacked:
           compressedSize = rle32_sym_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme48SymPacked:
+          compressedSize = rle48_sym_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme64SymPacked:
           compressedSize = rle64_sym_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme128SymPacked:
+          compressedSize = rle128_sym_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
     
         case Extreme16Byte:
@@ -763,12 +782,24 @@ int main(int argc, char **pArgv)
           decompressedSize = rle16_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
+        case Extreme24SymPacked:
+          decompressedSize = rle24_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
         case Extreme32SymPacked:
           decompressedSize = rle32_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
+        case Extreme48SymPacked:
+          decompressedSize = rle48_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
         case Extreme64SymPacked:
           decompressedSize = rle64_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme128SymPacked:
+          decompressedSize = rle128_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Extreme16Byte:
@@ -981,12 +1012,24 @@ int main(int argc, char **pArgv)
                 compressedSize = rle16_sym_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
                 break;
 
+              case 24:
+                compressedSize = rle24_sym_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
               case 32:
                 compressedSize = rle32_sym_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
                 break;
 
+              case 48:
+                compressedSize = rle48_sym_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
               case 64:
                 compressedSize = rle64_sym_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 128:
+                compressedSize = rle128_sym_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
                 break;
               }
             }
@@ -1218,12 +1261,24 @@ int main(int argc, char **pArgv)
                 decompressedSize = rle16_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
                 break;
 
+              case 24:
+                decompressedSize = rle24_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
               case 32:
                 decompressedSize = rle32_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
                 break;
 
+              case 48:
+                decompressedSize = rle48_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
               case 64:
                 decompressedSize = rle64_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
+              case 128:
+                decompressedSize = rle128_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
                 break;
               }
             }
