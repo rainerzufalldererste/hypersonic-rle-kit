@@ -42,7 +42,7 @@ function reveal() {
 
 window.addEventListener("scroll", reveal);
       </script>
-      <div class="tooltip_hidden" id="tooltip"><p id="tooltip_text">headline</p><p id="tooltip_sub1">text1</p><p id="tooltip_sub2">text2</p></div>
+      <div class="tooltip_hidden" id="tooltip"><p><b id="tooltip_text">headline</b><b id="tooltip_pareto">pareto</b></p><p id="tooltip_sub1">text1</p><p id="tooltip_sub2">text2</p><p id="tooltip_sub3">text3</p></div>
       <script>
           function point(ctx, x, y, radius, fillStyle, strokeStyle, lineWidth) {
               ctx.beginPath();
@@ -72,13 +72,13 @@ window.addEventListener("scroll", reveal);
             obj.lines = [];
           }
 
-          function add_point(obj, x, y, label, isForeign = false) {
+          function add_point(obj, x, y, enc, label, isForeign = false) {
             if (x > obj.maxX) obj.maxX = x;
             if (y > obj.maxY) obj.maxY = y;
             if (x < obj.minX) obj.minX = x;
             if (y < obj.minY) obj.minY = y;
 
-            obj.points[label] = { x: x, y: y, foreign: !!isForeign };
+            obj.points[label] = { x: x, y: y, enc: enc, foreign: !!isForeign };
           }
 
           function add_line(obj, labels, color) {
@@ -99,7 +99,7 @@ window.addEventListener("scroll", reveal);
           }
 
           function draw_point(ctx, obj, p, rangeX, rangeY, offsetX, offsetY) {
-            point(ctx, transformX(obj, p.x, rangeX, offsetX), transformY(obj, p.y, rangeY, offsetY), 6 * window.devicePixelRatio, p.foreign ? "#333" : "#FFF", p.foreign ? "#777" : "#DDD", 2 * window.devicePixelRatio);
+            point(ctx, transformX(obj, p.x, rangeX, offsetX), transformY(obj, p.y, rangeY, offsetY), (p.isPareto == true ? 10 : 6) * window.devicePixelRatio, p.foreign ? "#333" : "#FFF", p.foreign ? "#777" : "#DDD", 2 * window.devicePixelRatio);
           }
 
           function draw_line(ctx, obj, l, rangeX, rangeY, offsetX, offsetY, lineWidth) {
@@ -135,6 +135,8 @@ window.addEventListener("scroll", reveal);
 
             do {
                 points[points.length] = n;
+                n.isPareto = true;
+
                 found = false;
 
                 let last = n;
@@ -148,7 +150,7 @@ window.addEventListener("scroll", reveal);
                 }
             } while (found);
 
-            obj.lines[obj.lines.length] = { points: points, color: "#88FF2211", pareto: true };
+            obj.lines[obj.lines.length] = { points: points, color: "#AAFF2233", pareto: true };
           }
 
           function draw_obj(ctx, obj) {
@@ -187,12 +189,12 @@ window.addEventListener("scroll", reveal);
             
             // X Axis.
             for (let x = obj.minX; x <= obj.maxX; x += stepX) {
-                if (x > 0) draw_label(ctx, obj, x, obj.minY, x + " MiB/s", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
+                if (x > obj.minX) draw_label(ctx, obj, x, obj.minY, x + " MiB/s", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
             }
 
             // Y Axis.
             for (let y = obj.minY; y <= obj.maxY; y += stepY) {
-                if (y > 0) draw_label(ctx, obj, obj.minX, y, y + "%", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
+                if (y > obj.minY) draw_label(ctx, obj, obj.minX, y, y + "%", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
             }
 
             for (i in obj.lines)
@@ -242,12 +244,15 @@ window.addEventListener("scroll", reveal);
                 for (let p in obj.points) {
                     if (dist(obj.points[p].x, obj.points[p].y) <= 50 * window.devicePixelRatio) {
                         var tooltip = document.getElementById("tooltip");
-                        tooltip.style.left = mouseX + "px";
+                        tooltip.style.left = (mouseX + 20 * window.devicePixelRatio) + "px";
                         tooltip.style.top = mouseY + "px";
                         tooltip.className = "tooltip_visible";
                         document.getElementById("tooltip_text").innerText = p + (obj.points[p].foreign ? " (foreign codec)" : "");
                         document.getElementById("tooltip_sub1").innerText = "decoder throughput: " + obj.points[p].x + " MiB/s";
-                        document.getElementById("tooltip_sub2").innerText = "compression ratio: " + obj.points[p].y + "%";
+                        document.getElementById("tooltip_sub2").innerText = "encoder throughput: " + obj.points[p].enc + " MiB/s";
+                        document.getElementById("tooltip_sub3").innerText = "compression ratio: " + obj.points[p].y + " %";
+                        document.getElementById("tooltip_pareto").className = obj.points[p].isPareto == true ? "pareto" : "non_pareto";
+
                         found = true;
                         break;
                     }
@@ -274,51 +279,59 @@ window.addEventListener("scroll", reveal);
 
             init_obj(obj);
 
-            add_point(obj, 25731.9,  19.34, "8 Bit");
-            add_point(obj, 23256.0,  18.31, "8 Bit Single");
-            add_point(obj, 19605.2,  17.95, "8 Bit Packed");
-            add_point(obj, 17315.5,  17.96, "8 Bit Packed Single");
-            add_point(obj, 21953.2,  20.32, "16 Bit (Symbol Bound)");
-            add_point(obj, 20009.2,  18.55, "16 Bit Packed (Symbol Bound)");
-            add_point(obj, 22416.9,  20.10, "16 Bit (Byte Bound)");
-            add_point(obj, 19366.7,  18.47, "16 Bit Packed (Byte Bound)");
-            add_point(obj, 25460.9,  21.50, "24 Bit (Symbol Bound)");
-            add_point(obj, 20685.2,  19.49, "24 Bit Packed (Symbol Bound)");
-            add_point(obj, 24017.9,  20.80, "24 Bit (Byte Bound)");
-            add_point(obj, 21006.0,  19.19, "24 Bit Packed (Byte Bound)");
-            add_point(obj, 22918.0,  22.01, "32 Bit (Symbol Bound)");
-            add_point(obj, 22783.7,  20.21, "32 Bit Packed (Symbol Bound)");
-            add_point(obj, 23873.2,  21.39, "32 Bit (Byte Bound)");
-            add_point(obj, 23569.8,  19.82, "32 Bit Packed (Byte Bound)");
-            add_point(obj, 25692.0,  23.41, "48 Bit (Symbol Bound)");
-            add_point(obj, 25859.7,  21.39, "48 Bit Packed (Symbol Bound)");
-            add_point(obj, 26481.4,  22.66, "48 Bit (Byte Bound)");
-            add_point(obj, 25920.9,  20.84, "48 Bit Packed (Byte Bound)");
-            add_point(obj, 25516.4,  24.53, "64 Bit (Symbol Bound)");
-            add_point(obj, 26375.4,  22.34, "64 Bit Packed (Symbol Bound)");
-            add_point(obj, 25360.7,  23.66, "64 Bit (Byte Bound)");
-            add_point(obj, 26063.4,  21.63, "64 Bit Packed (Byte Bound)");
-            add_point(obj, 27173.0,  27.60, "128 Bit (Symbol Bound)");
-            add_point(obj, 27761.3,  24.82, "128 Bit Packed (Symbol Bound)");
-            add_point(obj, 27446.2,  26.46, "128 Bit (Byte Bound)");
-            add_point(obj, 27795.2,  23.83, "128 Bit Packed (Byte Bound)");
-            add_point(obj,  1676.7,  12.51, "8 Bit RLE + Huffman-esque");
-            add_point(obj,  3786.4,  21.05, "8 Bit MMTF 128");
-            add_point(obj,  2690.6,  19.93, "Low Entropy");
-            add_point(obj,  4389.0,  19.96, "Low Entropy Single");
-            add_point(obj,  2805.3,  24.08, "Low Entropy Short");
-            add_point(obj,  5302.1,  24.11, "Low Entropy Short Single");
-            //add_point(obj,  3642.0, 100.00, "Multi MTF 128 Bit (Transform)");
-            //add_point(obj,  5630.4, 100.00, "Multi MTF 256 Bit (Transform)");
-            //add_point(obj, 28520.5, 100.00, "memcpy");
+            add_point(obj, 25731.9,  19.34,  3215.0, "8 Bit");
+            add_point(obj, 23256.0,  18.31,  1648.2, "8 Bit Single");
+            add_point(obj, 19605.2,  17.95,  2906.3, "8 Bit Packed");
+            add_point(obj, 17315.5,  17.96,  1479.9, "8 Bit Packed Single");
 
-            add_point(obj,  4109.9, 16.0, "trle", true);
-            add_point(obj,  9175.2, 17.8, "srle 0", true);
-            add_point(obj,  9198.3, 18.7, "srle 8", true);
-            add_point(obj, 10667.0, 21.3, "srle 16", true);
-            add_point(obj, 14922.9, 24.2, "srle 32", true);
-            add_point(obj, 20526.3, 27.5, "srle 64", true);
-            add_point(obj,  2570.0, 19.7, "mrle", true);
+            add_point(obj, 21953.2,  20.32,  2146.1, "16 Bit (Symbol Bound)");
+            add_point(obj, 20009.2,  18.55,  1844.0, "16 Bit Packed (Symbol Bound)");
+            add_point(obj, 22416.9,  20.10,  2036.8, "16 Bit (Byte Bound)");
+            add_point(obj, 19366.7,  18.47,  1915.9, "16 Bit Packed (Byte Bound)");
+
+            add_point(obj, 25460.9,  21.50,  2401.9, "24 Bit (Symbol Bound)");
+            add_point(obj, 20685.2,  19.49,  2182.2, "24 Bit Packed (Symbol Bound)");
+            add_point(obj, 24017.9,  20.80,  2471.3, "24 Bit (Byte Bound)");
+            add_point(obj, 21006.0,  19.19,  2347.6, "24 Bit Packed (Byte Bound)");
+
+            add_point(obj, 22918.0,  22.01,  2859.5, "32 Bit (Symbol Bound)");
+            add_point(obj, 22783.7,  20.21,  2490.0, "32 Bit Packed (Symbol Bound)");
+            add_point(obj, 23873.2,  21.39,  2802.9, "32 Bit (Byte Bound)");
+            add_point(obj, 23569.8,  19.82,  2564.4, "32 Bit Packed (Byte Bound)");
+            
+            add_point(obj, 25692.0,  23.41,  3003.5, "48 Bit (Symbol Bound)");
+            add_point(obj, 25859.7,  21.39,  2867.0, "48 Bit Packed (Symbol Bound)");
+            add_point(obj, 26481.4,  22.66,  3329.7, "48 Bit (Byte Bound)");
+            add_point(obj, 25920.9,  20.84,  3009.6, "48 Bit Packed (Byte Bound)");
+
+            add_point(obj, 25516.4,  24.53,  3397.1, "64 Bit (Symbol Bound)");
+            add_point(obj, 26375.4,  22.34,  2965.1, "64 Bit Packed (Symbol Bound)");
+            add_point(obj, 25360.7,  23.66,  3497.4, "64 Bit (Byte Bound)");
+            add_point(obj, 26063.4,  21.63,  2822.7, "64 Bit Packed (Byte Bound)");
+
+            add_point(obj, 27173.0,  27.60,  2689.9, "128 Bit (Symbol Bound)");
+            add_point(obj, 27761.3,  24.82,  3159.8, "128 Bit Packed (Symbol Bound)");
+            add_point(obj, 27446.2,  26.46,  3424.4, "128 Bit (Byte Bound)");
+            add_point(obj, 27795.2,  23.83,  3284.2, "128 Bit Packed (Byte Bound)");
+            
+            add_point(obj,  1676.7,  12.51,   332.0, "8 Bit RLE + Huffman-esque");
+            add_point(obj,  3786.4,  21.05,  2921.2, "8 Bit MMTF 128");
+            add_point(obj,  2690.6,  19.93,   800.2, "Low Entropy");
+            add_point(obj,  4389.0,  19.96,   775.6, "Low Entropy Single");
+            add_point(obj,  2805.3,  24.08,   809.5, "Low Entropy Short");
+            add_point(obj,  5302.1,  24.11,   714.0, "Low Entropy Short Single");
+
+            //add_point(obj,  3642.0, 100.00,  3352.0, "Multi MTF 128 Bit (Transform)");
+            //add_point(obj,  5630.4, 100.00,  5472.6, "Multi MTF 256 Bit (Transform)");
+            //add_point(obj, 28520.5, 100.00, 26572.3, "memcpy");
+
+            add_point(obj,  4109.9, 16.0, 1124.6, "trle", true);
+            add_point(obj,  9175.2, 17.8, 1107.6, "srle 0", true);
+            add_point(obj,  9198.3, 18.7, 1801.2, "srle 8", true);
+            add_point(obj, 10667.0, 21.3, 1649.2, "srle 16", true);
+            add_point(obj, 14922.9, 24.2, 2950.6, "srle 32", true);
+            add_point(obj, 20526.3, 27.5, 5003.2, "srle 64", true);
+            add_point(obj,  2570.0, 19.7,  427.6, "mrle", true);
 
             let colors = ["#efe16d", "#ffc65f", "#ffaa60", "#ff8d6d", "#ff7382", "#fd609a", "#df58b2", "#b15ac7"];
             let alpha = "33";
@@ -349,51 +362,51 @@ window.addEventListener("scroll", reveal);
 
             init_obj(obj);
 
-            add_point(obj, 25731.9,  19.34, "8 Bit");
-            add_point(obj, 23256.0,  18.31, "8 Bit Single");
-            add_point(obj, 19605.2,  17.95, "8 Bit Packed");
-            add_point(obj, 17315.5,  17.96, "8 Bit Packed Single");
-            add_point(obj, 21953.2,  20.32, "16 Bit (Symbol Bound)");
-            add_point(obj, 20009.2,  18.55, "16 Bit Packed (Symbol Bound)");
-            add_point(obj, 22416.9,  20.10, "16 Bit (Byte Bound)");
-            add_point(obj, 19366.7,  18.47, "16 Bit Packed (Byte Bound)");
-            add_point(obj, 25460.9,  21.50, "24 Bit (Symbol Bound)");
-            add_point(obj, 20685.2,  19.49, "24 Bit Packed (Symbol Bound)");
-            add_point(obj, 24017.9,  20.80, "24 Bit (Byte Bound)");
-            add_point(obj, 21006.0,  19.19, "24 Bit Packed (Byte Bound)");
-            add_point(obj, 22918.0,  22.01, "32 Bit (Symbol Bound)");
-            add_point(obj, 22783.7,  20.21, "32 Bit Packed (Symbol Bound)");
-            add_point(obj, 23873.2,  21.39, "32 Bit (Byte Bound)");
-            add_point(obj, 23569.8,  19.82, "32 Bit Packed (Byte Bound)");
-            add_point(obj, 25692.0,  23.41, "48 Bit (Symbol Bound)");
-            add_point(obj, 25859.7,  21.39, "48 Bit Packed (Symbol Bound)");
-            add_point(obj, 26481.4,  22.66, "48 Bit (Byte Bound)");
-            add_point(obj, 25920.9,  20.84, "48 Bit Packed (Byte Bound)");
-            add_point(obj, 25516.4,  24.53, "64 Bit (Symbol Bound)");
-            add_point(obj, 26375.4,  22.34, "64 Bit Packed (Symbol Bound)");
-            add_point(obj, 25360.7,  23.66, "64 Bit (Byte Bound)");
-            add_point(obj, 26063.4,  21.63, "64 Bit Packed (Byte Bound)");
-            add_point(obj, 27173.0,  27.60, "128 Bit (Symbol Bound)");
-            add_point(obj, 27761.3,  24.82, "128 Bit Packed (Symbol Bound)");
-            add_point(obj, 27446.2,  26.46, "128 Bit (Byte Bound)");
-            add_point(obj, 27795.2,  23.83, "128 Bit Packed (Byte Bound)");
-            add_point(obj,  1676.7,  12.51, "8 Bit RLE + Huffman-esque");
-            add_point(obj,  3786.4,  21.05, "8 Bit MMTF 128");
-            add_point(obj,  2690.6,  19.93, "Low Entropy");
-            add_point(obj,  4389.0,  19.96, "Low Entropy Single");
-            add_point(obj,  2805.3,  24.08, "Low Entropy Short");
-            add_point(obj,  5302.1,  24.11, "Low Entropy Short Single");
-            //add_point(obj,  3642.0, 100.00, "Multi MTF 128 Bit (Transform)");
-            //add_point(obj,  5630.4, 100.00, "Multi MTF 256 Bit (Transform)");
-            //add_point(obj, 28520.5, 100.00, "memcpy");
+            add_point(obj, 25731.9,  19.34,  2434.8, "8 Bit");
+            add_point(obj, 23256.0,  18.31,  1325.0, "8 Bit Single");
+            add_point(obj, 19605.2,  17.95,  2199.4, "8 Bit Packed");
+            add_point(obj, 17315.5,  17.96,  1270.5, "8 Bit Packed Single");
+            add_point(obj, 21953.2,  20.32,  1722.0, "16 Bit (Symbol Bound)");
+            add_point(obj, 20009.2,  18.55,  1452.1, "16 Bit Packed (Symbol Bound)");
+            add_point(obj, 22416.9,  20.10,  1670.5, "16 Bit (Byte Bound)");
+            add_point(obj, 19366.7,  18.47,  1485.7, "16 Bit Packed (Byte Bound)");
+            add_point(obj, 25460.9,  21.50,  1906.0, "24 Bit (Symbol Bound)");
+            add_point(obj, 20685.2,  19.49,  1648.8, "24 Bit Packed (Symbol Bound)");
+            add_point(obj, 24017.9,  20.80,  1884.7, "24 Bit (Byte Bound)");
+            add_point(obj, 21006.0,  19.19,  1815.6, "24 Bit Packed (Byte Bound)");
+            add_point(obj, 22918.0,  22.01,  2162.4, "32 Bit (Symbol Bound)");
+            add_point(obj, 22783.7,  20.21,  1784.7, "32 Bit Packed (Symbol Bound)");
+            add_point(obj, 23873.2,  21.39,  2057.2, "32 Bit (Byte Bound)");
+            add_point(obj, 23569.8,  19.82,  1831.9, "32 Bit Packed (Byte Bound)");
+            add_point(obj, 25692.0,  23.41,  2221.4, "48 Bit (Symbol Bound)");
+            add_point(obj, 25859.7,  21.39,  2102.7, "48 Bit Packed (Symbol Bound)");
+            add_point(obj, 26481.4,  22.66,  2612.1, "48 Bit (Byte Bound)");
+            add_point(obj, 25920.9,  20.84,  2200.6, "48 Bit Packed (Byte Bound)");
+            add_point(obj, 25516.4,  24.53,  2592.9, "64 Bit (Symbol Bound)");
+            add_point(obj, 26375.4,  22.34,  2050.6, "64 Bit Packed (Symbol Bound)");
+            add_point(obj, 25360.7,  23.66,  2742.4, "64 Bit (Byte Bound)");
+            add_point(obj, 26063.4,  21.63,  2246.0, "64 Bit Packed (Byte Bound)");
+            add_point(obj, 27173.0,  27.60,  2387.9, "128 Bit (Symbol Bound)");
+            add_point(obj, 27761.3,  24.82,  2172.0, "128 Bit Packed (Symbol Bound)");
+            add_point(obj, 27446.2,  26.46,  2489.4, "128 Bit (Byte Bound)");
+            add_point(obj, 27795.2,  23.83,  2293.4, "128 Bit Packed (Byte Bound)");
+            add_point(obj,  1676.7,  12.51,   326.5, "8 Bit RLE + Huffman-esque");
+            add_point(obj,  3786.4,  21.05,  2118.5, "8 Bit MMTF 128");
+            add_point(obj,  2690.6,  19.93,   799.7, "Low Entropy");
+            add_point(obj,  4389.0,  19.96,   718.2, "Low Entropy Single");
+            add_point(obj,  2805.3,  24.08,   799.0, "Low Entropy Short");
+            add_point(obj,  5302.1,  24.11,   674.0, "Low Entropy Short Single");
+            //add_point(obj,  3642.0, 100.00,  2539.3, "Multi MTF 128 Bit (Transform)");
+            //add_point(obj,  5630.4, 100.00,  4064.7, "Multi MTF 256 Bit (Transform)");
+            //add_point(obj, 28520.5, 100.00, 26380.3, "memcpy");
 
-            add_point(obj,  4291.4, 17.4, "trle", true);
-            add_point(obj,  9113.0, 20.2, "srle 0", true);
-            add_point(obj,  9092.7, 22.0, "srle 8", true);
-            add_point(obj, 10108.9, 27.1, "srle 16", true);
-            add_point(obj, 13160.2, 32.7, "srle 32", true);
-            add_point(obj, 19314.2, 39.5, "srle 64", true);
-            add_point(obj,  3182.7, 21.0, "mrle", true);
+            add_point(obj,  4291.4, 17.4, 1137.2, "trle", true);
+            add_point(obj,  9113.0, 20.2, 1130.2, "srle 0", true);
+            add_point(obj,  9092.7, 22.0, 1863.1, "srle 8", true);
+            add_point(obj, 10108.9, 27.1, 1657.0, "srle 16", true);
+            add_point(obj, 13160.2, 32.7, 2910.3, "srle 32", true);
+            add_point(obj, 19314.2, 39.5, 4990.2, "srle 64", true);
+            add_point(obj,  3182.7, 21.0,  461.4, "mrle", true);
 
             add_line(obj, ["8 Bit", "16 Bit (Symbol Bound)", "24 Bit (Symbol Bound)", "32 Bit (Symbol Bound)", "48 Bit (Symbol Bound)", "64 Bit (Symbol Bound)", "128 Bit (Symbol Bound)"], colors[0] + alpha);
             add_line(obj, ["8 Bit", "16 Bit (Byte Bound)", "24 Bit (Byte Bound)", "32 Bit (Byte Bound)", "48 Bit (Byte Bound)", "64 Bit (Byte Bound)", "128 Bit (Byte Bound)"], colors[1] + alpha);
@@ -422,51 +435,51 @@ window.addEventListener("scroll", reveal);
             init_obj(obj);
 
 
-            add_point(obj, 15994.7,  48.80, "8 Bit");
-            //add_point(obj, 16843.4,  88.75, "8 Bit Single");
-            add_point(obj,  7454.4,  44.86, "8 Bit Packed");
-            //add_point(obj, 14564.1,  88.59, "8 Bit Packed Single");
-            add_point(obj, 12708.1,  51.49, "16 Bit (Symbol Bound)");
-            add_point(obj,  9417.5,  47.89, "16 Bit Packed (Symbol Bound)");
-            add_point(obj, 12981.9,  50.74, "16 Bit (Byte Bound)");
-            add_point(obj,  8322.4,  46.99, "16 Bit Packed (Byte Bound)");
-            add_point(obj, 15413.8,  54.90, "24 Bit (Symbol Bound)");
-            add_point(obj, 10041.7,  50.61, "24 Bit Packed (Symbol Bound)");
-            add_point(obj, 14838.0,  52.73, "24 Bit (Byte Bound)");
-            add_point(obj, 10085.5,  49.39, "24 Bit Packed (Byte Bound)");
-            add_point(obj, 13837.0,  55.92, "32 Bit (Symbol Bound)");
-            add_point(obj, 11767.3,  52.84, "32 Bit Packed (Symbol Bound)");
-            add_point(obj, 14032.1,  54.27, "32 Bit (Byte Bound)");
-            add_point(obj, 12316.8,  51.63, "32 Bit Packed (Byte Bound)");
-            add_point(obj, 16115.9,  59.24, "48 Bit (Symbol Bound)");
-            add_point(obj, 15370.2,  56.26, "48 Bit Packed (Symbol Bound)");
-            add_point(obj, 16775.3,  57.58, "48 Bit (Byte Bound)");
-            add_point(obj, 16106.6,  55.01, "48 Bit Packed (Byte Bound)");
-            add_point(obj, 17521.9,  61.69, "64 Bit (Symbol Bound)");
-            add_point(obj, 17252.6,  58.87, "64 Bit Packed (Symbol Bound)");
-            add_point(obj, 17737.0,  59.94, "64 Bit (Byte Bound)");
-            add_point(obj, 16491.9,  57.33, "64 Bit Packed (Byte Bound)");
-            add_point(obj, 18760.9,  66.89, "128 Bit (Symbol Bound)");
-            add_point(obj, 20061.6,  64.32, "128 Bit Packed (Symbol Bound)");
-            add_point(obj, 19088.4,  65.39, "128 Bit (Byte Bound)");
-            add_point(obj, 19334.9,  62.94, "128 Bit Packed (Byte Bound)");
-            add_point(obj,  1236.2,  42.52, "8 Bit RLE + Huffman-esque");
-            add_point(obj,  1299.9,  63.49, "8 Bit MMTF 128");
-            add_point(obj,   913.9,  64.19, "Low Entropy");
-            //add_point(obj,  7491.0,  89.22, "Low Entropy Single");
-            add_point(obj,  1403.6,  66.17, "Low Entropy Short");
-            //add_point(obj,  9809.1,  89.65, "Low Entropy Short Single");
-            //add_point(obj,  1289.8, 100.00, "Multi MTF 128 Bit (Transform)");
-            //add_point(obj,  1966.1, 100.00, "Multi MTF 256 Bit (Transform)");
-            //add_point(obj, 25742.6, 100.00, "memcpy");
+            add_point(obj, 15994.7,  48.80,  1219.7, "8 Bit");
+            //add_point(obj, 16843.4,  88.75,  1127.0, "8 Bit Single");
+            add_point(obj,  7454.4,  44.86,  1038.7, "8 Bit Packed");
+            //add_point(obj, 14564.1,  88.59,  1097.4, "8 Bit Packed Single");
+            add_point(obj, 12708.1,  51.49,  1098.3, "16 Bit (Symbol Bound)");
+            add_point(obj,  9417.5,  47.89,   886.7, "16 Bit Packed (Symbol Bound)");
+            add_point(obj, 12981.9,  50.74,  1024.0, "16 Bit (Byte Bound)");
+            add_point(obj,  8322.4,  46.99,   913.4, "16 Bit Packed (Byte Bound)");
+            add_point(obj, 15413.8,  54.90,  1244.0, "24 Bit (Symbol Bound)");
+            add_point(obj, 10041.7,  50.61,  1056.8, "24 Bit Packed (Symbol Bound)");
+            add_point(obj, 14838.0,  52.73,  1196.6, "24 Bit (Byte Bound)");
+            add_point(obj, 10085.5,  49.39,  1159.4, "24 Bit Packed (Byte Bound)");
+            add_point(obj, 13837.0,  55.92,  1380.0, "32 Bit (Symbol Bound)");
+            add_point(obj, 11767.3,  52.84,  1158.5, "32 Bit Packed (Symbol Bound)");
+            add_point(obj, 14032.1,  54.27,  1327.9, "32 Bit (Byte Bound)");
+            add_point(obj, 12316.8,  51.63,  1213.6, "32 Bit Packed (Byte Bound)");
+            add_point(obj, 16115.9,  59.24,  1398.1, "48 Bit (Symbol Bound)");
+            add_point(obj, 15370.2,  56.26,  1321.0, "48 Bit Packed (Symbol Bound)");
+            add_point(obj, 16775.3,  57.58,  1557.6, "48 Bit (Byte Bound)");
+            add_point(obj, 16106.6,  55.01,  1385.7, "48 Bit Packed (Byte Bound)");
+            add_point(obj, 17521.9,  61.69,  1557.9, "64 Bit (Symbol Bound)");
+            add_point(obj, 17252.6,  58.87,  1353.7, "64 Bit Packed (Symbol Bound)");
+            add_point(obj, 17737.0,  59.94,  1606.6, "64 Bit (Byte Bound)");
+            add_point(obj, 16491.9,  57.33,  1421.2, "64 Bit Packed (Byte Bound)");
+            add_point(obj, 18760.9,  66.89,  1489.9, "128 Bit (Symbol Bound)");
+            add_point(obj, 20061.6,  64.32,  1415.5, "128 Bit Packed (Symbol Bound)");
+            add_point(obj, 19088.4,  65.39,  1512.1, "128 Bit (Byte Bound)");
+            add_point(obj, 19334.9,  62.94,  1461.5, "128 Bit Packed (Byte Bound)");
+            add_point(obj,  1236.2,  42.52,   271.7, "8 Bit RLE + Huffman-esque");
+            add_point(obj,  1299.9,  63.49,  1101.2, "8 Bit MMTF 128");
+            add_point(obj,   913.9,  64.19,   381.1, "Low Entropy");
+            //add_point(obj,  7491.0,  89.22,   533.0, "Low Entropy Single");
+            add_point(obj,  1403.6,  66.17,   394.1, "Low Entropy Short");
+            //add_point(obj,  9809.1,  89.65,   545.2, "Low Entropy Short Single");
+            //add_point(obj,  1289.8, 100.00,  1205.9, "Multi MTF 128 Bit (Transform)");
+            //add_point(obj,  1966.1, 100.00,  2012.2, "Multi MTF 256 Bit (Transform)");
+            //add_point(obj, 25742.6, 100.00, 25684.9, "memcpy");
 
-            add_point(obj,  2341.0, 42.4, "trle", true);
-            add_point(obj,  6341.4, 46.9, "srle 0", true);
-            add_point(obj,  6310.3, 46.9, "srle 8", true);
-            add_point(obj,  8818.9, 54.4, "srle 16", true);
-            add_point(obj, 13030.9, 61.0, "srle 32", true);
-            add_point(obj, 18660.4, 66.8, "srle 64", true);
-            add_point(obj,  1131.5, 64.1, "mrle", true);
+            add_point(obj,  2341.0, 42.4,  697.6, "trle", true);
+            add_point(obj,  6341.4, 46.9,  680.6, "srle 0", true);
+            add_point(obj,  6310.3, 46.9,  858.6, "srle 8", true);
+            add_point(obj,  8818.9, 54.4,  906.4, "srle 16", true);
+            add_point(obj, 13030.9, 61.0, 1766.0, "srle 32", true);
+            add_point(obj, 18660.4, 66.8, 3289.0, "srle 64", true);
+            add_point(obj,  1131.5, 64.1,  320.2, "mrle", true);
 
             add_line(obj, ["8 Bit", "16 Bit (Symbol Bound)", "24 Bit (Symbol Bound)", "32 Bit (Symbol Bound)", "48 Bit (Symbol Bound)", "64 Bit (Symbol Bound)", "128 Bit (Symbol Bound)"], colors[0] + alpha);
             add_line(obj, ["8 Bit", "16 Bit (Byte Bound)", "24 Bit (Byte Bound)", "32 Bit (Byte Bound)", "48 Bit (Byte Bound)", "64 Bit (Byte Bound)", "128 Bit (Byte Bound)"], colors[1] + alpha);
