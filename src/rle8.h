@@ -50,11 +50,11 @@ extern "C"
 {
 #endif
 
-uint32_t rle8_compress_bounds(const uint32_t inSize);
-uint32_t rle8_decompressed_size(IN const uint8_t *pIn, const uint32_t inSize);
-uint32_t rle8_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle8_compress_only_max_frequency(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle8_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_low_entropy_compress_bounds(const uint32_t inSize);
+uint32_t rle8_low_entropy_decompressed_size(IN const uint8_t *pIn, const uint32_t inSize);
+uint32_t rle8_low_entropy_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_low_entropy_compress_only_max_frequency(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_low_entropy_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -64,113 +64,124 @@ uint32_t rle8m_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint
 
 //////////////////////////////////////////////////////////////////////////
 
-typedef struct rle8_compress_info_t
+typedef struct rle8_low_entropy_compress_info_t
 {
   bool rle[256];
   uint8_t symbolsByProb[256];
   uint8_t symbolCount;
-} rle8_compress_info_t;
+} rle8_low_entropy_compress_info_t;
 
-bool rle8_get_compress_info(IN const uint8_t *pIn, const uint32_t inSize, OUT rle8_compress_info_t *pCompressInfo);
-bool rle8_get_compress_info_only_max_frequency(IN const uint8_t *pIn, const uint32_t inSize, OUT rle8_compress_info_t *pCompressInfo);
-uint32_t rle8_write_compress_info(IN rle8_compress_info_t *pCompressInfo, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle8_compress_with_info(IN const uint8_t *pIn, const uint32_t inSize, IN const rle8_compress_info_t *pCompressInfo, OUT uint8_t *pOut, const uint32_t outSize);
+bool rle8_low_entropy_get_compress_info(IN const uint8_t *pIn, const uint32_t inSize, OUT rle8_low_entropy_compress_info_t *pCompressInfo);
+bool rle8_low_entropy_get_compress_info_only_max_frequency(IN const uint8_t *pIn, const uint32_t inSize, OUT rle8_low_entropy_compress_info_t *pCompressInfo);
+uint32_t rle8_low_entropy_write_compress_info(IN rle8_low_entropy_compress_info_t *pCompressInfo, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_low_entropy_compress_with_info(IN const uint8_t *pIn, const uint32_t inSize, IN const rle8_low_entropy_compress_info_t *pCompressInfo, OUT uint8_t *pOut, const uint32_t outSize);
 
-typedef struct rle8_decompress_info_t
+typedef struct rle8_low_entropy_decompress_info_t
 {
   bool rle[256];
   uint8_t symbolToCount[256];
-} rle8_decompress_info_t;
+} rle8_low_entropy_decompress_info_t;
 
-uint32_t rle8_read_decompress_info(IN const uint8_t *pIn, const uint32_t inSize, OUT rle8_decompress_info_t *pDecompressInfo);
-uint32_t rle8_decompress_with_info(IN const uint8_t *pIn, IN const uint8_t *pEnd, IN const rle8_decompress_info_t *pDecompressInfo, OUT uint8_t *pOut, const uint32_t expectedOutSize);
-
-//////////////////////////////////////////////////////////////////////////
-
-uint32_t rle8_ultra_compress_bounds(const uint32_t inSize);
-uint32_t rle8_ultra_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle8_ultra_compress_only_max_frequency(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle8_ultra_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-
-uint32_t rle8_ultra_compress_with_info(IN const uint8_t *pIn, const uint32_t inSize, IN const rle8_compress_info_t *pCompressInfo, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle8_ultra_decompress_with_info(IN const uint8_t *pIn, IN const uint8_t *pEnd, IN const rle8_decompress_info_t *pDecompressInfo, OUT uint8_t *pOut, const uint32_t expectedOutSize);
+uint32_t rle8_low_entropy_read_decompress_info(IN const uint8_t *pIn, const uint32_t inSize, OUT rle8_low_entropy_decompress_info_t *pDecompressInfo);
+uint32_t rle8_low_entropy_decompress_with_info(IN const uint8_t *pIn, IN const uint8_t *pEnd, IN const rle8_low_entropy_decompress_info_t *pDecompressInfo, OUT uint8_t *pOut, const uint32_t expectedOutSize);
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t rle8_extreme_compress_bounds(const uint32_t inSize);
-uint32_t rle8_extreme_multi_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle8_extreme_single_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle8_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_low_entropy_short_compress_bounds(const uint32_t inSize);
+uint32_t rle8_low_entropy_short_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_low_entropy_short_compress_only_max_frequency(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_low_entropy_short_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
-uint32_t rle8_extreme_decompress_additional_size();
-
-uint32_t rle16_extreme_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle16_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-
-uint32_t rle32_extreme_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle32_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-
-uint32_t rle64_extreme_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle64_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_low_entropy_short_compress_with_info(IN const uint8_t *pIn, const uint32_t inSize, IN const rle8_low_entropy_compress_info_t *pCompressInfo, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_low_entropy_short_decompress_with_info(IN const uint8_t *pIn, IN const uint8_t *pEnd, IN const rle8_low_entropy_decompress_info_t *pDecompressInfo, OUT uint8_t *pOut, const uint32_t expectedOutSize);
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t rle16_extreme_unbound_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle16_extreme_unbound_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_compress_bounds(const uint32_t inSize);
+uint32_t rle8_multi_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_single_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
-uint32_t rle32_extreme_unbound_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle32_extreme_unbound_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_decompress_additional_size();
 
-uint32_t rle64_extreme_unbound_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle64_extreme_unbound_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle16_sym_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle16_sym_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
-//////////////////////////////////////////////////////////////////////////
+uint32_t rle32_sym_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle32_sym_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
-uint32_t rle8_extreme_packed_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle8_extreme_packed_single_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle8_extreme_packed_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-
-uint32_t rle16_extreme_packed_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle16_extreme_packed_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-
-uint32_t rle32_extreme_packed_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle32_extreme_packed_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-
-uint32_t rle64_extreme_packed_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle64_extreme_packed_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle64_sym_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle64_sym_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t rle24_extreme_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle24_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle16_byte_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle16_byte_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
-uint32_t rle48_extreme_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle48_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle32_byte_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle32_byte_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
-uint32_t rle128_extreme_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle128_extreme_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-
-//////////////////////////////////////////////////////////////////////////
-
-uint32_t rle24_extreme_unbound_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle24_extreme_unbound_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-
-uint32_t rle48_extreme_unbound_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle48_extreme_unbound_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-
-uint32_t rle128_extreme_unbound_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle128_extreme_unbound_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle64_byte_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle64_byte_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t rle24_extreme_packed_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle24_extreme_packed_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_packed_multi_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_packed_single_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_packed_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
-uint32_t rle48_extreme_packed_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle48_extreme_packed_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle16_byte_packed_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle16_byte_packed_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
-uint32_t rle128_extreme_packed_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle128_extreme_packed_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle32_byte_packed_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle32_byte_packed_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+uint32_t rle64_byte_packed_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle64_byte_packed_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+//////////////////////////////////////////////////////////////////////////
+
+uint32_t rle24_sym_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle24_sym_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+uint32_t rle48_sym_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle48_sym_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+uint32_t rle128_sym_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle128_sym_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+//////////////////////////////////////////////////////////////////////////
+
+uint32_t rle24_byte_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle24_byte_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+uint32_t rle48_byte_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle48_byte_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+uint32_t rle128_byte_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle128_byte_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+//////////////////////////////////////////////////////////////////////////
+
+uint32_t rle24_byte_packed_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle24_byte_packed_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+uint32_t rle48_byte_packed_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle48_byte_packed_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+uint32_t rle128_byte_packed_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle128_byte_packed_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+//////////////////////////////////////////////////////////////////////////
+
+uint32_t rle16_sym_packed_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle16_sym_packed_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+uint32_t rle32_sym_packed_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle32_sym_packed_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+uint32_t rle64_sym_packed_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle64_sym_packed_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -186,16 +197,16 @@ uint32_t rle_mmtf256_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT ui
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t rle8_extreme_mmtf128_compress_bounds(const uint32_t inSize);
-uint32_t rle8_extreme_mmtf256_compress_bounds(const uint32_t inSize);
+uint32_t rle8_mmtf128_compress_bounds(const uint32_t inSize);
+uint32_t rle8_mmtf256_compress_bounds(const uint32_t inSize);
 
 // If SSE2 is not available, both of these functions will fail and return 0.
-uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle8_extreme_mmtf128_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_mmtf128_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
 // If SSE2 is not available, both of these functions will fail and return 0.
-uint32_t rle8_extreme_mmtf256_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle8_extreme_mmtf256_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_mmtf256_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_mmtf256_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
 //////////////////////////////////////////////////////////////////////////
 

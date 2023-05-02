@@ -27,9 +27,9 @@
 #define RLE8_EXTREME_MODE_SINGLE 1
 
 #ifndef PACKED
-  #define CODEC extreme
+  #define CODEC _
 #else
-  #define CODEC extreme_packed
+  #define CODEC _packed_
 #endif
 
 //#ifdef PACKED
@@ -48,7 +48,7 @@ __attribute__((packed))
   uint8_t count; // + RLE8_EXTREME_MULTI_MIN_RANGE_SHORT
   uint8_t offset;
   uint32_t offsetIfNull;
-} CONCAT3(rle8_, CODEC, _multi_symbol_debug_t);
+} CONCAT3(rle8, CODEC, multi_symbol_debug_t);
 
 #ifdef _MSC_VER
 #pragma pack(1)
@@ -61,39 +61,31 @@ __attribute__((packed))
   uint8_t count; // + RLE8_EXTREME_SINGLE_MIN_RANGE_SHORT
   uint8_t offset;
   uint32_t offsetIfNull;
-} CONCAT3(rle8_, CODEC, _single_symbol_debug_t);
+} CONCAT3(rle8, CODEC, single_symbol_debug_t);
 
-static int64_t CONCAT3(rle8_, CODEC, _compress_multi_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE);
-static int64_t CONCAT3(rle8_, CODEC, _compress_multi_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE);
+static int64_t CONCAT3(rle8, CODEC, compress_multi_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE);
+static int64_t CONCAT3(rle8, CODEC, compress_multi_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE);
 
-static int64_t CONCAT3(rle8_, CODEC, _compress_single_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, const uint8_t maxFreqSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE);
-static int64_t CONCAT3(rle8_, CODEC, _compress_single_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, const uint8_t maxFreqSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE);
+static int64_t CONCAT3(rle8, CODEC, compress_single_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, const uint8_t maxFreqSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE);
+static int64_t CONCAT3(rle8, CODEC, compress_single_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, const uint8_t maxFreqSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE);
 
-static void CONCAT3(rle8_, CODEC, _decompress_multi_sse)(IN const uint8_t *pInStart, OUT uint8_t *pOut);
-static void CONCAT3(rle8_, CODEC, _decompress_multi_sse41)(IN const uint8_t *pInStart, OUT uint8_t *pOut);
-static void CONCAT3(rle8_, CODEC, _decompress_multi_avx)(IN const uint8_t *pInStart, OUT uint8_t *pOut);
-static void CONCAT3(rle8_, CODEC, _decompress_multi_avx2)(IN const uint8_t *pInStart, OUT uint8_t *pOut);
-static void CONCAT3(rle8_, CODEC, _decompress_multi_avx512f)(IN const uint8_t *pInStart, OUT uint8_t *pOut);
+static void CONCAT3(rle8, CODEC, decompress_multi_sse)(IN const uint8_t *pInStart, OUT uint8_t *pOut);
+static void CONCAT3(rle8, CODEC, decompress_multi_sse41)(IN const uint8_t *pInStart, OUT uint8_t *pOut);
+static void CONCAT3(rle8, CODEC, decompress_multi_avx)(IN const uint8_t *pInStart, OUT uint8_t *pOut);
+static void CONCAT3(rle8, CODEC, decompress_multi_avx2)(IN const uint8_t *pInStart, OUT uint8_t *pOut);
+static void CONCAT3(rle8, CODEC, decompress_multi_avx512f)(IN const uint8_t *pInStart, OUT uint8_t *pOut);
 
-static void CONCAT3(rle8_, CODEC, _decompress_single_sse)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t symbol);
-static void CONCAT3(rle8_, CODEC, _decompress_single_sse41)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t symbol);
-static void CONCAT3(rle8_, CODEC, _decompress_single_avx)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t symbol);
-static void CONCAT3(rle8_, CODEC, _decompress_single_avx2)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t symbol);
-static void CONCAT3(rle8_, CODEC, _decompress_single_avx512f)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t symbol);
+static void CONCAT3(rle8, CODEC, decompress_single_sse)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t symbol);
+static void CONCAT3(rle8, CODEC, decompress_single_sse41)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t symbol);
+static void CONCAT3(rle8, CODEC, decompress_single_avx)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t symbol);
+static void CONCAT3(rle8, CODEC, decompress_single_avx2)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t symbol);
+static void CONCAT3(rle8, CODEC, decompress_single_avx512f)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t symbol);
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t CONCAT3(rle8_, CODEC, _compress_bounds)(const uint32_t inSize)
+uint32_t CONCAT3(rle8, CODEC, multi_compress)(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
-  if (inSize > (1 << 30))
-    return 0;
-
-  return inSize + (max(RLE8_EXTREME_MULTI_MAX_SIZE_OF_SYMBOL_HEADER, RLE8_EXTREME_SINGLE_MAX_SIZE_OF_SYMBOL_HEADER) + 64) * 2 + sizeof(rle_extreme_t) + 1;
-}
-
-uint32_t CONCAT3(rle8_, CODEC, _multi_compress)(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
-{
-  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < CONCAT3(rle8_, CODEC, _compress_bounds)(inSize))
+  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_compress_bounds(inSize))
     return 0;
 
   rle_extreme_t header;
@@ -112,9 +104,9 @@ uint32_t CONCAT3(rle8_, CODEC, _multi_compress)(IN const uint8_t *pIn, const uin
   _DetectCPUFeatures();
 
   if (avx2Supported)
-    i = CONCAT3(rle8_, CODEC, _compress_multi_avx2)(pIn, inSize, pOut, &index, &symbol, &count, &lastRLE);
+    i = CONCAT3(rle8, CODEC, compress_multi_avx2)(pIn, inSize, pOut, &index, &symbol, &count, &lastRLE);
   else
-    i = CONCAT3(rle8_, CODEC, _compress_multi_sse2)(pIn, inSize, pOut, &index, &symbol, &count, &lastRLE);
+    i = CONCAT3(rle8, CODEC, compress_multi_sse2)(pIn, inSize, pOut, &index, &symbol, &count, &lastRLE);
 
   for (; i < inSize; i++)
   {
@@ -351,9 +343,9 @@ uint32_t CONCAT3(rle8_, CODEC, _multi_compress)(IN const uint8_t *pIn, const uin
   return (uint32_t)index;
 }
 
-uint32_t CONCAT3(rle8_, CODEC, _single_compress)(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
+uint32_t CONCAT3(rle8, CODEC, single_compress)(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
-  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < CONCAT3(rle8_, CODEC, _compress_bounds)(inSize))
+  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_compress_bounds(inSize))
     return 0;
 
   rle_extreme_t header;
@@ -368,9 +360,9 @@ uint32_t CONCAT3(rle8_, CODEC, _single_compress)(IN const uint8_t *pIn, const ui
 
   // The AVX2 variant appears to be slower, so we're just always calling the SSE2 version.
   //if (avx2Supported)
-  //  maxFreqSymbol = rle8_extreme_single_compress_get_approx_optimal_symbol_avx2(pIn, inSize);
+  //  maxFreqSymbol = rle8_single_compress_get_approx_optimal_symbol_avx2(pIn, inSize);
   //else
-  maxFreqSymbol = rle8_extreme_single_compress_get_approx_optimal_symbol_sse2(pIn, inSize);
+  maxFreqSymbol = rle8_single_compress_get_approx_optimal_symbol_sse2(pIn, inSize);
 
   size_t index = sizeof(rle_extreme_t);
 
@@ -384,9 +376,9 @@ uint32_t CONCAT3(rle8_, CODEC, _single_compress)(IN const uint8_t *pIn, const ui
 
   // The AVX2 variant appears to be slower, so we're just always calling the SSE2 version.
   //if (avx2Supported)
-  //  i = CONCAT3(rle8_, CODEC, _compress_single_avx2)(pIn, inSize, pOut, &index, maxFreqSymbol, &count, &lastRLE);
+  //  i = CONCAT3(rle8, CODEC, compress_single_avx2)(pIn, inSize, pOut, &index, maxFreqSymbol, &count, &lastRLE);
   //else
-  i = CONCAT3(rle8_, CODEC, _compress_single_sse2)(pIn, inSize, pOut, &index, maxFreqSymbol, &count, &lastRLE);
+  i = CONCAT3(rle8, CODEC, compress_single_sse2)(pIn, inSize, pOut, &index, maxFreqSymbol, &count, &lastRLE);
 
   for (; i < inSize; i++)
   {
@@ -707,7 +699,7 @@ uint32_t CONCAT3(rle8_, CODEC, _single_compress)(IN const uint8_t *pIn, const ui
   return (uint32_t)index;
 }
 
-uint32_t CONCAT3(rle8_, CODEC, _decompress)(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
+uint32_t CONCAT3(rle8, CODEC, decompress)(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
   if (pIn == NULL || pOut == NULL || inSize == 0 || outSize == 0)
     return 0;
@@ -730,15 +722,15 @@ uint32_t CONCAT3(rle8_, CODEC, _decompress)(IN const uint8_t *pIn, const uint32_
     pIn += index;
 
     if (avx512FSupported)
-      CONCAT3(rle8_, CODEC, _decompress_multi_avx512f)(pIn, pOut);
+      CONCAT3(rle8, CODEC, decompress_multi_avx512f)(pIn, pOut);
     else if (avx2Supported)
-      CONCAT3(rle8_, CODEC, _decompress_multi_avx2)(pIn, pOut);
+      CONCAT3(rle8, CODEC, decompress_multi_avx2)(pIn, pOut);
     else if (avxSupported)
-      CONCAT3(rle8_, CODEC, _decompress_multi_avx)(pIn, pOut);
+      CONCAT3(rle8, CODEC, decompress_multi_avx)(pIn, pOut);
     else if (sse41Supported)
-      CONCAT3(rle8_, CODEC, _decompress_multi_sse41)(pIn, pOut);
+      CONCAT3(rle8, CODEC, decompress_multi_sse41)(pIn, pOut);
     else
-      CONCAT3(rle8_, CODEC, _decompress_multi_sse)(pIn, pOut);
+      CONCAT3(rle8, CODEC, decompress_multi_sse)(pIn, pOut);
 
     break;
   }
@@ -751,15 +743,15 @@ uint32_t CONCAT3(rle8_, CODEC, _decompress)(IN const uint8_t *pIn, const uint32_
     pIn += index;
 
     if (avx512FSupported)
-      CONCAT3(rle8_, CODEC, _decompress_single_avx512f)(pIn, pOut, symbol);
+      CONCAT3(rle8, CODEC, decompress_single_avx512f)(pIn, pOut, symbol);
     else if (avx2Supported)
-      CONCAT3(rle8_, CODEC, _decompress_single_avx2)(pIn, pOut, symbol);
+      CONCAT3(rle8, CODEC, decompress_single_avx2)(pIn, pOut, symbol);
     else if (avxSupported)
-      CONCAT3(rle8_, CODEC, _decompress_single_avx)(pIn, pOut, symbol);
+      CONCAT3(rle8, CODEC, decompress_single_avx)(pIn, pOut, symbol);
     else if (sse41Supported)
-      CONCAT3(rle8_, CODEC, _decompress_single_sse41)(pIn, pOut, symbol);
+      CONCAT3(rle8, CODEC, decompress_single_sse41)(pIn, pOut, symbol);
     else
-      CONCAT3(rle8_, CODEC, _decompress_single_sse)(pIn, pOut, symbol);
+      CONCAT3(rle8, CODEC, decompress_single_sse)(pIn, pOut, symbol);
 
     break;
   }
@@ -773,7 +765,7 @@ uint32_t CONCAT3(rle8_, CODEC, _decompress)(IN const uint8_t *pIn, const uint32_
 
 //////////////////////////////////////////////////////////////////////////
 
-static int64_t CONCAT3(rle8_, CODEC, _compress_multi_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE)
+static int64_t CONCAT3(rle8, CODEC, compress_multi_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE)
 {
   const int64_t endInSize128 = inSize - sizeof(__m128i);
   int64_t i = 0;
@@ -941,7 +933,7 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_multi_sse2)(IN const uint8_t *pIn
 #ifndef _MSC_VER
 __attribute__((target("avx2")))
 #endif
-static int64_t CONCAT3(rle8_, CODEC, _compress_multi_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE)
+static int64_t CONCAT3(rle8, CODEC, compress_multi_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE)
 {
   const int64_t endInSize256 = inSize - sizeof(__m256i);
   int64_t i = 0;
@@ -1110,7 +1102,7 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_multi_avx2)(IN const uint8_t *pIn
 
 //////////////////////////////////////////////////////////////////////////
 
-static int64_t CONCAT3(rle8_, CODEC, _compress_single_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, const uint8_t maxFreqSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE)
+static int64_t CONCAT3(rle8, CODEC, compress_single_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, const uint8_t maxFreqSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE)
 {
   int64_t i = 0;
   size_t index = *pOutIndex;
@@ -1333,7 +1325,7 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_single_sse2)(IN const uint8_t *pI
 #ifndef _MSC_VER
 __attribute__((target("avx2")))
 #endif
-static int64_t CONCAT3(rle8_, CODEC, _compress_single_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, const uint8_t maxFreqSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE)
+static int64_t CONCAT3(rle8, CODEC, compress_single_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, const uint8_t maxFreqSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE)
 {
   int64_t i = 0;
   size_t index = *pOutIndex;
@@ -1550,7 +1542,7 @@ static int64_t CONCAT3(rle8_, CODEC, _compress_single_avx2)(IN const uint8_t *pI
   return i;
 }
 
-static void CONCAT3(rle8_, CODEC, _decompress_multi_sse)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+static void CONCAT3(rle8, CODEC, decompress_multi_sse)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
   __m128i symbol = _mm_setzero_si128();
@@ -1558,7 +1550,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_sse)(IN const uint8_t *pInSt
   while (true)
   {
 #ifdef _DEBUG
-    CONCAT3(rle8_, CODEC, _multi_symbol_debug_t) *pSymbol = (CONCAT3(rle8_, CODEC, _multi_symbol_debug_t) *)pInStart;
+    CONCAT3(rle8, CODEC, multi_symbol_debug_t) *pSymbol = (CONCAT3(rle8, CODEC, multi_symbol_debug_t) *)pInStart;
     (void)pSymbol;
 #endif
 
@@ -1643,7 +1635,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_sse)(IN const uint8_t *pInSt
 #ifndef _MSC_VER
 __attribute__((target("sse4.1")))
 #endif
-static void CONCAT3(rle8_, CODEC, _decompress_multi_sse41)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+static void CONCAT3(rle8, CODEC, decompress_multi_sse41)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
   __m128i symbol = _mm_setzero_si128();
@@ -1651,7 +1643,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_sse41)(IN const uint8_t *pIn
   while (true)
   {
 #ifdef _DEBUG
-    CONCAT3(rle8_, CODEC, _multi_symbol_debug_t) *pSymbol = (CONCAT3(rle8_, CODEC, _multi_symbol_debug_t) *)pInStart;
+    CONCAT3(rle8, CODEC, multi_symbol_debug_t) *pSymbol = (CONCAT3(rle8, CODEC, multi_symbol_debug_t) *)pInStart;
     (void)pSymbol;
 #endif
 
@@ -1736,7 +1728,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_sse41)(IN const uint8_t *pIn
 #ifndef _MSC_VER
 __attribute__((target("avx")))
 #endif
-static void CONCAT3(rle8_, CODEC, _decompress_multi_avx)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+static void CONCAT3(rle8, CODEC, decompress_multi_avx)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
   __m256i symbol = _mm256_setzero_si256();
@@ -1744,7 +1736,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_avx)(IN const uint8_t *pInSt
   while (true)
   {
 #ifdef _DEBUG
-    CONCAT3(rle8_, CODEC, _multi_symbol_debug_t) *pSymbol = (CONCAT3(rle8_, CODEC, _multi_symbol_debug_t) *)pInStart;
+    CONCAT3(rle8, CODEC, multi_symbol_debug_t) *pSymbol = (CONCAT3(rle8, CODEC, multi_symbol_debug_t) *)pInStart;
     (void)pSymbol;
 #endif
 
@@ -1829,7 +1821,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_avx)(IN const uint8_t *pInSt
 #ifndef _MSC_VER
 __attribute__((target("avx2")))
 #endif
-static void CONCAT3(rle8_, CODEC, _decompress_multi_avx2)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+static void CONCAT3(rle8, CODEC, decompress_multi_avx2)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
   __m256i symbol = _mm256_setzero_si256();
@@ -1837,7 +1829,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_avx2)(IN const uint8_t *pInS
   while (true)
   {
 #ifdef _DEBUG
-    CONCAT3(rle8_, CODEC, _multi_symbol_debug_t) *pSymbol = (CONCAT3(rle8_, CODEC, _multi_symbol_debug_t) *)pInStart;
+    CONCAT3(rle8, CODEC, multi_symbol_debug_t) *pSymbol = (CONCAT3(rle8, CODEC, multi_symbol_debug_t) *)pInStart;
     (void)pSymbol;
 #endif
 
@@ -1922,7 +1914,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_avx2)(IN const uint8_t *pInS
 #ifndef _MSC_VER
 __attribute__((target("avx512f")))
 #endif
-static void CONCAT3(rle8_, CODEC, _decompress_multi_avx512f)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+static void CONCAT3(rle8, CODEC, decompress_multi_avx512f)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
   __m512i symbol = _mm512_setzero_si512();
@@ -1930,7 +1922,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_avx512f)(IN const uint8_t *p
   while (true)
   {
 #ifdef _DEBUG
-    CONCAT3(rle8_, CODEC, _multi_symbol_debug_t) *pSymbol = (CONCAT3(rle8_, CODEC, _multi_symbol_debug_t) *)pInStart;
+    CONCAT3(rle8, CODEC, multi_symbol_debug_t) *pSymbol = (CONCAT3(rle8, CODEC, multi_symbol_debug_t) *)pInStart;
     (void)pSymbol;
 #endif
 
@@ -2012,7 +2004,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_multi_avx512f)(IN const uint8_t *p
   }
 }
 
-static void CONCAT3(rle8_, CODEC, _decompress_single_sse)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t singleSymbol)
+static void CONCAT3(rle8, CODEC, decompress_single_sse)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t singleSymbol)
 {
   size_t offset, symbolCount;
   const __m128i symbol = _mm_set1_epi8(singleSymbol);
@@ -2020,7 +2012,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_sse)(IN const uint8_t *pInS
   while (true)
   {
 #ifdef _DEBUG
-    CONCAT3(rle8_, CODEC, _single_symbol_debug_t) *pSymbol = (CONCAT3(rle8_, CODEC, _single_symbol_debug_t) *)pInStart;
+    CONCAT3(rle8, CODEC, single_symbol_debug_t) *pSymbol = (CONCAT3(rle8, CODEC, single_symbol_debug_t) *)pInStart;
     (void)pSymbol;
 #endif
 
@@ -2098,7 +2090,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_sse)(IN const uint8_t *pInS
 #ifndef _MSC_VER
 __attribute__((target("sse4.1")))
 #endif
-static void CONCAT3(rle8_, CODEC, _decompress_single_sse41)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t singleSymbol)
+static void CONCAT3(rle8, CODEC, decompress_single_sse41)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t singleSymbol)
 {
   size_t offset, symbolCount;
   const __m128i symbol = _mm_set1_epi8(singleSymbol);
@@ -2106,7 +2098,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_sse41)(IN const uint8_t *pI
   while (true)
   {
 #ifdef _DEBUG
-    CONCAT3(rle8_, CODEC, _single_symbol_debug_t) *pSymbol = (CONCAT3(rle8_, CODEC, _single_symbol_debug_t) *)pInStart;
+    CONCAT3(rle8, CODEC, single_symbol_debug_t) *pSymbol = (CONCAT3(rle8, CODEC, single_symbol_debug_t) *)pInStart;
     (void)pSymbol;
 #endif
 
@@ -2184,7 +2176,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_sse41)(IN const uint8_t *pI
 #ifndef _MSC_VER
 __attribute__((target("avx")))
 #endif
-static void CONCAT3(rle8_, CODEC, _decompress_single_avx)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t singleSymbol)
+static void CONCAT3(rle8, CODEC, decompress_single_avx)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t singleSymbol)
 {
   size_t offset, symbolCount;
   const __m256i symbol = _mm256_set1_epi8(singleSymbol);
@@ -2192,7 +2184,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_avx)(IN const uint8_t *pInS
   while (true)
   {
 #ifdef _DEBUG
-    CONCAT3(rle8_, CODEC, _single_symbol_debug_t) *pSymbol = (CONCAT3(rle8_, CODEC, _single_symbol_debug_t) *)pInStart;
+    CONCAT3(rle8, CODEC, single_symbol_debug_t) *pSymbol = (CONCAT3(rle8, CODEC, single_symbol_debug_t) *)pInStart;
     (void)pSymbol;
 #endif
 
@@ -2270,7 +2262,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_avx)(IN const uint8_t *pInS
 #ifndef _MSC_VER
 __attribute__((target("avx2")))
 #endif
-static void CONCAT3(rle8_, CODEC, _decompress_single_avx2)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t singleSymbol)
+static void CONCAT3(rle8, CODEC, decompress_single_avx2)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t singleSymbol)
 {
   size_t offset, symbolCount;
   const __m256i symbol = _mm256_set1_epi8(singleSymbol);
@@ -2278,7 +2270,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_avx2)(IN const uint8_t *pIn
   while (true)
   {
 #ifdef _DEBUG
-    CONCAT3(rle8_, CODEC, _single_symbol_debug_t) *pSymbol = (CONCAT3(rle8_, CODEC, _single_symbol_debug_t) *)pInStart;
+    CONCAT3(rle8, CODEC, single_symbol_debug_t) *pSymbol = (CONCAT3(rle8, CODEC, single_symbol_debug_t) *)pInStart;
     (void)pSymbol;
 #endif
 
@@ -2357,7 +2349,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_avx2)(IN const uint8_t *pIn
 #ifndef _MSC_VER
 __attribute__((target("avx512f")))
 #endif
-static void CONCAT3(rle8_, CODEC, _decompress_single_avx512f)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t singleSymbol)
+static void CONCAT3(rle8, CODEC, decompress_single_avx512f)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t singleSymbol)
 {
   size_t offset, symbolCount;
   const __m512i symbol = _mm512_set1_epi8(singleSymbol);
@@ -2365,7 +2357,7 @@ static void CONCAT3(rle8_, CODEC, _decompress_single_avx512f)(IN const uint8_t *
   while (true)
   {
 #ifdef _DEBUG
-    CONCAT3(rle8_, CODEC, _single_symbol_debug_t) *pSymbol = (CONCAT3(rle8_, CODEC, _single_symbol_debug_t) *)pInStart;
+    CONCAT3(rle8, CODEC, single_symbol_debug_t) *pSymbol = (CONCAT3(rle8, CODEC, single_symbol_debug_t) *)pInStart;
     (void)pSymbol;
 #endif
 

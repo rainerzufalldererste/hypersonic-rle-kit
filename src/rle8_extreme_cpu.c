@@ -14,15 +14,23 @@ __attribute__((packed))
   uint8_t mode;
 } rle_extreme_t;
 
-uint32_t rle8_extreme_decompress_additional_size()
+uint32_t rle8_decompress_additional_size()
 {
   return 128; // just to be on the safe side.
 }
 
+uint32_t rle8_compress_bounds(const uint32_t inSize)
+{
+  if (inSize > (1 << 30))
+    return 0;
+
+  return inSize + (16 + 4 + 1 + 4 + 1 + 64) * 2 + (3 * 4) + 1;
+}
+
 //////////////////////////////////////////////////////////////////////////
 
-static uint8_t rle8_extreme_single_compress_get_approx_optimal_symbol_sse2(IN const uint8_t *pIn, const size_t inSize);
-static uint8_t rle8_extreme_single_compress_get_approx_optimal_symbol_avx2(IN const uint8_t *pIn, const size_t inSize);
+static uint8_t rle8_single_compress_get_approx_optimal_symbol_sse2(IN const uint8_t *pIn, const size_t inSize);
+static uint8_t rle8_single_compress_get_approx_optimal_symbol_avx2(IN const uint8_t *pIn, const size_t inSize);
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -42,7 +50,7 @@ static uint8_t rle8_extreme_single_compress_get_approx_optimal_symbol_avx2(IN co
 
 //////////////////////////////////////////////////////////////////////////
 
-static uint8_t rle8_extreme_single_compress_get_approx_optimal_symbol_sse2(IN const uint8_t *pIn, const size_t inSize)
+static uint8_t rle8_single_compress_get_approx_optimal_symbol_sse2(IN const uint8_t *pIn, const size_t inSize)
 {
   uint32_t prob[256];
   uint32_t pcount[256];
@@ -148,7 +156,7 @@ static uint8_t rle8_extreme_single_compress_get_approx_optimal_symbol_sse2(IN co
 #ifndef _MSC_VER
 __attribute__((target("avx2")))
 #endif
-static uint8_t rle8_extreme_single_compress_get_approx_optimal_symbol_avx2(IN const uint8_t *pIn, const size_t inSize)
+static uint8_t rle8_single_compress_get_approx_optimal_symbol_avx2(IN const uint8_t *pIn, const size_t inSize)
 {
   uint32_t prob[256];
   uint32_t pcount[256];

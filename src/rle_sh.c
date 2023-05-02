@@ -310,7 +310,7 @@ inline void rle8_sh_copy(IN const uint8_t *pBlockStart, OUT uint8_t **ppOut, con
 
 uint32_t rle8_sh_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
-  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_extreme_mmtf128_compress_bounds(inSize))
+  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_mmtf128_compress_bounds(inSize))
     return 0;
 
   ///// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

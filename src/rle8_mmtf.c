@@ -19,7 +19,7 @@
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t rle8_extreme_mmtf128_compress_bounds(const uint32_t inSize)
+uint32_t rle8_mmtf128_compress_bounds(const uint32_t inSize)
 {
   if (inSize > (1 << 30))
     return 0;
@@ -27,9 +27,9 @@ uint32_t rle8_extreme_mmtf128_compress_bounds(const uint32_t inSize)
   return inSize + sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint32_t) + 1;
 }
 
-uint32_t rle8_extreme_mmtf256_compress_bounds(const uint32_t inSize)
+uint32_t rle8_mmtf256_compress_bounds(const uint32_t inSize)
 {
-  return rle8_extreme_mmtf128_compress_bounds(inSize);
+  return rle8_mmtf128_compress_bounds(inSize);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -146,9 +146,9 @@ inline static uint8_t *bitpack_encode3_simple_sse2_unaligned_m128i(const __m128i
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
+uint32_t rle8_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
-  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_extreme_mmtf128_compress_bounds(inSize))
+  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_mmtf128_compress_bounds(inSize))
     return 0;
 
   uint32_t *pHeader = (uint32_t *)pOut;
@@ -642,7 +642,7 @@ uint32_t rle8_extreme_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inS
   return pHeader[1] = (uint32_t)(pOut - (uint8_t *)pHeader);
 }
 
-uint32_t rle8_extreme_mmtf128_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
+uint32_t rle8_mmtf128_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
   if (pIn == NULL || pOut == NULL || inSize == 0 || outSize == 0)
     return 0;
@@ -1279,7 +1279,7 @@ uint32_t rle8_extreme_mmtf128_decompress(IN const uint8_t *pIn, const uint32_t i
     const uint8_t index = *pIn;
     pIn++;
 
-    *pOut = history[index * 16 + i];
+    *pOut = history[(size_t)index * 16 + i];
     pOut++;
   }
 
@@ -1288,6 +1288,6 @@ uint32_t rle8_extreme_mmtf128_decompress(IN const uint8_t *pIn, const uint32_t i
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t rle8_extreme_mmtf256_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_mmtf256_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
-uint32_t rle8_extreme_mmtf256_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_mmtf256_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);

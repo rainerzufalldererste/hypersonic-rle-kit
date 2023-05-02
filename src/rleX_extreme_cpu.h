@@ -1,10 +1,18 @@
+#ifdef PREFER_7_BIT_OR_4_BYTE_COPY
+  #define RLEX_EXTREME_MAX_COPY_RANGE (127)
+  #define RLEX_EXTRRME_FULL_COPY_SIZE (4 + 1)
+#else
+  #define RLEX_EXTREME_MAX_COPY_RANGE (255)
+  #define RLEX_EXTRRME_FULL_COPY_SIZE (4)
+#endif
+
 #ifndef PACKED
   #define RLEX_EXTREME_MULTI_MIN_RANGE_SHORT ((sizeof(symbol_t) + 1 + 1) + 2)
-  #define RLEX_EXTREME_MULTI_MIN_RANGE_LONG ((sizeof(symbol_t) + 1 + 4 + 1 + 4) + 2)
+  #define RLEX_EXTREME_MULTI_MIN_RANGE_LONG ((sizeof(symbol_t) + 1 + 4 + RLEX_EXTRRME_FULL_COPY_SIZE) + 2)
 #else
   #define RLEX_EXTREME_MULTI_MIN_RANGE_SHORT ((1 + 1) + 1)
   #define RLEX_EXTREME_MULTI_MIN_RANGE_MEDIUM ((sizeof(symbol_t) + 1 + 1) + 1)
-  #define RLEX_EXTREME_MULTI_MIN_RANGE_LONG ((sizeof(symbol_t) + 1 + 4 + 4) + 1)
+  #define RLEX_EXTREME_MULTI_MIN_RANGE_LONG ((sizeof(symbol_t) + 1 + 4 + RLEX_EXTRRME_FULL_COPY_SIZE) + 1)
 #endif
 
 #if TYPE_SIZE == 64
@@ -13,18 +21,22 @@
 #endif
 
 #ifndef UNBOUND
-  #define CODEC extreme
+  #ifdef PACKED
+    #define CODEC sym_packed
+  #else
+    #define CODEC sym
+  #endif
 #else
   #ifdef PACKED
-    #define CODEC extreme_packed
+    #define CODEC byte_packed
   #else
-    #define CODEC extreme_unbound
+    #define CODEC byte
   #endif
 #endif
 
 uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
-  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_extreme_compress_bounds(inSize))
+  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_compress_bounds(inSize))
     return 0;
 
   size_t index = 0;
@@ -119,13 +131,9 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
         const int64_t range = i - lastRLE - count + 1;
 
 #ifndef PACKED
-  #ifdef PREFER_7_BIT_OR_4_BYTE_COPY
-        if (range <= 127 && count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT)
-  #else
-        if (range <= 255 && count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT)
-  #endif
+        if (range <= RLEX_EXTREME_MAX_COPY_RANGE && count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT)
 #else
-        if (range <= 127 && ((count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT && symbol == lastSymbol) || (count >= RLEX_EXTREME_MULTI_MIN_RANGE_MEDIUM)))
+        if (range <= RLEX_EXTREME_MAX_COPY_RANGE && ((count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT && symbol == lastSymbol) || (count >= RLEX_EXTREME_MULTI_MIN_RANGE_MEDIUM)))
 #endif
         {
 #ifndef PACKED
@@ -279,13 +287,9 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _compress))(IN const uint8_t 
     const int64_t range = i - lastRLE - count + 1;
 
 #ifndef PACKED
-  #ifdef PREFER_7_BIT_OR_4_BYTE_COPY
-    if (range <= 127 && count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT)
-  #else
-    if (range <= 255 && count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT)
-  #endif
+    if (range <= RLEX_EXTREME_MAX_COPY_RANGE && count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT)
 #else
-    if (range <= 127 && ((count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT && symbol == lastSymbol) || (count >= RLEX_EXTREME_MULTI_MIN_RANGE_MEDIUM)))
+    if (range <= RLEX_EXTREME_MAX_COPY_RANGE && ((count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT && symbol == lastSymbol) || (count >= RLEX_EXTREME_MULTI_MIN_RANGE_MEDIUM)))
 #endif
     {
 #ifndef PACKED
@@ -1002,11 +1006,18 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, _decompress))(IN const uint8_
   return (uint32_t)expectedOutSize;
 }
 
+#undef RLEX_EXTRRME_FULL_COPY_SIZE
+#undef RLEX_EXTREME_MAX_COPY_RANGE
+
 #undef RLEX_EXTREME_MULTI_MIN_RANGE_SHORT
 #undef RLEX_EXTREME_MULTI_MIN_RANGE_LONG
 
 #ifdef RLEX_EXTREME_MULTI_MIN_RANGE_SAME_SYMBOL_SHORT
   #undef RLEX_EXTREME_MULTI_MIN_RANGE_SAME_SYMBOL_SHORT
+#endif
+
+#ifdef RLEX_EXTREME_MULTI_MIN_RANGE_MEDIUM
+  #undef RLEX_EXTREME_MULTI_MIN_RANGE_MEDIUM
 #endif
 
 #if TYPE_SIZE == 64

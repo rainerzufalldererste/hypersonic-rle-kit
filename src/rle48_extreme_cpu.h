@@ -8,18 +8,18 @@
 #endif
 
 #ifndef UNBOUND
-  #define CODEC extreme
+  #define CODEC sym
 #else
   #ifdef PACKED
-    #define CODEC extreme_packed
+    #define CODEC byte_packed
   #else
-    #define CODEC extreme_unbound
+    #define CODEC byte
   #endif
 #endif
 
 uint32_t CONCAT3(rle48_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
-  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_extreme_compress_bounds(inSize))
+  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_compress_bounds(inSize))
     return 0;
 
   size_t index = 0;
