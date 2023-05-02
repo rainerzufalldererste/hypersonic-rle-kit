@@ -66,7 +66,7 @@ window.addEventListener("scroll", reveal);
           function init_obj(obj) {
             obj.minX = 0;
             obj.maxX = 0;
-            obj.minY = 0;
+            obj.minY = 100;
             obj.maxY = 0;
             obj.points = [];
             obj.lines = [];
@@ -164,26 +164,34 @@ window.addEventListener("scroll", reveal);
             let topX = 50;
             let topY = 10;
 
+            obj.minY = Math.floor(obj.minY / 10) * 10;
+            
+            let nativeYRange = obj.maxY - obj.minY;
+            let stepY = Math.max(1, Math.floor(nativeYRange / 6));
+            
+            let nativeXRange = obj.maxX - obj.minX;
+            let stepX = Math.max(1, Math.floor(nativeXRange / 9 / 500) * 500);
+
             let rangeX = (obj.maxX - obj.minX) / (obj.width - borderX);
             let rangeY = (obj.maxY - obj.minY) / (obj.height - borderY);
             
             // X Axis.
-            for (let x = obj.minX; x <= obj.maxX; x += 2500) {
+            for (let x = obj.minX; x <= obj.maxX; x += stepX) {
                 draw_line(ctx, obj, { points: [{ y: obj.minY, x: x }, { y: obj.maxY, x: x }], color: x == obj.minX ? "#555" : "#333" }, rangeX, rangeY, topX, topY, x == obj.minX ? 4 : 2);
             }
 
             // Y Axis.
-            for (let y = obj.minY; y <= obj.maxY; y += 5) {
+            for (let y = obj.minY; y <= obj.maxY; y += stepY) {
                 draw_line(ctx, obj, { points: [{ x: obj.minX, y: y }, { x: obj.maxX, y: y }], color: y == obj.minY ? "#555" : "#333" }, rangeX, rangeY, topX, topY, y == obj.minY ? 4 : 2);
             }
             
             // X Axis.
-            for (let x = obj.minX; x <= obj.maxX; x += 2500) {
+            for (let x = obj.minX; x <= obj.maxX; x += stepX) {
                 if (x > 0) draw_label(ctx, obj, x, obj.minY, x + " MiB/s", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
             }
 
             // Y Axis.
-            for (let y = obj.minY; y <= obj.maxY; y += 5) {
+            for (let y = obj.minY; y <= obj.maxY; y += stepY) {
                 if (y > 0) draw_label(ctx, obj, obj.minX, y, y + "%", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
             }
 
@@ -415,9 +423,9 @@ window.addEventListener("scroll", reveal);
 
 
             add_point(obj, 15994.7,  48.80, "8 Bit");
-            add_point(obj, 16843.4,  88.75, "8 Bit Single");
+            //add_point(obj, 16843.4,  88.75, "8 Bit Single");
             add_point(obj,  7454.4,  44.86, "8 Bit Packed");
-            add_point(obj, 14564.1,  88.59, "8 Bit Packed Single");
+            //add_point(obj, 14564.1,  88.59, "8 Bit Packed Single");
             add_point(obj, 12708.1,  51.49, "16 Bit (Symbol Bound)");
             add_point(obj,  9417.5,  47.89, "16 Bit Packed (Symbol Bound)");
             add_point(obj, 12981.9,  50.74, "16 Bit (Byte Bound)");
@@ -445,9 +453,9 @@ window.addEventListener("scroll", reveal);
             add_point(obj,  1236.2,  42.52, "8 Bit RLE + Huffman-esque");
             add_point(obj,  1299.9,  63.49, "8 Bit MMTF 128");
             add_point(obj,   913.9,  64.19, "Low Entropy");
-            add_point(obj,  7491.0,  89.22, "Low Entropy Single");
+            //add_point(obj,  7491.0,  89.22, "Low Entropy Single");
             add_point(obj,  1403.6,  66.17, "Low Entropy Short");
-            add_point(obj,  9809.1,  89.65, "Low Entropy Short Single");
+            //add_point(obj,  9809.1,  89.65, "Low Entropy Short Single");
             //add_point(obj,  1289.8, 100.00, "Multi MTF 128 Bit (Transform)");
             //add_point(obj,  1966.1, 100.00, "Multi MTF 256 Bit (Transform)");
             //add_point(obj, 25742.6, 100.00, "memcpy");
@@ -465,7 +473,7 @@ window.addEventListener("scroll", reveal);
             add_line(obj, ["8 Bit Packed", "16 Bit Packed (Symbol Bound)", "24 Bit Packed (Symbol Bound)", "32 Bit Packed (Symbol Bound)", "48 Bit Packed (Symbol Bound)", "64 Bit Packed (Symbol Bound)", "128 Bit Packed (Symbol Bound)"], colors[2] + alpha);
             add_line(obj, ["8 Bit Packed", "16 Bit Packed (Byte Bound)", "24 Bit Packed (Byte Bound)", "32 Bit Packed (Byte Bound)", "48 Bit Packed (Byte Bound)", "64 Bit Packed (Byte Bound)", "128 Bit Packed (Byte Bound)"], colors[3] + alpha);
             add_line(obj, ["Low Entropy", "Low Entropy Short"], colors[4] + alpha);
-            add_line(obj, ["Low Entropy Single", "Low Entropy Short Single"], colors[5] + alpha);
+            //add_line(obj, ["Low Entropy Single", "Low Entropy Short Single"], colors[5] + alpha);
 
             add_line(obj, ["srle 0", "srle 8", "srle 16", "srle 32", "srle 64"], "#55555533");
 
