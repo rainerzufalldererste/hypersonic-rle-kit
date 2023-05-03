@@ -1669,13 +1669,15 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
     size_t alignedRleLengthExact[64];
     size_t alignedEmptyLengthByBits[64];
     size_t alignedEmptyLengthExact[64];
-    uint8_t lastSymbol[16];
-    uint8_t alignedLastSymbol[16];
-    size_t recurringRleSymbolCount, totalRleCount, totalRleLength, totalEmptyLength, currentLength, currentNonLength;
-    size_t alignedRecurringRleSymbolCount, alignedTotalRleCount, alignedTotalRleLength, alignedTotalEmptyLength, alignedCurrentLength, alignedCurrentNonLength;
+    uint8_t lastSymbol[16][16];
+    size_t recurringLastSymbol[16];
+    uint8_t alignedLastSymbol[16][16];
+    size_t alignedRecurringLastSymbol[16];
+    size_t totalRleCount, totalRleLength, totalEmptyLength, currentLength, currentNonLength;
+    size_t alignedTotalRleCount, alignedTotalRleLength, alignedTotalEmptyLength, alignedCurrentLength, alignedCurrentNonLength;
   } rle_data_t;
   
-  rle_data_t byRLE[16];
+  static rle_data_t byRLE[16];
 
   memset(hist, 0, sizeof(hist));
   memset(rle8hist, 0, sizeof(rle8hist));
@@ -1703,10 +1705,22 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
       {
         if (pRLE->currentLength == 0)
         {
-          if (memcmp(pRLE->lastSymbol, pData + i, j) == 0)
-            pRLE->recurringRleSymbolCount++;
-          else
-            memcpy(pRLE->lastSymbol, pData + i, j);
+          size_t recurringIndex = 0;
+
+          for (; recurringIndex < 16; recurringIndex++)
+          {
+            if (memcmp(pRLE->lastSymbol[recurringIndex], pData + i, j) == 0)
+            {
+              pRLE->recurringLastSymbol[recurringIndex]++;
+              break;
+            }
+          }
+
+          if (recurringIndex != 0)
+            for (size_t k = min(recurringIndex, 16 - 1); k >= 1; k--)
+              memcpy(pRLE->lastSymbol[k], pRLE->lastSymbol[k - 1], j);
+
+          memcpy(pRLE->lastSymbol[0], pData + i, j);
 
           if (j == 1)
             rle8hist[pData[i]]++;
@@ -1767,10 +1781,22 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
         {
           if (pRLE->alignedCurrentLength == 0)
           {
-            if (memcmp(pRLE->alignedLastSymbol, pData + i, j) == 0)
-              pRLE->alignedRecurringRleSymbolCount++;
-            else
-              memcpy(pRLE->alignedLastSymbol, pData + i, j);
+            size_t recurringIndex = 0;
+
+            for (; recurringIndex < 16; recurringIndex++)
+            {
+              if (memcmp(pRLE->alignedLastSymbol[recurringIndex], pData + i, j) == 0)
+              {
+                pRLE->alignedRecurringLastSymbol[recurringIndex]++;
+                break;
+              }
+            }
+
+            if (recurringIndex != 0)
+              for (size_t k = min(recurringIndex, 16 - 1); k >= 1; k--)
+                memcpy(pRLE->alignedLastSymbol[k], pRLE->alignedLastSymbol[k - 1], j);
+
+            memcpy(pRLE->alignedLastSymbol[0], pData + i, j);
 
             if (pRLE->alignedCurrentNonLength)
             {
@@ -1907,8 +1933,8 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
     }
 
     printf("RLE Length %2" PRIu64 "\n=============\n", i + 1);
-    printf("Non-Aligned: Repeating: %10" PRIu64 " (%15" PRIu64 " Bytes, %5.2f %%, %15" PRIu64 " Bytes Distinct), Recurring Symbol: %10" PRIu64 " (%5.2f %%)\n", pRLE->totalRleCount, pRLE->totalRleLength, pRLE->totalRleLength * 100.0 / size, pRLE->totalEmptyLength, pRLE->recurringRleSymbolCount, pRLE->recurringRleSymbolCount * 100.0 / (double)pRLE->totalRleCount);
-    printf("Aligned:     Repeating: %10" PRIu64 " (%15" PRIu64 " Bytes, %5.2f %%, %15" PRIu64 " Bytes Distinct), Recurring Symbol: %10" PRIu64 " (%5.2f %%)\n", pRLE->alignedTotalRleCount, pRLE->alignedTotalRleLength, pRLE->alignedTotalRleLength * 100.0 / size, pRLE->alignedTotalEmptyLength, pRLE->alignedRecurringRleSymbolCount, pRLE->alignedRecurringRleSymbolCount * 100.0 / (double)pRLE->alignedTotalRleCount);
+    printf("Non-Aligned: Repeating: %10" PRIu64 " (%15" PRIu64 " Bytes, %5.2f %%, %15" PRIu64 " Bytes Distinct)\n", pRLE->totalRleCount, pRLE->totalRleLength, pRLE->totalRleLength * 100.0 / size, pRLE->totalEmptyLength);
+    printf("Aligned:     Repeating: %10" PRIu64 " (%15" PRIu64 " Bytes, %5.2f %%, %15" PRIu64 " Bytes Distinct)\n", pRLE->alignedTotalRleCount, pRLE->alignedTotalRleLength, pRLE->alignedTotalRleLength * 100.0 / size, pRLE->alignedTotalEmptyLength);
     puts("");
     
     printf("AprxLen | Repeating    | Distinct     || ExactLen  | Repeating    | Distinct     || AprxCnt | AlgnRepeat   | AlgnDistinct || Exact Count | AlgnRepeat   | AlgnDistinct\n");
@@ -1917,6 +1943,14 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
     for (size_t j = 0; j < 64; j++)
       printf("%2" PRIu64 " Bit: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Bytes: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Bit: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Symbols: | %12" PRIu64 " | %12" PRIu64 "\n", j + 1, pRLE->rleLengthByBits[j], pRLE->emptyLengthByBits[j], j + 1, pRLE->rleLengthExact[j], pRLE->emptyLengthExact[j], j + 1, pRLE->alignedRleLengthByBits[j], pRLE->alignedEmptyLengthByBits[j], j + 1, pRLE->alignedRleLengthExact[j], pRLE->alignedEmptyLengthExact[j]);
     
+    puts("");
+
+    printf("#  | References   (Of Total ) | Aligned Ref. (Of Total )\n");
+    printf("--------------------------------------------------------\n");
+
+    for (size_t j = 0; j < 16; j++)
+      printf("%2" PRIu64 " | %12" PRIu64 " (%7.3f %%) | %12" PRIu64 " (%7.3f %%)\n", j + 1, pRLE->recurringLastSymbol[j], pRLE->recurringLastSymbol[j] / (double)pRLE->totalRleCount * 100.0, pRLE->alignedRecurringLastSymbol[j], pRLE->alignedRecurringLastSymbol[j] / (double)pRLE->alignedTotalRleCount * 100.0);
+
     puts("");
 
     if (i == 0)
