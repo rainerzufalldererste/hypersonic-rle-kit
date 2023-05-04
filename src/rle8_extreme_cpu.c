@@ -263,6 +263,11 @@ static uint8_t rle8_single_compress_get_approx_optimal_symbol_avx2(IN const uint
 #define RLE8_MINILUT_MIN_RANGE_SHORT (2 + 1)
 #define RLE8_MINILUT_MIN_RANGE_LONG (2 + 4 + 4 + 1)
 
+#define RLE8_MINILUT_COUNT_BITS (7)
+#define RLE8_MINILUT_RANGE_BITS (14 - RLE8_MINILUT_COUNT_BITS)
+#define RLE8_MINILUT_MAX_TINY_COUNT ((1 << RLE8_MINILUT_COUNT_BITS) - 1)
+#define RLE8_MINILUT_MAX_TINY_RANGE ((1 << RLE8_MINILUT_RANGE_BITS) - 1)
+
 //////////////////////////////////////////////////////////////////////////
 
 static int64_t rle8_minilut_compress_sse2(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE, uint8_t *pLastSymbol);
@@ -280,7 +285,7 @@ inline bool _rle8_minilut_process_symbol(IN const uint8_t *pIn, OUT uint8_t *pOu
 
   const int64_t range = i - *pLastRLE - count + 2;
   const int64_t storedCount = count - RLE8_MINILUT_MIN_RANGE_SHORT + 2;
-  const size_t penalty = (range <= 0xFFFFF ? (range <= 127 ? 0 : 2) : 4) + (storedCount <= 0xFFFFF ? (storedCount <= 127 ? 0 : 2) : 4) + (size_t)(symbolMatchIndex == 3);
+  const size_t penalty = (range <= 0xFFFFF ? (range <= RLE8_MINILUT_MAX_TINY_RANGE ? 0 : 2) : 4) + (storedCount <= 0xFFFFF ? (storedCount <= (RLE8_MINILUT_MAX_TINY_COUNT) ? 0 : 2) : 4) + (size_t)(symbolMatchIndex == 3);
 
   if (count >= RLE8_MINILUT_MIN_RANGE_LONG || (count >= RLE8_MINILUT_MIN_RANGE_SHORT + penalty))
   {
@@ -305,14 +310,14 @@ inline bool _rle8_minilut_process_symbol(IN const uint8_t *pIn, OUT uint8_t *pOu
     uint16_t storedCount7;
     uint16_t range7;
 
-    if (storedCount <= 127)
+    if (storedCount <= RLE8_MINILUT_MAX_TINY_COUNT)
       storedCount7 = (uint8_t)storedCount;
     else if (storedCount <= 0xFFFF)
       storedCount7 = 1;
     else
       storedCount7 = 0;
 
-    if (range <= 127)
+    if (range <= RLE8_MINILUT_MAX_TINY_RANGE)
       range7 = (uint8_t)range;
     else if (range <= 0xFFFF)
       range7 = 1;
@@ -320,7 +325,7 @@ inline bool _rle8_minilut_process_symbol(IN const uint8_t *pIn, OUT uint8_t *pOu
       range7 = 0;
 
     size_t index = *pIndex;
-    const uint16_t value = (uint16_t)(symbolMatchIndex << 14) | (storedCount7 << 7) | range7;
+    const uint16_t value = (uint16_t)(symbolMatchIndex << 14) | (storedCount7 << RLE8_MINILUT_RANGE_BITS) | range7;
 
     *((uint16_t *)&pOut[index]) = value;
     index += sizeof(uint16_t);
@@ -622,8 +627,8 @@ static void rle8_minilut_decompress_multi_sse(IN const uint8_t *pInStart, OUT ui
     const uint16_t value = *(uint16_t *)pInStart;
     pInStart += sizeof(uint16_t);
 
-    uint32_t offset = value & 0b1111111;
-    uint32_t symbolCount = (value >> 7) & 0b1111111;
+    uint32_t offset = value & RLE8_MINILUT_MAX_TINY_RANGE;
+    uint32_t symbolCount = (value >> RLE8_MINILUT_RANGE_BITS) & RLE8_MINILUT_MAX_TINY_COUNT;
     const uint16_t symbolIndex = value >> 14;
 
     switch (symbolIndex)
@@ -715,8 +720,8 @@ static void rle8_minilut_decompress_multi_sse41(IN const uint8_t *pInStart, OUT 
     const uint16_t value = *(uint16_t *)pInStart;
     pInStart += sizeof(uint16_t);
 
-    uint32_t offset = value & 0b1111111;
-    uint32_t symbolCount = (value >> 7) & 0b1111111;
+    uint32_t offset = value & RLE8_MINILUT_MAX_TINY_RANGE;
+    uint32_t symbolCount = (value >> RLE8_MINILUT_RANGE_BITS) & RLE8_MINILUT_MAX_TINY_COUNT;
     const uint16_t symbolIndex = value >> 14;
 
     switch (symbolIndex)
@@ -808,8 +813,8 @@ static void rle8_minilut_decompress_multi_avx(IN const uint8_t *pInStart, OUT ui
     const uint16_t value = *(uint16_t *)pInStart;
     pInStart += sizeof(uint16_t);
 
-    uint32_t offset = value & 0b1111111;
-    uint32_t symbolCount = (value >> 7) & 0b1111111;
+    uint32_t offset = value & RLE8_MINILUT_MAX_TINY_RANGE;
+    uint32_t symbolCount = (value >> RLE8_MINILUT_RANGE_BITS) & RLE8_MINILUT_MAX_TINY_COUNT;
     const uint16_t symbolIndex = value >> 14;
 
     switch (symbolIndex)
@@ -901,8 +906,8 @@ static void rle8_minilut_decompress_multi_avx2(IN const uint8_t *pInStart, OUT u
     const uint16_t value = *(uint16_t *)pInStart;
     pInStart += sizeof(uint16_t);
 
-    uint32_t offset = value & 0b1111111;
-    uint32_t symbolCount = (value >> 7) & 0b1111111;
+    uint32_t offset = value & RLE8_MINILUT_MAX_TINY_RANGE;
+    uint32_t symbolCount = (value >> RLE8_MINILUT_RANGE_BITS) & RLE8_MINILUT_MAX_TINY_COUNT;
     const uint16_t symbolIndex = value >> 14;
 
     switch (symbolIndex)
@@ -994,8 +999,8 @@ static void rle8_minilut_decompress_multi_avx512f(IN const uint8_t *pInStart, OU
     const uint16_t value = *(uint16_t *)pInStart;
     pInStart += sizeof(uint16_t);
 
-    uint32_t offset = value & 0b1111111;
-    uint32_t symbolCount = (value >> 7) & 0b1111111;
+    uint32_t offset = value & RLE8_MINILUT_MAX_TINY_RANGE;
+    uint32_t symbolCount = (value >> RLE8_MINILUT_RANGE_BITS) & RLE8_MINILUT_MAX_TINY_COUNT;
     const uint16_t symbolIndex = value >> 14;
 
     switch (symbolIndex)
