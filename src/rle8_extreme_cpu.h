@@ -1050,8 +1050,6 @@ static int64_t CONCAT3(rle8, CODEC, compress_multi_avx2)(IN const uint8_t *pIn, 
           }
 #endif
 
-          //printf("> count: %" PRIu64 ", range: %" PRIu64 "\n", storedCount, range);
-
           const size_t copySize = i - count - lastRLE;
 
           memcpy(pOut + index, pIn + lastRLE, copySize);
