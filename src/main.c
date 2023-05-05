@@ -1683,8 +1683,12 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
     size_t recurringLastSymbol[16];
     uint8_t alignedLastSymbol[16][16];
     size_t alignedRecurringLastSymbol[16];
-    size_t totalRleCount, totalRleLength, totalEmptyLength, currentLength, currentNonLength;
-    size_t alignedTotalRleCount, alignedTotalRleLength, alignedTotalEmptyLength, alignedCurrentLength, alignedCurrentNonLength;
+    size_t totalRleCount, totalRleLength, totalEmptyLength, currentLength, currentNonLength, lastLength, lastNonLength;
+    size_t alignedTotalRleCount, alignedTotalRleLength, alignedTotalEmptyLength, alignedCurrentLength, alignedCurrentNonLength, alignedLastLength, alignedLastNonLength;
+    size_t copyBitsVsRleLengthBits[16 * 16];
+    size_t alignedCopyBitsVsRleLengthBits[16 * 16];
+    size_t copyDiffVsCountDiff[32 * 32];
+    size_t alignedCopyDiffVsCountDiff[32 * 32];
   } rle_data_t;
   
   static rle_data_t byRLE[16];
@@ -1751,6 +1755,7 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
 
             pRLE->totalEmptyLength += pRLE->currentNonLength;
 
+            pRLE->lastNonLength = pRLE->currentNonLength;
             pRLE->currentNonLength = 0;
           }
 
@@ -1779,6 +1784,22 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
 
           pRLE->totalRleLength += pRLE->currentLength;
           pRLE->totalRleCount++;
+
+#ifdef _MSC_VER
+          unsigned long lastNonLengthBits;
+          _BitScanReverse64(&lastNonLengthBits, pRLE->lastNonLength);
+#else
+          const uint32_t lastNonLengthBits = 63 - __builtin_clz(pRLE->lastNonLength);
+#endif
+
+          pRLE->copyBitsVsRleLengthBits[(max(0, min(lastNonLengthBits - 1, 15))) * 16 + (max(0, min(index - 1, 15)))]++;
+
+          const int64_t copyLengthDiff = pRLE->currentNonLength - pRLE->lastNonLength;
+          const int64_t lengthDiff = pRLE->currentLength - pRLE->lastLength;
+
+          pRLE->copyDiffVsCountDiff[(max(0, min(31, copyLengthDiff + 15))) * 32 + (max(0, min(31, lengthDiff + 15)))]++;
+
+          pRLE->lastLength = pRLE->currentLength;
           pRLE->currentLength = 0;
         }
 
@@ -1824,6 +1845,7 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
 
               pRLE->alignedTotalEmptyLength += pRLE->alignedCurrentNonLength;
 
+              pRLE->alignedLastNonLength = pRLE->alignedCurrentNonLength;
               pRLE->alignedCurrentNonLength = 0;
             }
 
@@ -1852,6 +1874,22 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
 
             pRLE->alignedTotalRleLength += pRLE->alignedCurrentLength;
             pRLE->alignedTotalRleCount++;
+
+#ifdef _MSC_VER
+            unsigned long lastNonLengthBits;
+            _BitScanReverse64(&lastNonLengthBits, pRLE->alignedLastNonLength);
+#else
+            const uint32_t lastNonLengthBits = 63 - __builtin_clz(pRLE->alignedLastNonLength);
+#endif
+
+            pRLE->alignedCopyBitsVsRleLengthBits[(max(0, min(lastNonLengthBits - 1, 15))) * 16 + (max(0, min(index - 1, 15)))]++;
+
+            const int64_t copyLengthDiff = pRLE->alignedCurrentNonLength - pRLE->alignedLastNonLength;
+            const int64_t lengthDiff = pRLE->alignedCurrentLength - pRLE->alignedLastLength;
+
+            pRLE->alignedCopyDiffVsCountDiff[(max(0, min(31, copyLengthDiff + 15))) * 32 + (max(0, min(31, lengthDiff + 15)))]++;
+
+            pRLE->alignedLastLength = pRLE->alignedCurrentLength;
             pRLE->alignedCurrentLength = 0;
           }
 
@@ -1960,6 +1998,72 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
 
     for (size_t j = 0; j < 16; j++)
       printf("%2" PRIu64 " | %12" PRIu64 " (%7.3f %%) | %12" PRIu64 " (%7.3f %%)\n", j + 1, pRLE->recurringLastSymbol[j], pRLE->recurringLastSymbol[j] / (double)pRLE->totalRleCount * 100.0, pRLE->alignedRecurringLastSymbol[j], pRLE->alignedRecurringLastSymbol[j] / (double)pRLE->alignedTotalRleCount * 100.0);
+
+    puts("");
+    
+    printf("   | Non-Aligned Copy Length vs RLE Length Bits                      | Aligned Copy Length vs RLE Length Bits\n");
+    printf("%%  | 1    2    3    4    5    6    7    8    9    10   11   12   13   14   15   >    | 1    2    3    4    5    6    7    8    9    10   11   12   13   14   15   > \n");
+    printf("---------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+
+    for (size_t j = 0; j < 16; j++)
+    {
+      if (j < 15)
+        printf("%2" PRIu8 " | ", (uint8_t)(j + 1));
+      else
+        fputs(">  | ", stdout);
+
+      for (size_t k = 0; k < 16; k++)
+        printf("%4.1f ", pRLE->copyBitsVsRleLengthBits[j * 16 + k] / (double)pRLE->totalRleCount * 100.0);
+
+      fputs("| ", stdout);
+
+      for (size_t k = 0; k < 16; k++)
+        printf("%4.1f ", pRLE->alignedCopyBitsVsRleLengthBits[j * 16 + k] / (double)pRLE->alignedTotalRleCount * 100.0);
+
+      puts("");
+    }
+
+    puts("");
+
+    printf("Non-Aligned Copy Length vs RLE Length:\n");
+    printf("%%   | <    -14  -13  -12  -11  -10   -9   -8   -7   -6   -5   -4   -3   -2   -1    0    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   < \n");
+    printf("---------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+
+    for (size_t j = 0; j < 32; j++)
+    {
+      if (j == 0)
+        fputs(" <  | ", stdout);
+      else if (j == 31)
+        fputs(" >  | ", stdout);
+      else
+        printf("%3" PRIi8 " | ", (int8_t)j - 15);
+
+      for (size_t k = 0; k < 32; k++)
+        printf("%4.1f ", pRLE->copyDiffVsCountDiff[j * 32 + k] / (double)pRLE->totalRleCount * 100.0);
+
+      puts("");
+    }
+
+    puts("");
+
+    printf("Aligned Copy Length vs RLE Length:\n");
+    printf("%%   | <    -14  -13  -12  -11  -10   -9   -8   -7   -6   -5   -4   -3   -2   -1    0    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   < \n");
+    printf("---------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+
+    for (size_t j = 0; j < 32; j++)
+    {
+      if (j == 0)
+        fputs(" <  | ", stdout);
+      else if (j == 31)
+        fputs(" >  | ", stdout);
+      else
+        printf("%3" PRIi8 " | ", (int8_t)j - 15);
+
+      for (size_t k = 0; k < 32; k++)
+        printf("%4.1f ", pRLE->alignedCopyDiffVsCountDiff[j * 32 + k] / (double)pRLE->totalRleCount * 100.0);
+
+      puts("");
+    }
 
     puts("");
 
