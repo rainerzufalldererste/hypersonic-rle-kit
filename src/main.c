@@ -1684,7 +1684,9 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
     uint8_t alignedLastSymbol[16][16];
     size_t alignedRecurringLastSymbol[16];
     size_t totalRleCount, totalRleLength, totalEmptyLength, currentLength, currentNonLength, lastLength, lastNonLength;
+    int64_t lastNonLengthDiff;
     size_t alignedTotalRleCount, alignedTotalRleLength, alignedTotalEmptyLength, alignedCurrentLength, alignedCurrentNonLength, alignedLastLength, alignedLastNonLength;
+    int64_t alignedLastNonLengthDiff;
     size_t copyBitsVsRleLengthBits[16 * 16];
     size_t alignedCopyBitsVsRleLengthBits[16 * 16];
     size_t copyDiffVsCountDiff[32 * 32];
@@ -1755,6 +1757,7 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
 
             pRLE->totalEmptyLength += pRLE->currentNonLength;
 
+            pRLE->lastNonLengthDiff = pRLE->currentNonLength - pRLE->lastLength;
             pRLE->lastNonLength = pRLE->currentNonLength;
             pRLE->currentNonLength = 0;
           }
@@ -1794,7 +1797,7 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
 
           pRLE->copyBitsVsRleLengthBits[(max(0, min(lastNonLengthBits - 1, 15))) * 16 + (max(0, min(index - 1, 15)))]++;
 
-          const int64_t copyLengthDiff = pRLE->currentNonLength - pRLE->lastNonLength;
+          const int64_t copyLengthDiff = pRLE->lastNonLengthDiff;
           const int64_t lengthDiff = pRLE->currentLength - pRLE->lastLength;
 
           pRLE->copyDiffVsCountDiff[(max(0, min(31, copyLengthDiff + 15))) * 32 + (max(0, min(31, lengthDiff + 15)))]++;
@@ -1845,6 +1848,7 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
 
               pRLE->alignedTotalEmptyLength += pRLE->alignedCurrentNonLength;
 
+              pRLE->alignedLastNonLengthDiff = pRLE->alignedCurrentNonLength - pRLE->alignedLastLength;
               pRLE->alignedLastNonLength = pRLE->alignedCurrentNonLength;
               pRLE->alignedCurrentNonLength = 0;
             }
@@ -1884,7 +1888,7 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
 
             pRLE->alignedCopyBitsVsRleLengthBits[(max(0, min(lastNonLengthBits - 1, 15))) * 16 + (max(0, min(index - 1, 15)))]++;
 
-            const int64_t copyLengthDiff = pRLE->alignedCurrentNonLength - pRLE->alignedLastNonLength;
+            const int64_t copyLengthDiff = pRLE->alignedLastNonLengthDiff;
             const int64_t lengthDiff = pRLE->alignedCurrentLength - pRLE->alignedLastLength;
 
             pRLE->alignedCopyDiffVsCountDiff[(max(0, min(31, copyLengthDiff + 15))) * 32 + (max(0, min(31, lengthDiff + 15)))]++;
@@ -2001,7 +2005,7 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
 
     puts("");
     
-    printf("   | Non-Aligned Copy Length vs RLE Length Bits                      | Aligned Copy Length vs RLE Length Bits\n");
+    printf("   | Non-Aligned Copy Length vs RLE Length Bits                                      | Aligned Copy Length vs RLE Length Bits\n");
     printf("%%  | 1    2    3    4    5    6    7    8    9    10   11   12   13   14   15   >    | 1    2    3    4    5    6    7    8    9    10   11   12   13   14   15   > \n");
     printf("---------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
 
