@@ -12,6 +12,11 @@ body {
     padding: 20pt 50pt;
 }
 
+::selection {
+  color: #41ffb8;
+  background-color: #146060;
+}
+
 li {
     line-height: 150%;
     padding: 5pt 0pt;

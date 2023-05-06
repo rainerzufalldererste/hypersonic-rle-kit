@@ -147,6 +147,7 @@ uint32_t rle8_diff_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT ui
   state.lastSymbols[1] = 0x7F;
   state.lastSymbols[2] = 0xFF;
   state.symbol = ~(*pIn);
+  state.count = 0;
 
   size_t i = 0;
 
@@ -217,7 +218,7 @@ static int64_t rle8_diff_compress_sse2(IN const uint8_t *pIn, const size_t inSiz
 
   while (i < endInSize128)
   {
-    const uint32_t mask = _mm_movemask_epi8(_mm_cmpeq_epi8(symbol128, _mm_loadu_si128((const __m128i *) & (pIn[i]))));
+    const uint32_t mask = _mm_movemask_epi8(_mm_cmpeq_epi8(symbol128, _mm_loadu_si128((const __m128i *)&(pIn[i]))));
 
     if (0xFFFF == mask)
     {
@@ -286,7 +287,7 @@ static int64_t rle8_diff_compress_avx2(IN const uint8_t *pIn, const size_t inSiz
 
   while (i < endInSize256)
   {
-    const uint32_t mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(symbol256, _mm256_loadu_si256((const __m256i *) & (pIn[i]))));
+    const uint32_t mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(symbol256, _mm256_loadu_si256((const __m256i *)&(pIn[i]))));
 
     if (0xFFFFFFFF == mask)
     {
