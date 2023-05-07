@@ -525,7 +525,7 @@ static void CONCAT3(rle48_, CODEC, _decompress_sse2)(IN const uint8_t *pInStart,
 
     if (!sameSymbol)
     {
-      symbol = _mm_set1_epi32(*(symbol_t *)pInStart);
+      symbol = _mm_set1_epi64x(*(symbol_t *)pInStart);
       pInStart += symbolSize;
 
       const __m128i shift2 = _mm_or_si128(_mm_srli_si128(symbol, 2), _mm_slli_si128(symbol, 14));
@@ -678,7 +678,7 @@ static void CONCAT3(rle48_, CODEC, _decompress_ssse3)(IN const uint8_t *pInStart
 
     if (!sameSymbol)
     {
-      symbol = _mm_set1_epi32(*(symbol_t *)pInStart);
+      symbol = _mm_set1_epi64x(*(symbol_t *)pInStart);
       pInStart += symbolSize;
 
       symbol0 = _mm_shuffle_epi8(symbol, shuffle0);

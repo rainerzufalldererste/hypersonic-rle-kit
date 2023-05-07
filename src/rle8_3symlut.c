@@ -29,7 +29,7 @@ inline bool _rle8_3symlut_process_symbol(IN const uint8_t *pIn, OUT uint8_t *pOu
 
   const int64_t range = i - *pLastRLE - count + 2;
   const int64_t storedCount = count - RLE8_3SYMLUT_MIN_RANGE_SHORT + 2;
-  const size_t penalty = (range <= 0xFFFFF ? (range <= RLE8_3SYMLUT_MAX_TINY_RANGE ? 0 : 2) : 4) + (storedCount <= 0xFFFFF ? (storedCount <= (RLE8_3SYMLUT_MAX_TINY_COUNT) ? 0 : 2) : 4) + (size_t)(symbolMatchIndex == 3);
+  const int64_t penalty = (range <= 0xFFFFF ? (range <= RLE8_3SYMLUT_MAX_TINY_RANGE ? 0 : 2) : 4) + (storedCount <= 0xFFFFF ? (storedCount <= (RLE8_3SYMLUT_MAX_TINY_COUNT) ? 0 : 2) : 4) + (int64_t)(symbolMatchIndex == 3);
 
   if (count >= RLE8_3SYMLUT_MIN_RANGE_LONG || (count >= RLE8_3SYMLUT_MIN_RANGE_SHORT + penalty))
   {
@@ -80,7 +80,7 @@ inline bool _rle8_3symlut_process_symbol(IN const uint8_t *pIn, OUT uint8_t *pOu
       index++;
     }
 
-    if (storedCount != storedCount7) // when decoding this should also check for storedCount being 0, because that implies that a uint32_t will follow containing the full count.
+    if (storedCount != storedCount7)
     {
       if (storedCount <= 0xFFFF)
       {
@@ -94,7 +94,7 @@ inline bool _rle8_3symlut_process_symbol(IN const uint8_t *pIn, OUT uint8_t *pOu
       }
     }
 
-    if (range != range7) // when decoding this should also check for offset being 0, because that implies that a uint32_t will follow containing the full count.
+    if (range != range7)
     {
       if (range <= 0xFFFF)
       {
@@ -363,8 +363,8 @@ static void rle8_3symlut_decompress_sse(IN const uint8_t *pInStart, OUT uint8_t 
     const uint16_t value = *(uint16_t *)pInStart;
     pInStart += sizeof(uint16_t);
 
-    uint32_t offset = value & RLE8_3SYMLUT_MAX_TINY_RANGE;
-    uint32_t symbolCount = (value >> RLE8_3SYMLUT_RANGE_BITS) & RLE8_3SYMLUT_MAX_TINY_COUNT;
+    offset = value & RLE8_3SYMLUT_MAX_TINY_RANGE;
+    symbolCount = (value >> RLE8_3SYMLUT_RANGE_BITS) & RLE8_3SYMLUT_MAX_TINY_COUNT;
     const uint16_t symbolIndex = value >> 14;
 
     switch (symbolIndex)
@@ -456,8 +456,8 @@ static void rle8_3symlut_decompress_sse41(IN const uint8_t *pInStart, OUT uint8_
     const uint16_t value = *(uint16_t *)pInStart;
     pInStart += sizeof(uint16_t);
 
-    uint32_t offset = value & RLE8_3SYMLUT_MAX_TINY_RANGE;
-    uint32_t symbolCount = (value >> RLE8_3SYMLUT_RANGE_BITS) & RLE8_3SYMLUT_MAX_TINY_COUNT;
+    offset = value & RLE8_3SYMLUT_MAX_TINY_RANGE;
+    symbolCount = (value >> RLE8_3SYMLUT_RANGE_BITS) & RLE8_3SYMLUT_MAX_TINY_COUNT;
     const uint16_t symbolIndex = value >> 14;
 
     switch (symbolIndex)
@@ -549,8 +549,8 @@ static void rle8_3symlut_decompress_avx(IN const uint8_t *pInStart, OUT uint8_t 
     const uint16_t value = *(uint16_t *)pInStart;
     pInStart += sizeof(uint16_t);
 
-    uint32_t offset = value & RLE8_3SYMLUT_MAX_TINY_RANGE;
-    uint32_t symbolCount = (value >> RLE8_3SYMLUT_RANGE_BITS) & RLE8_3SYMLUT_MAX_TINY_COUNT;
+    offset = value & RLE8_3SYMLUT_MAX_TINY_RANGE;
+    symbolCount = (value >> RLE8_3SYMLUT_RANGE_BITS) & RLE8_3SYMLUT_MAX_TINY_COUNT;
     const uint16_t symbolIndex = value >> 14;
 
     switch (symbolIndex)
@@ -642,8 +642,8 @@ static void rle8_3symlut_decompress_avx2(IN const uint8_t *pInStart, OUT uint8_t
     const uint16_t value = *(uint16_t *)pInStart;
     pInStart += sizeof(uint16_t);
 
-    uint32_t offset = value & RLE8_3SYMLUT_MAX_TINY_RANGE;
-    uint32_t symbolCount = (value >> RLE8_3SYMLUT_RANGE_BITS) & RLE8_3SYMLUT_MAX_TINY_COUNT;
+    offset = value & RLE8_3SYMLUT_MAX_TINY_RANGE;
+    symbolCount = (value >> RLE8_3SYMLUT_RANGE_BITS) & RLE8_3SYMLUT_MAX_TINY_COUNT;
     const uint16_t symbolIndex = value >> 14;
 
     switch (symbolIndex)
@@ -735,8 +735,8 @@ static void rle8_3symlut_decompress_avx512f(IN const uint8_t *pInStart, OUT uint
     const uint16_t value = *(uint16_t *)pInStart;
     pInStart += sizeof(uint16_t);
 
-    uint32_t offset = value & RLE8_3SYMLUT_MAX_TINY_RANGE;
-    uint32_t symbolCount = (value >> RLE8_3SYMLUT_RANGE_BITS) & RLE8_3SYMLUT_MAX_TINY_COUNT;
+    offset = value & RLE8_3SYMLUT_MAX_TINY_RANGE;
+    symbolCount = (value >> RLE8_3SYMLUT_RANGE_BITS) & RLE8_3SYMLUT_MAX_TINY_COUNT;
     const uint16_t symbolIndex = value >> 14;
 
     switch (symbolIndex)
