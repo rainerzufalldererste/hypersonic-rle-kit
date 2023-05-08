@@ -4,7 +4,7 @@
 - Possibly the fastest run length en/decoder (obviously dependent on the dataset). **Single Core Decompression Speeds > 33 GiB/s have been observed.**
 - Many different variants optimized for various scenarios.
 - Written in C.
-- SIMD Variants for AVX-512F, AVX2, AVX, SSSE3 and SSE2 are available for the decoder. Automatically picked by the en- & decoder based on the extensions available on the current platform.
+- SIMD Variants for AVX-512F, AVX2, AVX, SSE4.1, SSSE3 and SSE2 are available for the decoder. Automatically picked by the en- & decoder based on the extensions available on the current platform.
 - Specialized versions for various different scenarios. (Single RLE Symbol, Short Strings of RLE Symbol, 8 Bit, 16 Bit, 24 Bit, 32 Bit, 48 Bit, 64 Bit, 128 Bit)
 - `OpenCL` variant available for some of the decoders.
 
