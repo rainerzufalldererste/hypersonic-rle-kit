@@ -1,11 +1,11 @@
-# rle8
+# hypersonic rle kit
 
 ### What is it?
+- A selection of various RLE and related codecs optimized for all kinds of different inputs.
 - Possibly the fastest run length en/decoder (obviously dependent on the dataset). **Single Core Decompression Speeds > 33 GiB/s have been observed.**
-- Many different variants optimized for various scenarios.
 - Written in C.
-- SIMD Variants for AVX-512F, AVX2, AVX, SSE4.1, SSSE3 and SSE2 are available for the decoder. Automatically picked by the en- & decoder based on the extensions available on the current platform.
-- Specialized versions for various different scenarios. (Single RLE Symbol, Short Strings of RLE Symbol, 8 Bit, 16 Bit, 24 Bit, 32 Bit, 48 Bit, 64 Bit, 128 Bit)
+- SIMD Variants for AVX-512F, AVX2, AVX, SSE4.1, SSSE3 and SSE2 are available for many decoders. Automatically picked by the en- & decoder based on the extensions available on the current platform.
+- Specialized versions for various different scenarios. (Single RLE Symbol, Short Strings of RLE Symbols, Few Repeating RLE-Symbols, 8 Bit, 16 Bit, 24 Bit, 32 Bit, 48 Bit, 64 Bit, 128 Bit)
 - `OpenCL` variant available for some of the decoders.
 
 ### Benchmark
@@ -129,28 +129,37 @@ The 24 Bit and 48 Bit Variants allow for run length encoding of common data layo
 | mrle    | 100.0 % |   394.79 MiB/s |  2,595.1 MiB/s | - |
 
 ### Variants
-#### rle8 Normal
-- Tries to keep symbol general symbol frequency to improve compression ratio of an entropy encoder that could go after the Run Length Encoding like ANS, Arithmetic Coding or Huffman.
-- Parses the output for run-length-encodable symbols, which are specified in the header.
-- Has a single symbol variant, that only encodes the most run-length-encodable symbol (useful for some image codecs).
-
-#### rle8 Ultra
-- Same as rle8 Normal, but optimized for shorter strings of run-length-encodable symbols.
-
-#### rle8 Extreme
-- 8, 16, 24, 32, 48, 64, 128 bit variants
+#### 8, 16, 24, 32, 48, 64, 128 Bit (Byte Aligned + Symbol Aligned)
+- Extremely Fast (especially decoding files).
+- Variants for always aligning with the symbol width or allowing byte-wide repeats even for > 8 bit symbols.
 - Decoder interprets blocks of data to boil down to a highly optimized `memcpy`, `memset`, `memcpy`, `memset` (with various different byte-lengths).
 - 8 bit encoder highly optimized as well, optional variant single symbol encoding.
 
-#### rle8 Extreme MMTF
+### 8, 16, 24, 32, 48, 64, 128 Bit Packed  (Byte Aligned + Symbol Aligned)
+- Similar to the base variant, but keeps around the previously used RLE symbol which is usually very beneficial to the compression ratio.
+- Also Extremely Fast (especially decoding files), whilst providing better compression ratio for many inputs
+- Also has those variants for always aligning with the symbol width or allowing byte-wide repeats even for > 8 bit symbols.
+- 8 bit encoder highly optimized as well, optional variant single symbol encoding.
+
+### 3 Sym LUT / 3 Sym LUT Short
+- Similar to the base variant, but keeps around three of the previously used RLE symbols, usually further improving compression ratios.
+- Short Variant: Packs Range & Count Bits to fit the entire RLE command into just one byte for short ranges.
+
+#### Low Entropy / Low Entropy Short
+- Tries to keep symbol general symbol frequency to improve compression ratio of an entropy encoder that could go after the Run Length Encoding like ANS, Arithmetic Coding or Huffman.
+- Parses the output for run-length-encodable symbols, which are specified in the header.
+- Has a single-symbol variant, that only encodes the most run-length-encodable symbol (useful for some image codecs).
+- Short Variant: Same as Low Entropy, but optimized for shorter strings of run-length-encodable symbols, usually faster, also has a single-symbol variant.
+
+#### 8 Bit RLE + MMTF (Multi Move-To-Front Transformation)
 - Runs a block-wide vectorized MTF transform on the input and depending on how many bits this needs to represent a given block (if it's not entirely representable by a variant of `memset`) uses only the required amount of bits to encode the block.
 - Performs well on a wide variety of inputs, but usually doesn't produce the best compression ratios or (de-) compression speeds, as all blocks need to be decoded and cannot simply be `memcpy`d if they don't contain an encodable symbol.
 
-#### rle8 SH
+#### RLE + Huffman-esque
 - Uses a separate header, that contains a huffman-esque instructions to place recent high-prevalence symbols, copy or set a specific symbol to a block.
-- Usually very high compression ratios, but comparably slow to encode.
+- Usually very high compression ratios, but comparably slow to en- & decode.
 
-#### rle8 Raw MMTF
+#### Raw MMTF (Multi Move-To-Front Transformation)
 - Simply runs the block-wide vectorized MTF transform on the input to improve compressability for some scenarios.
 - Doesn't compress itself.
 
