@@ -1,48 +1,45 @@
-#include "rle8.h"
+#define RLE8_XSYMLUT_MIN_RANGE_SHORT (2 + 1) // compression ratio can be slightly improved by reducing this to 2 (because then commonly used symbols accumulate more easily etc.) but it drastically reduces decompression speed.
+#define RLE8_XSYMLUT_MIN_RANGE_LONG (2 + 4 + 4 + 1)
 
-#include "rleX_extreme_common.h"
-
-//////////////////////////////////////////////////////////////////////////
-
-#define RLE8_3SYMLUT_MIN_RANGE_SHORT (2 + 1) // compression ratio can be slightly improved by reducing this to 2 (because then commonly used symbols accumulate more easily etc.) but it drastically reduces decompression speed.
-#define RLE8_3SYMLUT_MIN_RANGE_LONG (2 + 4 + 4 + 1)
-
-#define RLE8_3SYMLUT_COUNT_BITS (7)
-#define RLE8_3SYMLUT_RANGE_BITS (14 - RLE8_3SYMLUT_COUNT_BITS)
-#define RLE8_3SYMLUT_MAX_TINY_COUNT ((1 << RLE8_3SYMLUT_COUNT_BITS) - 1)
-#define RLE8_3SYMLUT_MAX_TINY_RANGE ((1 << RLE8_3SYMLUT_RANGE_BITS) - 1)
+#if SYMBOL_COUNT == 3
+#define RLE8_XSYMLUT_COUNT_BITS (7)
+#define RLE8_XSYMLUT_RANGE_BITS (14 - RLE8_XSYMLUT_COUNT_BITS)
+#define RLE8_XSYMLUT_MAX_TINY_COUNT ((1 << RLE8_XSYMLUT_COUNT_BITS) - 1)
+#define RLE8_XSYMLUT_MAX_TINY_RANGE ((1 << RLE8_XSYMLUT_RANGE_BITS) - 1)
+#else
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 
 typedef struct
 {
   uint8_t symbol;
-  uint8_t lastSymbols[3];
+  uint8_t lastSymbols[SYMBOL_COUNT];
   int64_t count;
   int64_t lastRLE;
   size_t index;
-} rle8_3symlut_compress_state_t;
+} CONCAT3(rle8_, SYMBOL_COUNT, symlut_compress_state_t);
 
 //////////////////////////////////////////////////////////////////////////
 
-static int64_t rle8_3symlut_compress_sse2(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT rle8_3symlut_compress_state_t *pState);
-static int64_t rle8_3symlut_compress_avx2(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT rle8_3symlut_compress_state_t *pState);
+static int64_t CONCAT3(rle8_, SYMBOL_COUNT, symlut_compress_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8_, SYMBOL_COUNT, symlut_compress_state_t) *pState);
+static int64_t CONCAT3(rle8_, SYMBOL_COUNT, symlut_compress_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8_, SYMBOL_COUNT, symlut_compress_state_t) *pState);
 
 //////////////////////////////////////////////////////////////////////////
 
-inline bool _rle8_3symlut_process_symbol(IN const uint8_t *pIn, OUT uint8_t *pOut, const size_t i, IN OUT rle8_3symlut_compress_state_t *pState)
+inline bool CONCAT3(_rle8_, SYMBOL_COUNT, symlut_process_symbol)(IN const uint8_t *pIn, OUT uint8_t *pOut, const size_t i, IN OUT CONCAT3(rle8_, SYMBOL_COUNT, symlut_compress_state_t) *pState)
 {
   size_t symbolMatchIndex = 0;
 
-  for (; symbolMatchIndex < 3; symbolMatchIndex++)
+  for (; symbolMatchIndex < SYMBOL_COUNT; symbolMatchIndex++)
     if (pState->symbol == pState->lastSymbols[symbolMatchIndex])
       break;
 
   const int64_t range = i - pState->lastRLE - pState->count + 2;
-  const int64_t storedCount = pState->count - RLE8_3SYMLUT_MIN_RANGE_SHORT + 2;
-  const int64_t penalty = (range <= 0xFFFFF ? (range <= RLE8_3SYMLUT_MAX_TINY_RANGE ? 0 : 2) : 4) + (storedCount <= 0xFFFFF ? (storedCount <= (RLE8_3SYMLUT_MAX_TINY_COUNT) ? 0 : 2) : 4) + (int64_t)(symbolMatchIndex == 3);
+  const int64_t storedCount = pState->count - RLE8_XSYMLUT_MIN_RANGE_SHORT + 2;
+  const int64_t penalty = (range <= 0xFFFFF ? (range <= RLE8_XSYMLUT_MAX_TINY_RANGE ? 0 : 2) : 4) + (storedCount <= 0xFFFFF ? (storedCount <= (RLE8_XSYMLUT_MAX_TINY_COUNT) ? 0 : 2) : 4) + (int64_t)(symbolMatchIndex == 3);
 
-  if (pState->count >= RLE8_3SYMLUT_MIN_RANGE_LONG || (pState->count >= RLE8_3SYMLUT_MIN_RANGE_SHORT + penalty))
+  if (pState->count >= RLE8_XSYMLUT_MIN_RANGE_LONG || (pState->count >= RLE8_XSYMLUT_MIN_RANGE_SHORT + penalty))
   {
     switch (symbolMatchIndex)
     {
@@ -65,14 +62,14 @@ inline bool _rle8_3symlut_process_symbol(IN const uint8_t *pIn, OUT uint8_t *pOu
     uint16_t storedCount7;
     uint16_t range7;
 
-    if (storedCount <= RLE8_3SYMLUT_MAX_TINY_COUNT)
+    if (storedCount <= RLE8_XSYMLUT_MAX_TINY_COUNT)
       storedCount7 = (uint8_t)storedCount;
     else if (storedCount <= 0xFFFF)
       storedCount7 = 1;
     else
       storedCount7 = 0;
 
-    if (range <= RLE8_3SYMLUT_MAX_TINY_RANGE)
+    if (range <= RLE8_XSYMLUT_MAX_TINY_RANGE)
       range7 = (uint8_t)range;
     else if (range <= 0xFFFF)
       range7 = 1;
@@ -80,7 +77,7 @@ inline bool _rle8_3symlut_process_symbol(IN const uint8_t *pIn, OUT uint8_t *pOu
       range7 = 0;
 
     size_t index = pState->index;
-    const uint16_t value = (uint16_t)(symbolMatchIndex << 14) | (storedCount7 << RLE8_3SYMLUT_RANGE_BITS) | range7;
+    const uint16_t value = (uint16_t)(symbolMatchIndex << 14) | (storedCount7 << RLE8_XSYMLUT_RANGE_BITS) | range7;
 
     *((uint16_t *)&pOut[index]) = value;
     index += sizeof(uint16_t);
@@ -135,14 +132,14 @@ inline bool _rle8_3symlut_process_symbol(IN const uint8_t *pIn, OUT uint8_t *pOu
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t rle8_3symlut_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
+uint32_t CONCAT3(rle8_, SYMBOL_COUNT, symlut_compress)(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
   if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_compress_bounds(inSize))
     return 0;
 
   ((uint32_t *)pOut)[0] = (uint32_t)inSize;
 
-  rle8_3symlut_compress_state_t state;
+  CONCAT3(rle8_, SYMBOL_COUNT, symlut_compress_state_t) state;
   memset(&state, 0, sizeof(state));
   state.index = sizeof(uint32_t) * 2;
   state.lastSymbols[0] = 0x00;
@@ -155,9 +152,9 @@ uint32_t rle8_3symlut_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT
   _DetectCPUFeatures();
 
   if (avx2Supported)
-    i = rle8_3symlut_compress_avx2(pIn, inSize, pOut, &state);
+    i = CONCAT3(rle8_, SYMBOL_COUNT, symlut_compress_avx2)(pIn, inSize, pOut, &state);
   else
-    i = rle8_3symlut_compress_sse2(pIn, inSize, pOut, &state);
+    i = CONCAT3(rle8_, SYMBOL_COUNT, symlut_compress_sse2)(pIn, inSize, pOut, &state);
 
   for (; i < inSize; i++)
   {
@@ -167,7 +164,7 @@ uint32_t rle8_3symlut_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT
     }
     else
     {
-      _rle8_3symlut_process_symbol(pIn, pOut, i, &state);
+      CONCAT3(_rle8_, SYMBOL_COUNT, symlut_process_symbol)(pIn, pOut, i, &state);
 
       state.symbol = pIn[i];
       state.count = 1;
@@ -178,7 +175,7 @@ uint32_t rle8_3symlut_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT
   {
     const int64_t range = i - state.lastRLE - state.count + 2;
 
-    if (_rle8_3symlut_process_symbol(pIn, pOut, i, &state))
+    if (CONCAT3(_rle8_, SYMBOL_COUNT, symlut_process_symbol)(pIn, pOut, i, &state))
     {
       *((uint16_t *)&pOut[state.index]) = 0b0000000010000001;
       state.index += sizeof(uint16_t);
@@ -211,7 +208,7 @@ uint32_t rle8_3symlut_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT
 
 //////////////////////////////////////////////////////////////////////////
 
-static int64_t rle8_3symlut_compress_sse2(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT rle8_3symlut_compress_state_t *pState)
+static int64_t CONCAT3(rle8_, SYMBOL_COUNT, symlut_compress_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8_, SYMBOL_COUNT, symlut_compress_state_t) *pState)
 {
   const int64_t endInSize128 = inSize - sizeof(__m128i);
   int64_t i = 0;
@@ -240,7 +237,7 @@ static int64_t rle8_3symlut_compress_sse2(IN const uint8_t *pIn, const size_t in
         pState->count += _zero;
         i += _zero;
 
-        _rle8_3symlut_process_symbol(pIn, pOut, i, pState);
+        CONCAT3(_rle8_, SYMBOL_COUNT, symlut_process_symbol)(pIn, pOut, i, pState);
       }
 
       while (i < endInSize128)
@@ -280,7 +277,7 @@ static int64_t rle8_3symlut_compress_sse2(IN const uint8_t *pIn, const size_t in
 #ifndef _MSC_VER
 __attribute__((target("avx2")))
 #endif
-static int64_t rle8_3symlut_compress_avx2(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT rle8_3symlut_compress_state_t *pState)
+static int64_t CONCAT3(rle8_, SYMBOL_COUNT, symlut_compress_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8_, SYMBOL_COUNT, symlut_compress_state_t) *pState)
 {
   const int64_t endInSize256 = inSize - sizeof(__m256i);
   int64_t i = 0;
@@ -309,7 +306,7 @@ static int64_t rle8_3symlut_compress_avx2(IN const uint8_t *pIn, const size_t in
         pState->count += _zero;
         i += _zero;
 
-        _rle8_3symlut_process_symbol(pIn, pOut, i, pState);
+        CONCAT3(_rle8_, SYMBOL_COUNT, symlut_process_symbol)(pIn, pOut, i, pState);
       }
 
       while (i < endInSize256)
@@ -348,11 +345,11 @@ static int64_t rle8_3symlut_compress_avx2(IN const uint8_t *pIn, const size_t in
 
 //////////////////////////////////////////////////////////////////////////
 
-static void rle8_3symlut_decompress_sse(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_sse)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
   __m128i symbol = _mm_setzero_si128();
-  __m128i other[2];
+  __m128i other[SYMBOL_COUNT - 1];
 
   other[0] = _mm_set1_epi8(0x7F);
   other[1] = _mm_set1_epi8(0xFF);
@@ -362,8 +359,8 @@ static void rle8_3symlut_decompress_sse(IN const uint8_t *pInStart, OUT uint8_t 
     const uint16_t value = *(uint16_t *)pInStart;
     pInStart += sizeof(uint16_t);
 
-    offset = value & RLE8_3SYMLUT_MAX_TINY_RANGE;
-    symbolCount = (value >> RLE8_3SYMLUT_RANGE_BITS) & RLE8_3SYMLUT_MAX_TINY_COUNT;
+    offset = value & RLE8_XSYMLUT_MAX_TINY_RANGE;
+    symbolCount = (value >> RLE8_XSYMLUT_RANGE_BITS) & RLE8_XSYMLUT_MAX_TINY_COUNT;
     const uint16_t symbolIndex = value >> 14;
 
     switch (symbolIndex)
@@ -431,7 +428,7 @@ static void rle8_3symlut_decompress_sse(IN const uint8_t *pInStart, OUT uint8_t 
     if (!symbolCount)
       return;
 
-    symbolCount += (RLE8_3SYMLUT_MIN_RANGE_SHORT - 2);
+    symbolCount += (RLE8_XSYMLUT_MIN_RANGE_SHORT - 2);
 
     // memset.
     MEMSET_SSE;
@@ -441,11 +438,11 @@ static void rle8_3symlut_decompress_sse(IN const uint8_t *pInStart, OUT uint8_t 
 #ifndef _MSC_VER
 __attribute__((target("sse4.1")))
 #endif
-static void rle8_3symlut_decompress_sse41(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_sse41)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
   __m128i symbol = _mm_setzero_si128();
-  __m128i other[2];
+  __m128i other[SYMBOL_COUNT - 1];
 
   other[0] = _mm_set1_epi8(0x7F);
   other[1] = _mm_set1_epi8(0xFF);
@@ -455,8 +452,8 @@ static void rle8_3symlut_decompress_sse41(IN const uint8_t *pInStart, OUT uint8_
     const uint16_t value = *(uint16_t *)pInStart;
     pInStart += sizeof(uint16_t);
 
-    offset = value & RLE8_3SYMLUT_MAX_TINY_RANGE;
-    symbolCount = (value >> RLE8_3SYMLUT_RANGE_BITS) & RLE8_3SYMLUT_MAX_TINY_COUNT;
+    offset = value & RLE8_XSYMLUT_MAX_TINY_RANGE;
+    symbolCount = (value >> RLE8_XSYMLUT_RANGE_BITS) & RLE8_XSYMLUT_MAX_TINY_COUNT;
     const uint16_t symbolIndex = value >> 14;
 
     switch (symbolIndex)
@@ -524,7 +521,7 @@ static void rle8_3symlut_decompress_sse41(IN const uint8_t *pInStart, OUT uint8_
     if (!symbolCount)
       return;
 
-    symbolCount += (RLE8_3SYMLUT_MIN_RANGE_SHORT - 2);
+    symbolCount += (RLE8_XSYMLUT_MIN_RANGE_SHORT - 2);
 
     // memset.
     MEMSET_SSE;
@@ -534,11 +531,11 @@ static void rle8_3symlut_decompress_sse41(IN const uint8_t *pInStart, OUT uint8_
 #ifndef _MSC_VER
 __attribute__((target("avx")))
 #endif
-static void rle8_3symlut_decompress_avx(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_avx)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
   __m256i symbol = _mm256_setzero_si256();
-  __m256i other[2];
+  __m256i other[SYMBOL_COUNT - 1];
 
   other[0] = _mm256_set1_epi8(0x7F);
   other[1] = _mm256_set1_epi8(0xFF);
@@ -548,8 +545,8 @@ static void rle8_3symlut_decompress_avx(IN const uint8_t *pInStart, OUT uint8_t 
     const uint16_t value = *(uint16_t *)pInStart;
     pInStart += sizeof(uint16_t);
 
-    offset = value & RLE8_3SYMLUT_MAX_TINY_RANGE;
-    symbolCount = (value >> RLE8_3SYMLUT_RANGE_BITS) & RLE8_3SYMLUT_MAX_TINY_COUNT;
+    offset = value & RLE8_XSYMLUT_MAX_TINY_RANGE;
+    symbolCount = (value >> RLE8_XSYMLUT_RANGE_BITS) & RLE8_XSYMLUT_MAX_TINY_COUNT;
     const uint16_t symbolIndex = value >> 14;
 
     switch (symbolIndex)
@@ -617,7 +614,7 @@ static void rle8_3symlut_decompress_avx(IN const uint8_t *pInStart, OUT uint8_t 
     if (!symbolCount)
       return;
 
-    symbolCount += (RLE8_3SYMLUT_MIN_RANGE_SHORT - 2);
+    symbolCount += (RLE8_XSYMLUT_MIN_RANGE_SHORT - 2);
 
     // memset.
     MEMSET_AVX;
@@ -627,11 +624,11 @@ static void rle8_3symlut_decompress_avx(IN const uint8_t *pInStart, OUT uint8_t 
 #ifndef _MSC_VER
 __attribute__((target("avx2")))
 #endif
-static void rle8_3symlut_decompress_avx2(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_avx2)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
   __m256i symbol = _mm256_setzero_si256();
-  __m256i other[2];
+  __m256i other[SYMBOL_COUNT - 1];
 
   other[0] = _mm256_set1_epi8(0x7F);
   other[1] = _mm256_set1_epi8(0xFF);
@@ -641,8 +638,8 @@ static void rle8_3symlut_decompress_avx2(IN const uint8_t *pInStart, OUT uint8_t
     const uint16_t value = *(uint16_t *)pInStart;
     pInStart += sizeof(uint16_t);
 
-    offset = value & RLE8_3SYMLUT_MAX_TINY_RANGE;
-    symbolCount = (value >> RLE8_3SYMLUT_RANGE_BITS) & RLE8_3SYMLUT_MAX_TINY_COUNT;
+    offset = value & RLE8_XSYMLUT_MAX_TINY_RANGE;
+    symbolCount = (value >> RLE8_XSYMLUT_RANGE_BITS) & RLE8_XSYMLUT_MAX_TINY_COUNT;
     const uint16_t symbolIndex = value >> 14;
 
     switch (symbolIndex)
@@ -710,7 +707,7 @@ static void rle8_3symlut_decompress_avx2(IN const uint8_t *pInStart, OUT uint8_t
     if (!symbolCount)
       return;
 
-    symbolCount += (RLE8_3SYMLUT_MIN_RANGE_SHORT - 2);
+    symbolCount += (RLE8_XSYMLUT_MIN_RANGE_SHORT - 2);
 
     // memset.
     MEMSET_AVX2;
@@ -720,11 +717,11 @@ static void rle8_3symlut_decompress_avx2(IN const uint8_t *pInStart, OUT uint8_t
 #ifndef _MSC_VER
 __attribute__((target("avx512f")))
 #endif
-static void rle8_3symlut_decompress_avx512f(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_avx512f)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
   __m512i symbol = _mm512_setzero_si512();
-  __m512i other[2];
+  __m512i other[SYMBOL_COUNT - 1];
 
   other[0] = _mm512_set1_epi8(0x7F);
   other[1] = _mm512_set1_epi8(0xFF);
@@ -734,8 +731,8 @@ static void rle8_3symlut_decompress_avx512f(IN const uint8_t *pInStart, OUT uint
     const uint16_t value = *(uint16_t *)pInStart;
     pInStart += sizeof(uint16_t);
 
-    offset = value & RLE8_3SYMLUT_MAX_TINY_RANGE;
-    symbolCount = (value >> RLE8_3SYMLUT_RANGE_BITS) & RLE8_3SYMLUT_MAX_TINY_COUNT;
+    offset = value & RLE8_XSYMLUT_MAX_TINY_RANGE;
+    symbolCount = (value >> RLE8_XSYMLUT_RANGE_BITS) & RLE8_XSYMLUT_MAX_TINY_COUNT;
     const uint16_t symbolIndex = value >> 14;
 
     switch (symbolIndex)
@@ -806,7 +803,7 @@ static void rle8_3symlut_decompress_avx512f(IN const uint8_t *pInStart, OUT uint
     if (!symbolCount)
       return;
 
-    symbolCount += (RLE8_3SYMLUT_MIN_RANGE_SHORT - 2);
+    symbolCount += (RLE8_XSYMLUT_MIN_RANGE_SHORT - 2);
 
     // memset.
     MEMSET_AVX512;
@@ -815,7 +812,7 @@ static void rle8_3symlut_decompress_avx512f(IN const uint8_t *pInStart, OUT uint
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t rle8_3symlut_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
+uint32_t CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress)(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
   if (pIn == NULL || pOut == NULL || inSize == 0 || outSize == 0)
     return 0;
@@ -830,15 +827,23 @@ uint32_t rle8_3symlut_decompress(IN const uint8_t *pIn, const uint32_t inSize, O
   _DetectCPUFeatures();
 
   if (avx512FSupported)
-    rle8_3symlut_decompress_avx512f(pIn, pOut);
+    CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_avx512f)(pIn, pOut);
   else if (avx2Supported)
-    rle8_3symlut_decompress_avx2(pIn, pOut);
+    CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_avx2)(pIn, pOut);
   else if (avxSupported)
-    rle8_3symlut_decompress_avx(pIn, pOut);
+    CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_avx)(pIn, pOut);
   else if (sse41Supported)
-    rle8_3symlut_decompress_sse41(pIn, pOut);
+    CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_sse41)(pIn, pOut);
   else
-    rle8_3symlut_decompress_sse(pIn, pOut);
+    CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_sse)(pIn, pOut);
 
   return (uint32_t)expectedOutSize;
 }
+
+#undef RLE8_XSYMLUT_MIN_RANGE_SHORT
+#undef RLE8_XSYMLUT_MIN_RANGE_LONG
+
+#undef RLE8_XSYMLUT_COUNT_BITS
+#undef RLE8_XSYMLUT_RANGE_BITS
+#undef RLE8_XSYMLUT_MAX_TINY_COUNT
+#undef RLE8_XSYMLUT_MAX_TINY_RANGE
