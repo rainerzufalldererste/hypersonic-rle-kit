@@ -14,37 +14,48 @@
 
 //////////////////////////////////////////////////////////////////////////
 
-static int64_t rle8_3symlut_compress_sse2(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE, uint8_t *pLastSymbol);
-static int64_t rle8_3symlut_compress_avx2(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE, uint8_t *pLastSymbol);
+typedef struct
+{
+  uint8_t symbol;
+  uint8_t lastSymbols[3];
+  int64_t count;
+  int64_t lastRLE;
+  size_t index;
+} rle8_3symlut_compress_state_t;
 
 //////////////////////////////////////////////////////////////////////////
 
-inline bool _rle8_3symlut_process_symbol(IN const uint8_t *pIn, OUT uint8_t *pOut, IN OUT size_t *pIndex, const int64_t count, const size_t i, int64_t *pLastRLE, const uint8_t symbol, uint8_t *pLastSymbols)
+static int64_t rle8_3symlut_compress_sse2(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT rle8_3symlut_compress_state_t *pState);
+static int64_t rle8_3symlut_compress_avx2(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT rle8_3symlut_compress_state_t *pState);
+
+//////////////////////////////////////////////////////////////////////////
+
+inline bool _rle8_3symlut_process_symbol(IN const uint8_t *pIn, OUT uint8_t *pOut, const size_t i, IN OUT rle8_3symlut_compress_state_t *pState)
 {
   size_t symbolMatchIndex = 0;
 
   for (; symbolMatchIndex < 3; symbolMatchIndex++)
-    if (symbol == pLastSymbols[symbolMatchIndex])
+    if (pState->symbol == pState->lastSymbols[symbolMatchIndex])
       break;
 
-  const int64_t range = i - *pLastRLE - count + 2;
-  const int64_t storedCount = count - RLE8_3SYMLUT_MIN_RANGE_SHORT + 2;
+  const int64_t range = i - pState->lastRLE - pState->count + 2;
+  const int64_t storedCount = pState->count - RLE8_3SYMLUT_MIN_RANGE_SHORT + 2;
   const int64_t penalty = (range <= 0xFFFFF ? (range <= RLE8_3SYMLUT_MAX_TINY_RANGE ? 0 : 2) : 4) + (storedCount <= 0xFFFFF ? (storedCount <= (RLE8_3SYMLUT_MAX_TINY_COUNT) ? 0 : 2) : 4) + (int64_t)(symbolMatchIndex == 3);
 
-  if (count >= RLE8_3SYMLUT_MIN_RANGE_LONG || (count >= RLE8_3SYMLUT_MIN_RANGE_SHORT + penalty))
+  if (pState->count >= RLE8_3SYMLUT_MIN_RANGE_LONG || (pState->count >= RLE8_3SYMLUT_MIN_RANGE_SHORT + penalty))
   {
     switch (symbolMatchIndex)
     {
     case 3:
     case 2:
-      pLastSymbols[2] = pLastSymbols[1];
+      pState->lastSymbols[2] = pState->lastSymbols[1];
 #ifdef __cplusplus
       [[fallthrough]]; // intentional fallthrough!
 #endif
 
     case 1:
-      pLastSymbols[1] = pLastSymbols[0];
-      pLastSymbols[0] = symbol;
+      pState->lastSymbols[1] = pState->lastSymbols[0];
+      pState->lastSymbols[0] = pState->symbol;
       break;
 
     case 0:
@@ -68,7 +79,7 @@ inline bool _rle8_3symlut_process_symbol(IN const uint8_t *pIn, OUT uint8_t *pOu
     else
       range7 = 0;
 
-    size_t index = *pIndex;
+    size_t index = pState->index;
     const uint16_t value = (uint16_t)(symbolMatchIndex << 14) | (storedCount7 << RLE8_3SYMLUT_RANGE_BITS) | range7;
 
     *((uint16_t *)&pOut[index]) = value;
@@ -76,7 +87,7 @@ inline bool _rle8_3symlut_process_symbol(IN const uint8_t *pIn, OUT uint8_t *pOu
 
     if (symbolMatchIndex == 3)
     {
-      pOut[index] = symbol;
+      pOut[index] = pState->symbol;
       index++;
     }
 
@@ -108,13 +119,13 @@ inline bool _rle8_3symlut_process_symbol(IN const uint8_t *pIn, OUT uint8_t *pOu
       }
     }
 
-    const size_t copySize = i - count - *pLastRLE;
+    const size_t copySize = i - pState->count - pState->lastRLE;
 
-    memcpy(pOut + index, pIn + *pLastRLE, copySize);
+    memcpy(pOut + index, pIn + pState->lastRLE, copySize);
     index += copySize;
 
-    *pLastRLE = i;
-    *pIndex = index;
+    pState->lastRLE = i;
+    pState->index = index;
 
     return true;
   }
@@ -131,82 +142,80 @@ uint32_t rle8_3symlut_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT
 
   ((uint32_t *)pOut)[0] = (uint32_t)inSize;
 
-  size_t index = sizeof(uint32_t) * 2;
-  int64_t i = 0;
-  int64_t lastRLE = 0;
+  rle8_3symlut_compress_state_t state;
+  memset(&state, 0, sizeof(state));
+  state.index = sizeof(uint32_t) * 2;
+  state.lastSymbols[0] = 0x00;
+  state.lastSymbols[1] = 0x7F;
+  state.lastSymbols[2] = 0xFF;
+  state.symbol = ~(*pIn);
 
-  int64_t count = 0;
-  uint8_t symbol = ~(*pIn);
-  uint8_t lastSymbols[3] = { 0x00, 0x7F, 0xFF };
+  int64_t i = 0;
 
   _DetectCPUFeatures();
 
   if (avx2Supported)
-    i = rle8_3symlut_compress_avx2(pIn, inSize, pOut, &index, &symbol, &count, &lastRLE, lastSymbols);
+    i = rle8_3symlut_compress_avx2(pIn, inSize, pOut, &state);
   else
-    i = rle8_3symlut_compress_sse2(pIn, inSize, pOut, &index, &symbol, &count, &lastRLE, lastSymbols);
+    i = rle8_3symlut_compress_sse2(pIn, inSize, pOut, &state);
 
   for (; i < inSize; i++)
   {
-    if (pIn[i] == symbol)
+    if (pIn[i] == state.symbol)
     {
-      count++;
+      state.count++;
     }
     else
     {
-      _rle8_3symlut_process_symbol(pIn, pOut, &index, count, i, &lastRLE, symbol, lastSymbols);
+      _rle8_3symlut_process_symbol(pIn, pOut, i, &state);
 
-      symbol = pIn[i];
-      count = 1;
+      state.symbol = pIn[i];
+      state.count = 1;
     }
   }
 
   // Copy / Encode remaining bytes.
   {
-    const int64_t range = i - lastRLE - count + 2;
+    const int64_t range = i - state.lastRLE - state.count + 2;
 
-    if (_rle8_3symlut_process_symbol(pIn, pOut, &index, count, i, &lastRLE, symbol, lastSymbols))
+    if (_rle8_3symlut_process_symbol(pIn, pOut, i, &state))
     {
-      *((uint16_t *)&pOut[index]) = 0b0000000010000001;
-      index += sizeof(uint16_t);
-      *((uint16_t *)&pOut[index]) = 0;
-      index += sizeof(uint16_t);
-      *((uint16_t *)&pOut[index]) = 0;
-      index += sizeof(uint16_t);
+      *((uint16_t *)&pOut[state.index]) = 0b0000000010000001;
+      state.index += sizeof(uint16_t);
+      *((uint16_t *)&pOut[state.index]) = 0;
+      state.index += sizeof(uint16_t);
+      *((uint16_t *)&pOut[state.index]) = 0;
+      state.index += sizeof(uint16_t);
     }
     else
     {
-      *((uint16_t *)&pOut[index]) = 0b0000000010000000;
-      index += sizeof(uint16_t);
-      *((uint16_t *)&pOut[index]) = 0;
-      index += sizeof(uint16_t);
-      *((uint32_t *)&pOut[index]) = (uint32_t)range;
-      index += sizeof(uint32_t);
+      *((uint16_t *)&pOut[state.index]) = 0b0000000010000000;
+      state.index += sizeof(uint16_t);
+      *((uint16_t *)&pOut[state.index]) = 0;
+      state.index += sizeof(uint16_t);
+      *((uint32_t *)&pOut[state.index]) = (uint32_t)range;
+      state.index += sizeof(uint32_t);
 
-      const size_t copySize = i - lastRLE;
+      const size_t copySize = i - state.lastRLE;
 
-      memcpy(pOut + index, pIn + lastRLE, copySize);
-      index += copySize;
+      memcpy(pOut + state.index, pIn + state.lastRLE, copySize);
+      state.index += copySize;
     }
   }
 
   // Store compressed length.
-  ((uint32_t *)pOut)[1] = (uint32_t)index;
+  ((uint32_t *)pOut)[1] = (uint32_t)state.index;
 
-  return (uint32_t)index;
+  return (uint32_t)state.index;
 }
 
 //////////////////////////////////////////////////////////////////////////
 
-static int64_t rle8_3symlut_compress_sse2(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE, uint8_t *pLastSymbol)
+static int64_t rle8_3symlut_compress_sse2(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT rle8_3symlut_compress_state_t *pState)
 {
   const int64_t endInSize128 = inSize - sizeof(__m128i);
   int64_t i = 0;
-  size_t index = *pOutIndex;
-  uint8_t symbol = *pSymbol;
-  __m128i symbol128 = _mm_set1_epi8(symbol);
-  int64_t count = 0;
-  int64_t lastRLE = 0;
+  __m128i symbol128 = _mm_set1_epi8(pState->symbol);
 
   while (i < endInSize128)
   {
@@ -214,12 +223,12 @@ static int64_t rle8_3symlut_compress_sse2(IN const uint8_t *pIn, const size_t in
 
     if (0xFFFF == mask)
     {
-      count += sizeof(symbol128);
+      pState->count += sizeof(symbol128);
       i += sizeof(symbol128);
     }
     else
     {
-      if (mask != 0 || count > 1)
+      if (mask != 0 || pState->count > 1)
       {
 #ifdef _MSC_VER
         unsigned long _zero;
@@ -228,10 +237,10 @@ static int64_t rle8_3symlut_compress_sse2(IN const uint8_t *pIn, const size_t in
         const uint64_t _zero = __builtin_ctzl(~mask);
 #endif
 
-        count += _zero;
+        pState->count += _zero;
         i += _zero;
 
-        _rle8_3symlut_process_symbol(pIn, pOut, &index, count, i, pLastRLE, symbol, pLastSymbol);
+        _rle8_3symlut_process_symbol(pIn, pOut, i, pState);
       }
 
       while (i < endInSize128)
@@ -258,17 +267,12 @@ static int64_t rle8_3symlut_compress_sse2(IN const uint8_t *pIn, const size_t in
         }
       }
 
-      symbol = pIn[i];
-      symbol128 = _mm_set1_epi8(symbol);
-      count = 1;
+      pState->symbol = pIn[i];
+      symbol128 = _mm_set1_epi8(pState->symbol);
+      pState->count = 1;
       i++;
     }
   }
-
-  *pOutIndex = index;
-  *pSymbol = symbol;
-  *pCount = count;
-  *pLastRLE = lastRLE;
 
   return i;
 }
@@ -276,13 +280,11 @@ static int64_t rle8_3symlut_compress_sse2(IN const uint8_t *pIn, const size_t in
 #ifndef _MSC_VER
 __attribute__((target("avx2")))
 #endif
-static int64_t rle8_3symlut_compress_avx2(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE, uint8_t *pLastSymbol)
+static int64_t rle8_3symlut_compress_avx2(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT rle8_3symlut_compress_state_t *pState)
 {
   const int64_t endInSize256 = inSize - sizeof(__m256i);
   int64_t i = 0;
-  uint8_t symbol = *pSymbol;
-  __m256i symbol256 = _mm256_set1_epi8(symbol);
-  int64_t count = 0;
+  __m256i symbol256 = _mm256_set1_epi8(pState->symbol);
 
   while (i < endInSize256)
   {
@@ -290,12 +292,12 @@ static int64_t rle8_3symlut_compress_avx2(IN const uint8_t *pIn, const size_t in
 
     if (0xFFFFFFFF == mask)
     {
-      count += sizeof(symbol256);
+      pState->count += sizeof(symbol256);
       i += sizeof(symbol256);
     }
     else
     {
-      if (mask != 0 || count > 1)
+      if (mask != 0 || pState->count > 1)
       {
 #ifdef _MSC_VER
         unsigned long _zero;
@@ -304,10 +306,10 @@ static int64_t rle8_3symlut_compress_avx2(IN const uint8_t *pIn, const size_t in
         const uint64_t _zero = __builtin_ctzl(~mask);
 #endif
 
-        count += _zero;
+        pState->count += _zero;
         i += _zero;
 
-        _rle8_3symlut_process_symbol(pIn, pOut, pOutIndex, count, i, pLastRLE, symbol, pLastSymbol);
+        _rle8_3symlut_process_symbol(pIn, pOut, i, pState);
       }
 
       while (i < endInSize256)
@@ -334,15 +336,12 @@ static int64_t rle8_3symlut_compress_avx2(IN const uint8_t *pIn, const size_t in
         }
       }
 
-      symbol = pIn[i];
-      symbol256 = _mm256_set1_epi8(symbol);
-      count = 1;
+      pState->symbol = pIn[i];
+      symbol256 = _mm256_set1_epi8(pState->symbol);
+      pState->count = 1;
       i++;
     }
   }
-
-  *pSymbol = symbol;
-  *pCount = count;
 
   return i;
 }
