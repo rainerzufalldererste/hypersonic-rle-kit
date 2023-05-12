@@ -204,6 +204,14 @@ uint32_t rle8_3symlut_short_decompress(IN const uint8_t *pIn, const uint32_t inS
 
 //////////////////////////////////////////////////////////////////////////
 
+uint32_t rle8_7symlut_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle8_7symlut_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+//uint32_t rle8_7symlut_short_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+//uint32_t rle8_7symlut_short_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+//////////////////////////////////////////////////////////////////////////
+
 uint32_t rle_mmtf_bounds(const uint32_t inSize);
 
 // If SSE2 is not available, both of these functions will fail and return 0.

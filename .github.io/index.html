@@ -239,30 +239,33 @@ window.addEventListener("scroll", reveal);
                     return Math.sqrt(dx * dx + dy * dy);
                 }
 
-                var found = false;
+                var bestP = null;
+                var closest = 99999.9;
 
                 for (let p in obj.points) {
-                    if (dist(obj.points[p].x, obj.points[p].y) <= 50 * window.devicePixelRatio) {
-                        var tooltip = document.getElementById("tooltip");
-                        tooltip.style.left = (mouseX + 20 * window.devicePixelRatio) + "px";
-                        tooltip.style.top = mouseY + "px";
-                        tooltip.className = "tooltip_visible";
-                        document.getElementById("tooltip_text").innerText = p + (obj.points[p].foreign ? " (foreign codec)" : "");
-                        document.getElementById("tooltip_sub1").innerText = "decoder throughput: " + obj.points[p].x + " MiB/s";
-                        document.getElementById("tooltip_sub2").innerText = "encoder throughput: " + obj.points[p].enc + " MiB/s";
-                        document.getElementById("tooltip_sub3").innerText = "compression ratio: " + obj.points[p].y + " %";
-                        document.getElementById("tooltip_pareto").className = obj.points[p].isPareto == true ? "pareto" : "non_pareto";
+                    var d = dist(obj.points[p].x, obj.points[p].y);
 
-                        found = true;
-                        break;
+                    if (d < closest) {
+                      closest = d;
+                      bestP = p;
                     }
                 }
 
-                if (!found) {
-                    var tooltip = document.getElementById("tooltip");
-                    tooltip.style.left = "0px";
-                    tooltip.style.top = "0px";
-                    tooltip.className = "tooltip_hidden";
+                if (closest > 50 * window.devicePixelRatio || bestP == null) {
+                  var tooltip = document.getElementById("tooltip");
+                  tooltip.style.left = "0px";
+                  tooltip.style.top = "0px";
+                  tooltip.className = "tooltip_hidden";
+                } else {
+                  var tooltip = document.getElementById("tooltip");
+                  tooltip.style.left = (mouseX + 20 * window.devicePixelRatio) + "px";
+                  tooltip.style.top = mouseY + "px";
+                  tooltip.className = "tooltip_visible";
+                  document.getElementById("tooltip_text").innerText = bestP + (obj.points[bestP].foreign ? " (foreign codec)" : "");
+                  document.getElementById("tooltip_sub1").innerText = "decoder throughput: " + obj.points[bestP].x + " MiB/s";
+                  document.getElementById("tooltip_sub2").innerText = "encoder throughput: " + obj.points[bestP].enc + " MiB/s";
+                  document.getElementById("tooltip_sub3").innerText = "compression ratio: " + obj.points[bestP].y + " %";
+                  document.getElementById("tooltip_pareto").className = obj.points[bestP].isPareto == true ? "pareto" : "non_pareto";
                 }
             }
           }
@@ -283,6 +286,7 @@ window.addEventListener("scroll", reveal);
             add_point(obj, 19605.2,  17.95,  2906.3, "8 Bit Packed");
             add_point(obj, 15557.3,  17.41,  2122.9, "8 Bit 3 Sym LUT");
             add_point(obj,  8100.4,  16.49,  2085.6, "8 Bit 3 Sym LUT Short Range");
+            add_point(obj, 15456.7,  17.46,  2094.6, "8 Bit 7 Sym LUT");
 
             add_point(obj, 23256.0,  18.31,  1648.2, "8 Bit Single");
             add_point(obj, 17315.5,  17.96,  1479.9, "8 Bit Packed Single");
@@ -364,11 +368,12 @@ window.addEventListener("scroll", reveal);
             ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 
             init_obj(obj);
-
-            add_point(obj, 21497.5,  23.02,  2434.8, "8 Bit");
-            add_point(obj, 15012.4,  20.10,  2199.4, "8 Bit Packed");
-            add_point(obj, 13606.1,  19.77,  1817.5, "8 Bit 3 Sym LUT");
-            add_point(obj,  6994.1,  19.11,  1705.0, "8 Bit 3 Sym LUT Short Range");
+            
+            add_point(obj, 21583.8,  23.02,  2434.8, "8 Bit");
+            add_point(obj, 14881.2,  20.10,  2199.4, "8 Bit Packed");
+            add_point(obj, 14190.0,  19.77,  1841.7, "8 Bit 3 Sym LUT");
+            add_point(obj,  7026.0,  19.11,  1708.3, "8 Bit 3 Sym LUT Short Range");
+            add_point(obj, 14496.2,  19.75,  1768.7, "8 Bit 7 Sym LUT");
             add_point(obj, 18457.3,  20.59,  1325.0, "8 Bit Single");
             add_point(obj, 14221.0,  20.16,  1270.5, "8 Bit Packed Single");
             add_point(obj, 16863.5,  24.89,  1722.0, "16 Bit (Symbol Bound)");
@@ -439,11 +444,11 @@ window.addEventListener("scroll", reveal);
 
             init_obj(obj);
 
-
-            add_point(obj, 15994.7,  48.80,  1219.7, "8 Bit");
+            add_point(obj, 16097.6,  48.80,  1219.7, "8 Bit");
             add_point(obj,  7454.4,  44.86,  1038.7, "8 Bit Packed");
-            add_point(obj,  5557.7,  43.29,   758.5, "8 Bit 3 Sym LUT");
-            add_point(obj,  3034.8,  40.34,   759.9, "8 Bit 3 Sym LUT Short Range");
+            add_point(obj,  5736.8,  43.29,   775.1, "8 Bit 3 Sym LUT");
+            add_point(obj,  3037.9,  40.34,   762.8, "8 Bit 3 Sym LUT Short Range");
+            add_point(obj,  4810.5,  42.98,   715.3, "8 Bit 7 Sym LUT");
             //add_point(obj, 16843.4,  88.75,  1127.0, "8 Bit Single");
             //add_point(obj, 14564.1,  88.59,  1097.4, "8 Bit Packed Single");
             add_point(obj, 12708.1,  51.49,  1098.3, "16 Bit (Symbol Bound)");

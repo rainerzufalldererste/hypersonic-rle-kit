@@ -9,6 +9,6 @@
 #include "rle8_Xsl.h"
 
 #undef SYMBOL_COUNT
-//#define SYMBOL_COUNT 7
-//
-//#include "rle8_Xsl.h"
+#define SYMBOL_COUNT 7
+
+#include "rle8_Xsl.h"

@@ -439,8 +439,9 @@ int main(int argc, char **pArgv)
     {
       Extreme8,
       Extreme8Packed,
-      Extreme8TSL,
-      Extreme8TSLShort,
+      Extreme8_3SL,
+      Extreme8_3SLShort,
+      Extreme8_7SL,
       Extreme8Single,
       Extreme8PackedSingle,
       Extreme16Sym,
@@ -488,6 +489,7 @@ int main(int argc, char **pArgv)
       "8 Bit Packed                  ",
       "8 Bit 3 Sym LUT               ",
       "8 Bit 3 Sym LUT Short Range   ",
+      "8 Bit 7 Sym LUT               ",
       "8 Bit Single                  ",
       "8 Bit Packed Single           ",
       "16 Bit (Symbol Bound)         ",
@@ -666,12 +668,16 @@ int main(int argc, char **pArgv)
           compressedSize = rle128_byte_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
-        case Extreme8TSL:
+        case Extreme8_3SL:
           compressedSize = rle8_3symlut_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
-        case Extreme8TSLShort:
+        case Extreme8_3SLShort:
           compressedSize = rle8_3symlut_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8_7SL:
+          compressedSize = rle8_7symlut_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme8MultiMTF128:
@@ -867,12 +873,16 @@ int main(int argc, char **pArgv)
           decompressedSize = rle128_byte_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
-        case Extreme8TSL:
+        case Extreme8_3SL:
           decompressedSize = rle8_3symlut_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
-        case Extreme8TSLShort:
+        case Extreme8_3SLShort:
           decompressedSize = rle8_3symlut_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8_7SL:
+          decompressedSize = rle8_7symlut_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Extreme8MultiMTF128:

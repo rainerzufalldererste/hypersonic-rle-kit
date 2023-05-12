@@ -135,11 +135,11 @@ The 24 Bit and 48 Bit Variants allow for run length encoding of common data layo
 - Decoder interprets blocks of data to boil down to a highly optimized `memcpy`, `memset`, `memcpy`, `memset` (with various different byte-lengths).
 - 8 bit encoder highly optimized as well, optional variant single symbol encoding.
 
-### 8, 16, 24, 32, 48, 64, 128 Bit Packed  (Byte Aligned + Symbol Aligned)
-- Similar to the base variant, but keeps around the previously used RLE symbol which is usually very beneficial to the compression ratio.
+### 8, 16, 24, 32, 48, 64, 128 Bit Packed (Byte Aligned + Symbol Aligned)
+- Similar to the base variant, but keeps around the previously used RLE symbol which is usually very beneficial to the compression ratio and tries to pack lengths a bit more optimistically.
 - Also Extremely Fast (especially decoding files), whilst providing better compression ratio for many inputs
 - Also has those variants for always aligning with the symbol width or allowing byte-wide repeats even for > 8 bit symbols.
-- 8 bit encoder highly optimized as well, optional variant single symbol encoding.
+- 8 bit encoder highly optimized as well, optional variant single symbol encoding (only has the optimistic packing, as it already knows what the next symbol is going to be anyways).
 
 ### 3 Sym LUT / 3 Sym LUT Short
 - Similar to the base variant, but keeps around three of the previously used RLE symbols, usually further improving compression ratios.

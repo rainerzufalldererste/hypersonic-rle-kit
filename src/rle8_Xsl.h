@@ -2,11 +2,17 @@
 #define RLE8_XSYMLUT_MIN_RANGE_LONG (2 + 4 + 4 + 1)
 
 #if SYMBOL_COUNT == 3
-#define RLE8_XSYMLUT_COUNT_BITS (7)
-#define RLE8_XSYMLUT_RANGE_BITS (14 - RLE8_XSYMLUT_COUNT_BITS)
-#define RLE8_XSYMLUT_MAX_TINY_COUNT ((1 << RLE8_XSYMLUT_COUNT_BITS) - 1)
-#define RLE8_XSYMLUT_MAX_TINY_RANGE ((1 << RLE8_XSYMLUT_RANGE_BITS) - 1)
+  #define RLE8_XSYMLUT_COUNT_BITS (7)
+  #define RLE8_XSYMLUT_RANGE_BITS (14 - RLE8_XSYMLUT_COUNT_BITS)
+  #define RLE8_XSYMLUT_MAX_TINY_COUNT ((1 << RLE8_XSYMLUT_COUNT_BITS) - 1)
+  #define RLE8_XSYMLUT_MAX_TINY_RANGE ((1 << RLE8_XSYMLUT_RANGE_BITS) - 1)
+#elif SYMBOL_COUNT == 7
+  #define RLE8_XSYMLUT_COUNT_BITS (7)
+  #define RLE8_XSYMLUT_RANGE_BITS (13 - RLE8_XSYMLUT_COUNT_BITS)
+  #define RLE8_XSYMLUT_MAX_TINY_COUNT ((1 << RLE8_XSYMLUT_COUNT_BITS) - 1)
+  #define RLE8_XSYMLUT_MAX_TINY_RANGE ((1 << RLE8_XSYMLUT_RANGE_BITS) - 1)
 #else
+  #fail NOT_IMPLEMENTED
 #endif
 
 //////////////////////////////////////////////////////////////////////////
@@ -37,13 +43,41 @@ inline bool CONCAT3(_rle8_, SYMBOL_COUNT, symlut_process_symbol)(IN const uint8_
 
   const int64_t range = i - pState->lastRLE - pState->count + 2;
   const int64_t storedCount = pState->count - RLE8_XSYMLUT_MIN_RANGE_SHORT + 2;
-  const int64_t penalty = (range <= 0xFFFFF ? (range <= RLE8_XSYMLUT_MAX_TINY_RANGE ? 0 : 2) : 4) + (storedCount <= 0xFFFFF ? (storedCount <= (RLE8_XSYMLUT_MAX_TINY_COUNT) ? 0 : 2) : 4) + (int64_t)(symbolMatchIndex == 3);
+  const int64_t penalty = (range <= 0xFFFFF ? (range <= RLE8_XSYMLUT_MAX_TINY_RANGE ? 0 : 2) : 4) + (storedCount <= 0xFFFFF ? (storedCount <= (RLE8_XSYMLUT_MAX_TINY_COUNT) ? 0 : 2) : 4) + (int64_t)(symbolMatchIndex == SYMBOL_COUNT);
 
   if (pState->count >= RLE8_XSYMLUT_MIN_RANGE_LONG || (pState->count >= RLE8_XSYMLUT_MIN_RANGE_SHORT + penalty))
   {
     switch (symbolMatchIndex)
     {
+#if SYMBOL_COUNT == 7
+    case 7:
+    case 6:
+      pState->lastSymbols[6] = pState->lastSymbols[5];
+#ifdef __cplusplus
+      [[fallthrough]]; // intentional fallthrough!
+#endif
+
+    case 5:
+      pState->lastSymbols[5] = pState->lastSymbols[4];
+#ifdef __cplusplus
+      [[fallthrough]]; // intentional fallthrough!
+#endif
+
+    case 4:
+      pState->lastSymbols[4] = pState->lastSymbols[3];
+#ifdef __cplusplus
+      [[fallthrough]]; // intentional fallthrough!
+#endif
+
     case 3:
+      pState->lastSymbols[3] = pState->lastSymbols[2];
+#ifdef __cplusplus
+      [[fallthrough]]; // intentional fallthrough!
+#endif
+
+#elif SYMBOL_COUNT == 3
+    case 3:
+#endif
     case 2:
       pState->lastSymbols[2] = pState->lastSymbols[1];
 #ifdef __cplusplus
@@ -77,12 +111,16 @@ inline bool CONCAT3(_rle8_, SYMBOL_COUNT, symlut_process_symbol)(IN const uint8_
       range7 = 0;
 
     size_t index = pState->index;
+#if SYMBOL_COUNT == 3
     const uint16_t value = (uint16_t)(symbolMatchIndex << 14) | (storedCount7 << RLE8_XSYMLUT_RANGE_BITS) | range7;
+#elif SYMBOL_COUNT == 7
+    const uint16_t value = (uint16_t)(symbolMatchIndex << 13) | (storedCount7 << RLE8_XSYMLUT_RANGE_BITS) | range7;
+#endif
 
     *((uint16_t *)&pOut[index]) = value;
     index += sizeof(uint16_t);
 
-    if (symbolMatchIndex == 3)
+    if (symbolMatchIndex == SYMBOL_COUNT)
     {
       pOut[index] = pState->symbol;
       index++;
@@ -145,6 +183,14 @@ uint32_t CONCAT3(rle8_, SYMBOL_COUNT, symlut_compress)(IN const uint8_t *pIn, co
   state.lastSymbols[0] = 0x00;
   state.lastSymbols[1] = 0x7F;
   state.lastSymbols[2] = 0xFF;
+#if SYMBOL_COUNT == 7
+  state.lastSymbols[3] = 0x01;
+  state.lastSymbols[4] = 0x7E;
+  state.lastSymbols[5] = 0x80;
+  state.lastSymbols[6] = 0xFE;
+#endif
+
+
   state.symbol = ~(*pIn);
 
   int64_t i = 0;
@@ -177,7 +223,11 @@ uint32_t CONCAT3(rle8_, SYMBOL_COUNT, symlut_compress)(IN const uint8_t *pIn, co
 
     if (CONCAT3(_rle8_, SYMBOL_COUNT, symlut_process_symbol)(pIn, pOut, i, &state))
     {
+#if SYMBOL_COUNT == 3
       *((uint16_t *)&pOut[state.index]) = 0b0000000010000001;
+#else
+      *((uint16_t *)&pOut[state.index]) = 0b0000000001000001;
+#endif
       state.index += sizeof(uint16_t);
       *((uint16_t *)&pOut[state.index]) = 0;
       state.index += sizeof(uint16_t);
@@ -186,7 +236,11 @@ uint32_t CONCAT3(rle8_, SYMBOL_COUNT, symlut_compress)(IN const uint8_t *pIn, co
     }
     else
     {
+#if SYMBOL_COUNT == 3
       *((uint16_t *)&pOut[state.index]) = 0b0000000010000000;
+#else
+      *((uint16_t *)&pOut[state.index]) = 0b0000000001000000;
+#endif
       state.index += sizeof(uint16_t);
       *((uint16_t *)&pOut[state.index]) = 0;
       state.index += sizeof(uint16_t);
@@ -353,6 +407,12 @@ static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_sse)(IN const uint8_t
 
   other[0] = _mm_set1_epi8(0x7F);
   other[1] = _mm_set1_epi8(0xFF);
+#if SYMBOL_COUNT == 7
+  other[2] = _mm_set1_epi8(0x01);
+  other[3] = _mm_set1_epi8(0x7E);
+  other[4] = _mm_set1_epi8(0x80);
+  other[5] = _mm_set1_epi8(0xFE);
+#endif
 
   while (true)
   {
@@ -361,10 +421,75 @@ static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_sse)(IN const uint8_t
 
     offset = value & RLE8_XSYMLUT_MAX_TINY_RANGE;
     symbolCount = (value >> RLE8_XSYMLUT_RANGE_BITS) & RLE8_XSYMLUT_MAX_TINY_COUNT;
+
+#if SYMBOL_COUNT == 3
     const uint16_t symbolIndex = value >> 14;
+#else
+    const uint16_t symbolIndex = value >> 13;
+#endif
 
     switch (symbolIndex)
     {
+#if SYMBOL_COUNT == 7
+    case 7:
+    {
+      other[5] = other[4];
+      other[4] = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = _mm_set1_epi8(*pInStart);
+      pInStart++;
+      break;
+    }
+
+    case 6:
+    {
+      const __m128i tmp = other[5];
+      other[5] = other[4];
+      other[4] = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+
+    case 5:
+    {
+      const __m128i tmp = other[4];
+      other[4] = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+
+    case 4:
+    {
+      const __m128i tmp = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+
+    case 3:
+    {
+      const __m128i tmp = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+#else
     case 3:
     {
       other[1] = other[0];
@@ -373,6 +498,7 @@ static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_sse)(IN const uint8_t
       pInStart++;
       break;
     }
+#endif
 
     case 2:
     {
@@ -446,6 +572,12 @@ static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_sse41)(IN const uint8
 
   other[0] = _mm_set1_epi8(0x7F);
   other[1] = _mm_set1_epi8(0xFF);
+#if SYMBOL_COUNT == 7
+  other[3] = _mm_set1_epi8(0x01);
+  other[4] = _mm_set1_epi8(0x7E);
+  other[5] = _mm_set1_epi8(0x80);
+  other[6] = _mm_set1_epi8(0xFE);
+#endif
 
   while (true)
   {
@@ -454,10 +586,75 @@ static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_sse41)(IN const uint8
 
     offset = value & RLE8_XSYMLUT_MAX_TINY_RANGE;
     symbolCount = (value >> RLE8_XSYMLUT_RANGE_BITS) & RLE8_XSYMLUT_MAX_TINY_COUNT;
+
+#if SYMBOL_COUNT == 3
     const uint16_t symbolIndex = value >> 14;
+#else
+    const uint16_t symbolIndex = value >> 13;
+#endif
 
     switch (symbolIndex)
     {
+#if SYMBOL_COUNT == 7
+    case 7:
+    {
+      other[5] = other[4];
+      other[4] = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = _mm_set1_epi8(*pInStart);
+      pInStart++;
+      break;
+    }
+
+    case 6:
+    {
+      const __m128i tmp = other[5];
+      other[5] = other[4];
+      other[4] = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+
+    case 5:
+    {
+      const __m128i tmp = other[4];
+      other[4] = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+
+    case 4:
+    {
+      const __m128i tmp = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+
+    case 3:
+    {
+      const __m128i tmp = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+#else
     case 3:
     {
       other[1] = other[0];
@@ -466,6 +663,7 @@ static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_sse41)(IN const uint8
       pInStart++;
       break;
     }
+#endif
 
     case 2:
     {
@@ -539,6 +737,12 @@ static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_avx)(IN const uint8_t
 
   other[0] = _mm256_set1_epi8(0x7F);
   other[1] = _mm256_set1_epi8(0xFF);
+#if SYMBOL_COUNT == 7
+  other[3] = _mm256_set1_epi8(0x01);
+  other[4] = _mm256_set1_epi8(0x7E);
+  other[5] = _mm256_set1_epi8(0x80);
+  other[6] = _mm256_set1_epi8(0xFE);
+#endif
 
   while (true)
   {
@@ -547,10 +751,75 @@ static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_avx)(IN const uint8_t
 
     offset = value & RLE8_XSYMLUT_MAX_TINY_RANGE;
     symbolCount = (value >> RLE8_XSYMLUT_RANGE_BITS) & RLE8_XSYMLUT_MAX_TINY_COUNT;
+
+#if SYMBOL_COUNT == 3
     const uint16_t symbolIndex = value >> 14;
+#else
+    const uint16_t symbolIndex = value >> 13;
+#endif
 
     switch (symbolIndex)
     {
+#if SYMBOL_COUNT == 7
+    case 7:
+    {
+      other[5] = other[4];
+      other[4] = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = _mm256_set1_epi8(*pInStart);
+      pInStart++;
+      break;
+    }
+
+    case 6:
+    {
+      const __m256i tmp = other[5];
+      other[5] = other[4];
+      other[4] = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+
+    case 5:
+    {
+      const __m256i tmp = other[4];
+      other[4] = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+
+    case 4:
+    {
+      const __m256i tmp = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+
+    case 3:
+    {
+      const __m256i tmp = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+#else
     case 3:
     {
       other[1] = other[0];
@@ -559,6 +828,7 @@ static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_avx)(IN const uint8_t
       pInStart++;
       break;
     }
+#endif
 
     case 2:
     {
@@ -632,6 +902,12 @@ static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_avx2)(IN const uint8_
 
   other[0] = _mm256_set1_epi8(0x7F);
   other[1] = _mm256_set1_epi8(0xFF);
+#if SYMBOL_COUNT == 7
+  other[3] = _mm256_set1_epi8(0x01);
+  other[4] = _mm256_set1_epi8(0x7E);
+  other[5] = _mm256_set1_epi8(0x80);
+  other[6] = _mm256_set1_epi8(0xFE);
+#endif
 
   while (true)
   {
@@ -640,10 +916,75 @@ static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_avx2)(IN const uint8_
 
     offset = value & RLE8_XSYMLUT_MAX_TINY_RANGE;
     symbolCount = (value >> RLE8_XSYMLUT_RANGE_BITS) & RLE8_XSYMLUT_MAX_TINY_COUNT;
+
+#if SYMBOL_COUNT == 3
     const uint16_t symbolIndex = value >> 14;
+#else
+    const uint16_t symbolIndex = value >> 13;
+#endif
 
     switch (symbolIndex)
     {
+#if SYMBOL_COUNT == 7
+    case 7:
+    {
+      other[5] = other[4];
+      other[4] = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = _mm256_set1_epi8(*pInStart);
+      pInStart++;
+      break;
+    }
+
+    case 6:
+    {
+      const __m256i tmp = other[5];
+      other[5] = other[4];
+      other[4] = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+
+    case 5:
+    {
+      const __m256i tmp = other[4];
+      other[4] = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+
+    case 4:
+    {
+      const __m256i tmp = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+
+    case 3:
+    {
+      const __m256i tmp = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+#else
     case 3:
     {
       other[1] = other[0];
@@ -652,6 +993,7 @@ static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_avx2)(IN const uint8_
       pInStart++;
       break;
     }
+#endif
 
     case 2:
     {
@@ -725,6 +1067,12 @@ static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_avx512f)(IN const uin
 
   other[0] = _mm512_set1_epi8(0x7F);
   other[1] = _mm512_set1_epi8(0xFF);
+#if SYMBOL_COUNT == 7
+  other[3] = _mm512_set1_epi8(0x01);
+  other[4] = _mm512_set1_epi8(0x7E);
+  other[5] = _mm512_set1_epi8(0x80);
+  other[6] = _mm512_set1_epi8(0xFE);
+#endif
 
   while (true)
   {
@@ -733,10 +1081,75 @@ static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_avx512f)(IN const uin
 
     offset = value & RLE8_XSYMLUT_MAX_TINY_RANGE;
     symbolCount = (value >> RLE8_XSYMLUT_RANGE_BITS) & RLE8_XSYMLUT_MAX_TINY_COUNT;
+
+#if SYMBOL_COUNT == 7
+    const uint16_t symbolIndex = value >> 13;
+#else
     const uint16_t symbolIndex = value >> 14;
+#endif
 
     switch (symbolIndex)
     {
+#if SYMBOL_COUNT == 7
+    case 7:
+    {
+      other[5] = other[4];
+      other[4] = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = _mm512_set1_epi8(*pInStart);
+      pInStart++;
+      break;
+    }
+
+    case 6:
+    {
+      const __m512i tmp = other[5];
+      other[5] = other[4];
+      other[4] = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+
+    case 5:
+    {
+      const __m512i tmp = other[4];
+      other[4] = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+
+    case 4:
+    {
+      const __m512i tmp = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+
+    case 3:
+    {
+      const __m512i tmp = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+#else
     case 3:
     {
       other[1] = other[0];
@@ -745,6 +1158,7 @@ static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_avx512f)(IN const uin
       pInStart++;
       break;
     }
+#endif
 
     case 2:
     {
