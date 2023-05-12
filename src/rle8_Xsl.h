@@ -7,7 +7,7 @@
   #define RLE8_XSYMLUT_MAX_TINY_COUNT ((1 << RLE8_XSYMLUT_COUNT_BITS) - 1)
   #define RLE8_XSYMLUT_MAX_TINY_RANGE ((1 << RLE8_XSYMLUT_RANGE_BITS) - 1)
 #elif SYMBOL_COUNT == 7
-  #define RLE8_XSYMLUT_COUNT_BITS (7)
+  #define RLE8_XSYMLUT_COUNT_BITS (7) // this can be set to 6 for some marginal gains / losses, so may be beneficial for some datasets
   #define RLE8_XSYMLUT_RANGE_BITS (13 - RLE8_XSYMLUT_COUNT_BITS)
   #define RLE8_XSYMLUT_MAX_TINY_COUNT ((1 << RLE8_XSYMLUT_COUNT_BITS) - 1)
   #define RLE8_XSYMLUT_MAX_TINY_RANGE ((1 << RLE8_XSYMLUT_RANGE_BITS) - 1)
@@ -223,11 +223,7 @@ uint32_t CONCAT3(rle8_, SYMBOL_COUNT, symlut_compress)(IN const uint8_t *pIn, co
 
     if (CONCAT3(_rle8_, SYMBOL_COUNT, symlut_process_symbol)(pIn, pOut, i, &state))
     {
-#if SYMBOL_COUNT == 3
-      *((uint16_t *)&pOut[state.index]) = 0b0000000010000001;
-#else
-      *((uint16_t *)&pOut[state.index]) = 0b0000000001000001;
-#endif
+      *((uint16_t *)&pOut[state.index]) = (1 << RLE8_XSYMLUT_RANGE_BITS) | 1;
       state.index += sizeof(uint16_t);
       *((uint16_t *)&pOut[state.index]) = 0;
       state.index += sizeof(uint16_t);
@@ -236,11 +232,7 @@ uint32_t CONCAT3(rle8_, SYMBOL_COUNT, symlut_compress)(IN const uint8_t *pIn, co
     }
     else
     {
-#if SYMBOL_COUNT == 3
-      *((uint16_t *)&pOut[state.index]) = 0b0000000010000000;
-#else
-      *((uint16_t *)&pOut[state.index]) = 0b0000000001000000;
-#endif
+      *((uint16_t *)&pOut[state.index]) = 1 << RLE8_XSYMLUT_RANGE_BITS;
       state.index += sizeof(uint16_t);
       *((uint16_t *)&pOut[state.index]) = 0;
       state.index += sizeof(uint16_t);
