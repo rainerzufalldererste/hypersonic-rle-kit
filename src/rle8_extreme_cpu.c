@@ -48,11 +48,6 @@ static uint8_t rle8_single_compress_get_approx_optimal_symbol_avx2(IN const uint
 
 #include "rle8_extreme_cpu.h"
 
-#undef PACKED
-#define SHORT_RANGE
-
-#include "rle8_extreme_cpu.h"
-
 //////////////////////////////////////////////////////////////////////////
 
 static uint8_t rle8_single_compress_get_approx_optimal_symbol_sse2(IN const uint8_t *pIn, const size_t inSize)

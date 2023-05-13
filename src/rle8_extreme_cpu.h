@@ -26,18 +26,10 @@
 #define RLE8_EXTREME_MODE_MULTI 0
 #define RLE8_EXTREME_MODE_SINGLE 1
 
-#ifndef SHORT_RANGE
-  #ifndef PACKED
-    #define CODEC _
-  #else
-    #define CODEC _packed_
-  #endif
+#ifndef PACKED
+  #define CODEC _
 #else
-  #ifndef PACKED
-    #define CODEC _short_
-  #else
-    #define CODEC _1symlut_short_
-  #endif
+  #define CODEC _packed_
 #endif
 
 //#ifdef PACKED
@@ -351,7 +343,6 @@ uint32_t CONCAT3(rle8, CODEC, multi_compress)(IN const uint8_t *pIn, const uint3
   return (uint32_t)index;
 }
 
-#if !defined(SHORT_RANGE) || !defined(PACKED)
 uint32_t CONCAT3(rle8, CODEC, single_compress)(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
   if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_compress_bounds(inSize))
@@ -707,7 +698,6 @@ uint32_t CONCAT3(rle8, CODEC, single_compress)(IN const uint8_t *pIn, const uint
 
   return (uint32_t)index;
 }
-#endif
 
 uint32_t CONCAT3(rle8, CODEC, decompress)(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
@@ -1110,7 +1100,6 @@ static int64_t CONCAT3(rle8, CODEC, compress_multi_avx2)(IN const uint8_t *pIn, 
 
 //////////////////////////////////////////////////////////////////////////
 
-#if !defined(SHORT_RANGE) || !defined(PACKED)
 static int64_t CONCAT3(rle8, CODEC, compress_single_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, const uint8_t maxFreqSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE)
 {
   int64_t i = 0;
@@ -1550,7 +1539,6 @@ static int64_t CONCAT3(rle8, CODEC, compress_single_avx2)(IN const uint8_t *pIn,
 
   return i;
 }
-#endif
 
 static void CONCAT3(rle8, CODEC, decompress_multi_sse)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
@@ -2014,7 +2002,6 @@ static void CONCAT3(rle8, CODEC, decompress_multi_avx512f)(IN const uint8_t *pIn
   }
 }
 
-#if !defined(SHORT_RANGE) || !defined(PACKED)
 static void CONCAT3(rle8, CODEC, decompress_single_sse)(IN const uint8_t *pInStart, OUT uint8_t *pOut, const uint8_t singleSymbol)
 {
   size_t offset, symbolCount;
@@ -2442,7 +2429,6 @@ static void CONCAT3(rle8, CODEC, decompress_single_avx512f)(IN const uint8_t *pI
     MEMSET_AVX512;
   }
 }
-#endif
 
 //////////////////////////////////////////////////////////////////////////
 
