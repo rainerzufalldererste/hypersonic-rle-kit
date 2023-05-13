@@ -12,3 +12,8 @@
 #define SYMBOL_COUNT 7
 
 #include "rle8_Xsl_short.h"
+
+#undef SYMBOL_COUNT
+#define SYMBOL_COUNT 1
+
+#include "rle8_Xsl_short.h"
