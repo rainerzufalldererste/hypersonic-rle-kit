@@ -23,6 +23,6 @@
 
 #include "rle8_Xsl_short.h"
 
-//#define SINGLE
-//
-//#include "rle8_Xsl_short.h"
+#define SINGLE
+
+#include "rle8_Xsl_short.h"

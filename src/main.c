@@ -446,6 +446,7 @@ int main(int argc, char **pArgv)
       Extreme8_7SL,
       Extreme8_7SLShort,
       Extreme8Single,
+      Extreme8SingleShort,
       Extreme8PackedSingle,
       Extreme16Sym,
       Extreme16SymPacked,
@@ -497,7 +498,8 @@ int main(int argc, char **pArgv)
       "8 Bit 7 Sym LUT               ",
       "8 Bit 7 Sym LUT Short Range   ",
       "8 Bit Single                  ",
-      "8 Bit Packed Single           ",
+      "8 Bit Single Short Range      ",
+      "8 Bit Single Packed           ",
       "16 Bit (Symbol Bound)         ",
       "16 Bit Packed (Symbol Bound)  ",
       "16 Bit (Byte Bound)           ",
@@ -676,6 +678,10 @@ int main(int argc, char **pArgv)
 
         case Extreme8Short:
           compressedSize = rle8_multi_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8SingleShort:
+          compressedSize = rle8_single_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme8_1SLShort:
@@ -893,6 +899,10 @@ int main(int argc, char **pArgv)
 
         case Extreme8Short:
           decompressedSize = rle8_multi_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8SingleShort:
+          decompressedSize = rle8_single_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Extreme8_1SLShort:

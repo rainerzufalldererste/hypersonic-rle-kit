@@ -1,9 +1,13 @@
 #if SYMBOL_COUNT != 0 || defined(SINGLE)
   #define RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT (1 + 1)
-  #define RLE8_XSYMLUT_SHORT_MIN_RANGE_LONG (3 + 4 + 4 + 1)
+  #ifndef SINGLE
+    #define RLE8_XSYMLUT_SHORT_MIN_RANGE_LONG (3 + 4 + 4 + 1)
+  #else
+    #define RLE8_XSYMLUT_SHORT_MIN_RANGE_LONG (3 + 4 + 4)
+  #endif
 #else
   #define RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT (1 + 1 + 1)
-  #define RLE8_XSYMLUT_SHORT_MIN_RANGE_LONG (3 + 4 + 4 + 1 + 1)
+    #define RLE8_XSYMLUT_SHORT_MIN_RANGE_LONG (3 + 4 + 4 + 1 + 1)
 #endif
 
 #if SYMBOL_COUNT == 3
@@ -64,8 +68,13 @@ typedef struct
 
 //////////////////////////////////////////////////////////////////////////
 
+#ifndef SINGLE
 static int64_t CONCAT3(rle8_, CODEC, compress_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8_, CODEC, compress_state_t) *pState);
 static int64_t CONCAT3(rle8_, CODEC, compress_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8_, CODEC, compress_state_t) *pState);
+#else
+static int64_t CONCAT3(rle8_, CODEC, compress_single_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8_, CODEC, compress_state_t) *pState);
+static int64_t CONCAT3(rle8_, CODEC, compress_single_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8_, CODEC, compress_state_t) *pState);
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -300,16 +309,40 @@ uint32_t CONCAT3(rle8_, CODEC, compress)(IN const uint8_t *pIn, const uint32_t i
   #endif
 #endif
 
+  _DetectCPUFeatures();
+
+#ifndef SINGLE
   state.symbol = ~(*pIn);
+#else
+  uint8_t maxFreqSymbol;
+
+  uint8_t rle8_single_compress_get_approx_optimal_symbol_sse2(IN const uint8_t * pIn, const size_t inSize);
+  uint8_t rle8_single_compress_get_approx_optimal_symbol_avx2(IN const uint8_t * pIn, const size_t inSize);
+
+  // The AVX2 variant appears to be slower, so we're just always calling the SSE2 version.
+  //if (avx2Supported)
+  //  state.symbol = rle8_single_compress_get_approx_optimal_symbol_avx2(pIn, inSize);
+  //else
+  state.symbol = rle8_single_compress_get_approx_optimal_symbol_sse2(pIn, inSize);
+
+  pOut[state.index] = state.symbol;
+  state.index++;
+#endif
 
   size_t i = 0;
 
-  _DetectCPUFeatures();
-
+#ifndef SINGLE
   if (avx2Supported)
     i = CONCAT3(rle8_, CODEC, compress_avx2)(pIn, inSize, pOut, &state);
   else
     i = CONCAT3(rle8_, CODEC, compress_sse2)(pIn, inSize, pOut, &state);
+#else
+  // The AVX2 variant appears to be slower, so we're just always calling the SSE2 version.
+  //if (avx2Supported)
+  //  i = CONCAT3(rle8_, CODEC, compress_single_avx2)(pIn, inSize, pOut, &state);
+  //else
+  i = CONCAT3(rle8_, CODEC, compress_single_sse2)(pIn, inSize, pOut, &state);
+#endif
 
   for (; i < inSize; i++)
   {
@@ -321,8 +354,12 @@ uint32_t CONCAT3(rle8_, CODEC, compress)(IN const uint8_t *pIn, const uint32_t i
     {
       CONCAT3(_rle8_, CODEC, process_symbol)(pIn, pOut, i, &state);
 
+#ifndef SINGLE
       state.symbol = pIn[i];
       state.count = 1;
+#else
+      state.count = (pIn[i] == state.symbol);
+#endif
     }
   }
 
@@ -397,6 +434,7 @@ uint32_t CONCAT3(rle8_, CODEC, compress)(IN const uint8_t *pIn, const uint32_t i
 
 //////////////////////////////////////////////////////////////////////////
 
+#ifndef SINGLE
 static int64_t CONCAT3(rle8_, CODEC, compress_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8_, CODEC, compress_state_t) *pState)
 {
   const int64_t endInSize128 = inSize - sizeof(__m128i);
@@ -531,13 +569,153 @@ static int64_t CONCAT3(rle8_, CODEC, compress_avx2)(IN const uint8_t *pIn, const
 
   return i;
 }
+#endif
+
+//////////////////////////////////////////////////////////////////////////
+
+#ifdef SINGLE
+static int64_t CONCAT3(rle8_, CODEC, compress_single_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8_, CODEC, compress_state_t) *pState)
+{
+  int64_t i = 0;
+
+  const __m128i symbol128 = _mm_set1_epi8(pState->symbol);
+  const int64_t endInSize128 = inSize - sizeof(symbol128);
+
+  for (; i < endInSize128; i++)
+  {
+    const uint32_t mask = _mm_movemask_epi8(_mm_cmpeq_epi8(symbol128, _mm_loadu_si128((const __m128i *) & (pIn[i]))));
+
+    if (0xFFFF == mask)
+    {
+      pState->count += sizeof(symbol128);
+      i += sizeof(symbol128) - 1;
+    }
+    else
+    {
+      if (mask != 0 || pState->count > 1)
+      {
+#ifdef _MSC_VER
+        unsigned long _zero;
+        _BitScanForward64(&_zero, ~mask);
+#else
+        const uint64_t _zero = __builtin_ctzl(~mask);
+#endif
+
+        pState->count += _zero;
+        i += _zero;
+
+        CONCAT3(_rle8_, CODEC, process_symbol)(pIn, pOut, i, pState);
+      }
+
+      pState->count = 0;
+
+      while (i < endInSize128)
+      {
+        const int32_t cmp = _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_loadu_si128((const __m128i *)(&pIn[i])), symbol128));
+
+        if (cmp == 0 || ((cmp & 0x8000) == 0 && __builtin_popcount((uint32_t)cmp) < RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT))
+        {
+          i += sizeof(symbol128);
+        }
+        else
+        {
+#ifdef _MSC_VER
+          unsigned long _zero;
+          _BitScanForward64(&_zero, cmp);
+#else
+          const uint64_t _zero = __builtin_ctzl(cmp);
+#endif
+
+          i += _zero;
+          pState->count = 1;
+          break;
+        }
+      }
+    }
+  }
+
+  return i;
+}
+
+#ifndef _MSC_VER
+__attribute__((target("avx2")))
+#endif
+static int64_t CONCAT3(rle8_, CODEC, compress_single_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8_, CODEC, compress_state_t) *pState)
+{
+  int64_t i = 0;
+
+  const __m256i symbol256 = _mm256_set1_epi8(pState->symbol);
+  const int64_t endInSize256 = inSize - sizeof(symbol256);
+
+  for (; i < endInSize256; i++)
+  {
+    const uint32_t mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(symbol256, _mm256_loadu_si256((const __m256i *) & (pIn[i]))));
+
+    if (0xFFFFFFFF == mask)
+    {
+      pState->count += sizeof(symbol256);
+      i += sizeof(symbol256) - 1;
+    }
+    else
+    {
+      if (mask != 0 || pState->count > 1)
+      {
+#ifdef _MSC_VER
+        unsigned long _zero;
+        _BitScanForward64(&_zero, ~mask);
+#else
+        const uint64_t _zero = __builtin_ctzl(~mask);
+#endif
+
+        pState->count += _zero;
+        i += _zero;
+
+        CONCAT3(_rle8_, CODEC, process_symbol)(pIn, pOut, i, pState);
+      }
+
+      pState->count = 0;
+
+      while (i < endInSize256)
+      {
+        const int32_t cmp = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_loadu_si256((const __m256i *)(&pIn[i])), symbol256));
+
+        if (cmp == 0 || ((cmp & 0x80000000) == 0 && __builtin_popcount((uint32_t)cmp) < RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT))
+        {
+          i += sizeof(symbol256);
+        }
+        else
+        {
+#ifdef _MSC_VER
+          unsigned long _zero;
+          _BitScanForward64(&_zero, cmp);
+#else
+          const uint64_t _zero = __builtin_ctzl(cmp);
+#endif
+
+          i += _zero;
+          pState->count = 1;
+          break;
+        }
+      }
+    }
+  }
+
+  return i;
+}
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 
 static void CONCAT3(rle8_, CODEC, decompress_sse)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
+
+#ifndef SINGLE
   __m128i symbol = _mm_setzero_si128();
+#else
+  const __m128i symbol = _mm_set1_epi8(*pInStart);
+  pInStart++;
+#endif
 
 #if SYMBOL_COUNT > 1
   __m128i other[SYMBOL_COUNT - 1];
@@ -707,7 +885,13 @@ __attribute__((target("sse4.1")))
 static void CONCAT3(rle8_, CODEC, decompress_sse41)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
+
+#ifndef SINGLE
   __m128i symbol = _mm_setzero_si128();
+#else
+  const __m128i symbol = _mm_set1_epi8(*pInStart);
+  pInStart++;
+#endif
 
 #if SYMBOL_COUNT > 1
   __m128i other[SYMBOL_COUNT - 1];
@@ -877,7 +1061,13 @@ __attribute__((target("avx")))
 static void CONCAT3(rle8_, CODEC, decompress_avx)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
+
+#ifndef SINGLE
   __m256i symbol = _mm256_setzero_si256();
+#else
+  const __m256i symbol = _mm256_set1_epi8(*pInStart);
+  pInStart++;
+#endif
 
 #if SYMBOL_COUNT > 1
   __m256i other[SYMBOL_COUNT - 1];
@@ -1047,7 +1237,13 @@ __attribute__((target("avx2")))
 static void CONCAT3(rle8_, CODEC, decompress_avx2)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
+
+#ifndef SINGLE
   __m256i symbol = _mm256_setzero_si256();
+#else
+  const __m256i symbol = _mm256_set1_epi8(*pInStart);
+  pInStart++;
+#endif
 
 #if SYMBOL_COUNT > 1
   __m256i other[SYMBOL_COUNT - 1];
@@ -1217,7 +1413,13 @@ __attribute__((target("avx512f")))
 static void CONCAT3(rle8_, CODEC, decompress_avx512f)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
+
+#ifndef SINGLE
   __m512i symbol = _mm512_setzero_si512();
+#else
+  const __m512i symbol = _mm512_set1_epi8(*pInStart);
+  pInStart++;
+#endif
 
 #if SYMBOL_COUNT > 1
   __m512i other[SYMBOL_COUNT - 1];
