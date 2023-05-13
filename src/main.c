@@ -438,6 +438,7 @@ int main(int argc, char **pArgv)
     enum
     {
       Extreme8,
+      Extreme8Short,
       Extreme8Packed,
       Extreme8_1SLShort,
       Extreme8_3SL,
@@ -488,6 +489,7 @@ int main(int argc, char **pArgv)
     const char *codecNames[] = 
     {
       "8 Bit                         ",
+      "8 Bit Short Range             ",
       "8 Bit Packed                  ",
       "8 Bit 1 Sym LUT Short Range   ",
       "8 Bit 3 Sym LUT               ",
@@ -670,6 +672,10 @@ int main(int argc, char **pArgv)
     
         case Extreme128BytePacked:
           compressedSize = rle128_byte_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8Short:
+          compressedSize = rle8_multi_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme8_1SLShort:
@@ -883,6 +889,10 @@ int main(int argc, char **pArgv)
 
         case Extreme128BytePacked:
           decompressedSize = rle128_byte_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8Short:
+          decompressedSize = rle8_multi_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Extreme8_1SLShort:

@@ -565,10 +565,10 @@ static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_sse41)(IN const uint8
   other[0] = _mm_set1_epi8(0x7F);
   other[1] = _mm_set1_epi8(0xFF);
 #if SYMBOL_COUNT == 7
-  other[3] = _mm_set1_epi8(0x01);
-  other[4] = _mm_set1_epi8(0x7E);
-  other[5] = _mm_set1_epi8(0x80);
-  other[6] = _mm_set1_epi8(0xFE);
+  other[2] = _mm_set1_epi8(0x01);
+  other[3] = _mm_set1_epi8(0x7E);
+  other[4] = _mm_set1_epi8(0x80);
+  other[5] = _mm_set1_epi8(0xFE);
 #endif
 
   while (true)
@@ -730,10 +730,10 @@ static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_avx)(IN const uint8_t
   other[0] = _mm256_set1_epi8(0x7F);
   other[1] = _mm256_set1_epi8(0xFF);
 #if SYMBOL_COUNT == 7
-  other[3] = _mm256_set1_epi8(0x01);
-  other[4] = _mm256_set1_epi8(0x7E);
-  other[5] = _mm256_set1_epi8(0x80);
-  other[6] = _mm256_set1_epi8(0xFE);
+  other[2] = _mm256_set1_epi8(0x01);
+  other[3] = _mm256_set1_epi8(0x7E);
+  other[4] = _mm256_set1_epi8(0x80);
+  other[5] = _mm256_set1_epi8(0xFE);
 #endif
 
   while (true)
@@ -895,10 +895,10 @@ static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_avx2)(IN const uint8_
   other[0] = _mm256_set1_epi8(0x7F);
   other[1] = _mm256_set1_epi8(0xFF);
 #if SYMBOL_COUNT == 7
-  other[3] = _mm256_set1_epi8(0x01);
-  other[4] = _mm256_set1_epi8(0x7E);
-  other[5] = _mm256_set1_epi8(0x80);
-  other[6] = _mm256_set1_epi8(0xFE);
+  other[2] = _mm256_set1_epi8(0x01);
+  other[3] = _mm256_set1_epi8(0x7E);
+  other[4] = _mm256_set1_epi8(0x80);
+  other[5] = _mm256_set1_epi8(0xFE);
 #endif
 
   while (true)
@@ -1060,10 +1060,10 @@ static void CONCAT3(rle8_, SYMBOL_COUNT, symlut_decompress_avx512f)(IN const uin
   other[0] = _mm512_set1_epi8(0x7F);
   other[1] = _mm512_set1_epi8(0xFF);
 #if SYMBOL_COUNT == 7
-  other[3] = _mm512_set1_epi8(0x01);
-  other[4] = _mm512_set1_epi8(0x7E);
-  other[5] = _mm512_set1_epi8(0x80);
-  other[6] = _mm512_set1_epi8(0xFE);
+  other[2] = _mm512_set1_epi8(0x01);
+  other[3] = _mm512_set1_epi8(0x7E);
+  other[4] = _mm512_set1_epi8(0x80);
+  other[5] = _mm512_set1_epi8(0xFE);
 #endif
 
   while (true)

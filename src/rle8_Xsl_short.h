@@ -1,5 +1,10 @@
-#define RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT (1 + 1)
-#define RLE8_XSYMLUT_SHORT_MIN_RANGE_LONG (3 + 4 + 4 + 1)
+#if SYMBOL_COUNT != 0 || defined(SINGLE)
+  #define RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT (1 + 1)
+  #define RLE8_XSYMLUT_SHORT_MIN_RANGE_LONG (3 + 4 + 4 + 1)
+#else
+  #define RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT (1 + 1 + 1)
+  #define RLE8_XSYMLUT_SHORT_MIN_RANGE_LONG (3 + 4 + 4 + 1 + 1)
+#endif
 
 #if SYMBOL_COUNT == 3
   #define RLE8_XSYMLUT_SHORT_LUT_BITS (2)
@@ -7,6 +12,9 @@
 #elif SYMBOL_COUNT == 1
   #define RLE8_XSYMLUT_SHORT_LUT_BITS (1)
   #define RLE8_XSYMLUT_SHORT_COUNT_BITS_PACKED (3)
+#elif SYMBOL_COUNT == 0
+  #define RLE8_XSYMLUT_SHORT_LUT_BITS (0)
+  #define RLE8_XSYMLUT_SHORT_COUNT_BITS_PACKED (4)
 #else
   #define RLE8_XSYMLUT_SHORT_LUT_BITS (3)
   #define RLE8_XSYMLUT_SHORT_COUNT_BITS_PACKED (2)
@@ -17,7 +25,13 @@
 #define RLE8_XSYMLUT_SHORT_MAX_PACKED_COUNT ((1 << RLE8_XSYMLUT_SHORT_COUNT_BITS_PACKED) - 2)
 #define RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID ((1 << RLE8_XSYMLUT_SHORT_COUNT_BITS_PACKED) - 1)
 #define RLE8_XSYMLUT_SHORT_COUNT_BITS (9)
-#define RLE8_XSYMLUT_SHORT_RANGE_BITS (24 - RLE8_XSYMLUT_SHORT_LUT_BITS - 3 - RLE8_XSYMLUT_SHORT_COUNT_BITS)
+
+#if SYMBOL_COUNT != 7
+  #define RLE8_XSYMLUT_SHORT_RANGE_BITS (24 - RLE8_XSYMLUT_SHORT_LUT_BITS - RLE8_XSYMLUT_SHORT_COUNT_BITS_PACKED - RLE8_XSYMLUT_SHORT_COUNT_BITS)
+#else
+  #define RLE8_XSYMLUT_SHORT_RANGE_BITS (24 - RLE8_XSYMLUT_SHORT_LUT_BITS - RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED - RLE8_XSYMLUT_SHORT_COUNT_BITS)
+#endif
+
 #define RLE8_XSYMLUT_SHORT_MAX_TINY_COUNT ((1 << RLE8_XSYMLUT_SHORT_COUNT_BITS) - 1)
 #define RLE8_XSYMLUT_SHORT_MAX_TINY_RANGE ((1 << RLE8_XSYMLUT_SHORT_RANGE_BITS) - 1)
 #define RLE8_XSYMLUT_SHORT_COUNT_VALUE_OFFSET (2)
@@ -27,9 +41,9 @@
   #define CODEC CONCAT2(SYMBOL_COUNT, symlut_short_)
 #else
   #ifdef SINGLE
-    #define single_short_
+    #define CODEC single_short_
   #else  
-    #define multi_short_
+    #define CODEC multi_short_
   #endif
 #endif
 
@@ -40,7 +54,7 @@ typedef struct
   uint8_t symbol;
 #if SYMBOL_COUNT == 1
   uint8_t lastSymbol;
-#else
+#elif SYMBOL_COUNT > 0
   uint8_t lastSymbols[SYMBOL_COUNT];
 #endif
   int64_t count;
@@ -57,13 +71,13 @@ static int64_t CONCAT3(rle8_, CODEC, compress_avx2)(IN const uint8_t *pIn, const
 
 inline bool CONCAT3(_rle8_, CODEC, process_symbol)(IN const uint8_t *pIn, OUT uint8_t *pOut, const size_t i, IN OUT CONCAT3(rle8_, CODEC, compress_state_t) *pState)
 {
-#if SYMBOL_COUNT != 1
+#if SYMBOL_COUNT > 1
   size_t symbolMatchIndex = 0;
 
   for (; symbolMatchIndex < SYMBOL_COUNT; symbolMatchIndex++)
     if (pState->symbol == pState->lastSymbols[symbolMatchIndex])
       break;
-#else
+#elif SYMBOL_COUNT == 1
   const size_t symbolMatchIndex = (size_t)(pState->symbol != pState->lastSymbol);
 #endif
 
@@ -79,7 +93,11 @@ inline bool CONCAT3(_rle8_, CODEC, process_symbol)(IN const uint8_t *pIn, OUT ui
   isSingleValuePack = range3 <= RLE8_XSYMLUT_SHORT_MAX_PACKED_RANGE && count3 <= RLE8_XSYMLUT_SHORT_MAX_PACKED_COUNT;
   is19BitRangeCount = storedCount <= RLE8_XSYMLUT_SHORT_MAX_TINY_COUNT && range <= RLE8_XSYMLUT_SHORT_MAX_TINY_RANGE;
 
+#if SYMBOL_COUNT != 0
   int64_t penalty = (size_t)(symbolMatchIndex == SYMBOL_COUNT);
+#else
+  int64_t penalty = 0;
+#endif
 
   if (!isSingleValuePack)
   {
@@ -91,61 +109,67 @@ inline bool CONCAT3(_rle8_, CODEC, process_symbol)(IN const uint8_t *pIn, OUT ui
 
   if (pState->count >= RLE8_XSYMLUT_SHORT_MIN_RANGE_LONG || (pState->count >= RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT + penalty))
   {
+#if SYMBOL_COUNT > 0
     switch (symbolMatchIndex)
     {
-#if SYMBOL_COUNT != 1
-  #if SYMBOL_COUNT == 7
+  #if SYMBOL_COUNT != 1
+    #if SYMBOL_COUNT == 7
     case 7:
     case 6:
       pState->lastSymbols[6] = pState->lastSymbols[5];
-    #ifdef __cplusplus
+      #ifdef __cplusplus
       [[fallthrough]]; // intentional fallthrough!
-    #endif
+      #endif
 
     case 5:
       pState->lastSymbols[5] = pState->lastSymbols[4];
-    #ifdef __cplusplus
+      #ifdef __cplusplus
       [[fallthrough]]; // intentional fallthrough!
-    #endif
+      #endif
 
     case 4:
       pState->lastSymbols[4] = pState->lastSymbols[3];
-    #ifdef __cplusplus
+      #ifdef __cplusplus
       [[fallthrough]]; // intentional fallthrough!
-    #endif
+      #endif
 
     case 3:
       pState->lastSymbols[3] = pState->lastSymbols[2];
+      #ifdef __cplusplus
+      [[fallthrough]]; // intentional fallthrough!
+      #endif
+
+    #else
+    case 3:
+    #endif
+    case 2:
+      pState->lastSymbols[2] = pState->lastSymbols[1];
     #ifdef __cplusplus
       [[fallthrough]]; // intentional fallthrough!
     #endif
-
-  #else
-    case 3:
-  #endif
-    case 2:
-      pState->lastSymbols[2] = pState->lastSymbols[1];
-  #ifdef __cplusplus
-      [[fallthrough]]; // intentional fallthrough!
-  #endif
 
     case 1:
       pState->lastSymbols[1] = pState->lastSymbols[0];
       pState->lastSymbols[0] = pState->symbol;
       break;
-#else // 1 sym lut.
+  #else // 1 sym lut.
     case 1:
       pState->lastSymbol = pState->symbol;
       break;
-#endif
+  #endif
 
     case 0:
       break;
     }
+#endif
 
     if (isSingleValuePack)
     {
+#if SYMBOL_COUNT != 0
       const uint8_t valuePack8 = (uint8_t)(symbolMatchIndex << (RLE8_XSYMLUT_SHORT_COUNT_BITS_PACKED + RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED)) | ((uint8_t)count3 << RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED) | (uint8_t)(range3);
+#else
+      const uint8_t valuePack8 = (uint8_t)((uint8_t)count3 << RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED) | (uint8_t)(range3);
+#endif
 
       pOut[pState->index] = valuePack8;
       pState->index++;
@@ -169,6 +193,7 @@ inline bool CONCAT3(_rle8_, CODEC, process_symbol)(IN const uint8_t *pIn, OUT ui
       else
         rangeX = 0;
 
+#if SYMBOL_COUNT != 0
   #if RLE8_XSYMLUT_SHORT_RANGE_BITS != 8
       const uint8_t valuePack1 = (uint8_t)(symbolMatchIndex << (RLE8_XSYMLUT_SHORT_COUNT_BITS_PACKED + RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED)) | ((uint8_t)(RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID << RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED)) | (uint8_t)((storedCountX << (RLE8_XSYMLUT_SHORT_RANGE_BITS - 8)) >> 8);
       const uint8_t valuePack2 = (uint8_t)((storedCountX << (RLE8_XSYMLUT_SHORT_RANGE_BITS - 8)) | (rangeX >> 8));
@@ -176,6 +201,15 @@ inline bool CONCAT3(_rle8_, CODEC, process_symbol)(IN const uint8_t *pIn, OUT ui
       const uint8_t valuePack1 = (uint8_t)(symbolMatchIndex << (RLE8_XSYMLUT_SHORT_COUNT_BITS_PACKED + RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED)) | ((uint8_t)(RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID << RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED)) | (uint8_t)(storedCountX >> 8);
       const uint8_t valuePack2 = (uint8_t)(storedCountX);
   #endif
+#else
+  #if RLE8_XSYMLUT_SHORT_RANGE_BITS != 8
+      const uint8_t valuePack1 = ((uint8_t)(RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID << RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED)) | (uint8_t)((storedCountX << (RLE8_XSYMLUT_SHORT_RANGE_BITS - 8)) >> 8);
+      const uint8_t valuePack2 = (uint8_t)((storedCountX << (RLE8_XSYMLUT_SHORT_RANGE_BITS - 8)) | (rangeX >> 8));
+  #else
+      const uint8_t valuePack1 = ((uint8_t)(RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID << RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED)) | (uint8_t)(storedCountX >> 8);
+      const uint8_t valuePack2 = (uint8_t)(storedCountX);
+  #endif
+#endif
 
       pOut[pState->index] = valuePack1;
       pState->index++;
@@ -213,11 +247,15 @@ inline bool CONCAT3(_rle8_, CODEC, process_symbol)(IN const uint8_t *pIn, OUT ui
       }
     }
 
+#ifndef SINGLE
+  #if SYMBOL_COUNT != 0
     if (symbolMatchIndex == SYMBOL_COUNT)
+  #endif
     {
       pOut[pState->index] = pState->symbol;
       pState->index++;
     }
+#endif
 
     const size_t copySize = i - pState->count - pState->lastRLE;
 
@@ -245,19 +283,23 @@ uint32_t CONCAT3(rle8_, CODEC, compress)(IN const uint8_t *pIn, const uint32_t i
   CONCAT3(rle8_, CODEC, compress_state_t) state;
   memset(&state, 0, sizeof(state));
   state.index = sizeof(uint32_t) * 2;
-#if SYMBOL_COUNT != 1
+
+#if SYMBOL_COUNT != 0
+  #if SYMBOL_COUNT != 1
   state.lastSymbols[0] = 0x00;
   state.lastSymbols[1] = 0x7F;
   state.lastSymbols[2] = 0xFF;
-  #if SYMBOL_COUNT == 7
+    #if SYMBOL_COUNT == 7
   state.lastSymbols[3] = 0x01;
   state.lastSymbols[4] = 0x7E;
   state.lastSymbols[5] = 0x80;
   state.lastSymbols[6] = 0xFE;
-  #endif
-#else
+    #endif
+  #else
   state.lastSymbol = 0;
+  #endif
 #endif
+
   state.symbol = ~(*pIn);
 
   size_t i = 0;
@@ -296,6 +338,8 @@ uint32_t CONCAT3(rle8_, CODEC, compress)(IN const uint8_t *pIn, const uint32_t i
       pOut[state.index] = 0b00000100;
 #elif SYMBOL_COUNT == 1
       pOut[state.index] = 0b00001000;
+#elif SYMBOL_COUNT == 0
+      pOut[state.index] = 0b00001000;
 #else
       pOut[state.index] = 0b00000010;
 #endif
@@ -306,6 +350,11 @@ uint32_t CONCAT3(rle8_, CODEC, compress)(IN const uint8_t *pIn, const uint32_t i
       state.index += sizeof(uint16_t);
       *((uint16_t *)&pOut[state.index]) = 0;
       state.index += sizeof(uint16_t);
+
+#if SYMBOL_COUNT == 0 && !defined(SINGLE)
+      pOut[state.index] = 0;
+      state.index++;
+#endif
     }
     else
     {
@@ -314,6 +363,8 @@ uint32_t CONCAT3(rle8_, CODEC, compress)(IN const uint8_t *pIn, const uint32_t i
 #if SYMBOL_COUNT == 3
       pOut[state.index] = 0b00000100;
 #elif SYMBOL_COUNT == 1
+      pOut[state.index] = 0b00001000;
+#elif SYMBOL_COUNT == 0
       pOut[state.index] = 0b00001000;
 #else
       pOut[state.index] = 0b00000010;
@@ -325,6 +376,11 @@ uint32_t CONCAT3(rle8_, CODEC, compress)(IN const uint8_t *pIn, const uint32_t i
       state.index += sizeof(uint16_t);
       *((uint32_t *)&pOut[state.index]) = (uint32_t)range;
       state.index += sizeof(uint32_t);
+
+#if SYMBOL_COUNT == 0 && !defined(SINGLE)
+      pOut[state.index] = 0;
+      state.index++;
+#endif
 
       const size_t copySize = i - state.lastRLE;
 
@@ -483,7 +539,7 @@ static void CONCAT3(rle8_, CODEC, decompress_sse)(IN const uint8_t *pInStart, OU
   size_t offset, symbolCount;
   __m128i symbol = _mm_setzero_si128();
 
-#if SYMBOL_COUNT != 1
+#if SYMBOL_COUNT > 1
   __m128i other[SYMBOL_COUNT - 1];
 
   other[0] = _mm_set1_epi8(0x7F);
@@ -501,7 +557,10 @@ static void CONCAT3(rle8_, CODEC, decompress_sse)(IN const uint8_t *pInStart, OU
     const uint8_t packedValue1 = *pInStart;
     pInStart++;
 
+#if SYMBOL_COUNT != 0
     const uint8_t symbolIndex = packedValue1 >> (RLE8_XSYMLUT_SHORT_COUNT_BITS_PACKED + RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED);
+#endif
+
     const uint8_t count3 = (packedValue1 >> RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED) & RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID;
 
     if (count3 == RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID) // don't use 3 bit value.
@@ -551,6 +610,7 @@ static void CONCAT3(rle8_, CODEC, decompress_sse)(IN const uint8_t *pInStart, OU
       offset = (packedValue1 & RLE8_XSYMLUT_SHORT_MAX_PACKED_RANGE) + RLE8_XSYMLUT_SHORT_COUNT_VALUE_OFFSET;
     }
 
+#if SYMBOL_COUNT != 0
     switch (symbolIndex)
     {
 #if SYMBOL_COUNT != 1
@@ -621,6 +681,10 @@ static void CONCAT3(rle8_, CODEC, decompress_sse)(IN const uint8_t *pInStart, OU
     case 0:
       break;
     }
+#elif !defined(SINGLE)
+    symbol = _mm_set1_epi8(*pInStart);
+    pInStart++;
+#endif
 
     offset -= 2;
 
@@ -645,7 +709,7 @@ static void CONCAT3(rle8_, CODEC, decompress_sse41)(IN const uint8_t *pInStart, 
   size_t offset, symbolCount;
   __m128i symbol = _mm_setzero_si128();
 
-#if SYMBOL_COUNT != 1
+#if SYMBOL_COUNT > 1
   __m128i other[SYMBOL_COUNT - 1];
 
   other[0] = _mm_set1_epi8(0x7F);
@@ -663,7 +727,10 @@ static void CONCAT3(rle8_, CODEC, decompress_sse41)(IN const uint8_t *pInStart, 
     const uint8_t packedValue1 = *pInStart;
     pInStart++;
 
+#if SYMBOL_COUNT != 0
     const uint8_t symbolIndex = packedValue1 >> (RLE8_XSYMLUT_SHORT_COUNT_BITS_PACKED + RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED);
+#endif
+
     const uint8_t count3 = (packedValue1 >> RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED) & RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID;
 
     if (count3 == RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID) // don't use 3 bit value.
@@ -713,6 +780,7 @@ static void CONCAT3(rle8_, CODEC, decompress_sse41)(IN const uint8_t *pInStart, 
       offset = (packedValue1 & RLE8_XSYMLUT_SHORT_MAX_PACKED_RANGE) + RLE8_XSYMLUT_SHORT_COUNT_VALUE_OFFSET;
     }
 
+#if SYMBOL_COUNT != 0
     switch (symbolIndex)
     {
 #if SYMBOL_COUNT != 1
@@ -783,6 +851,10 @@ static void CONCAT3(rle8_, CODEC, decompress_sse41)(IN const uint8_t *pInStart, 
     case 0:
       break;
     }
+#elif !defined(SINGLE)
+    symbol = _mm_set1_epi8(*pInStart);
+    pInStart++;
+#endif
 
     offset -= 2;
 
@@ -807,7 +879,7 @@ static void CONCAT3(rle8_, CODEC, decompress_avx)(IN const uint8_t *pInStart, OU
   size_t offset, symbolCount;
   __m256i symbol = _mm256_setzero_si256();
 
-#if SYMBOL_COUNT != 1
+#if SYMBOL_COUNT > 1
   __m256i other[SYMBOL_COUNT - 1];
 
   other[0] = _mm256_set1_epi8(0x7F);
@@ -825,7 +897,10 @@ static void CONCAT3(rle8_, CODEC, decompress_avx)(IN const uint8_t *pInStart, OU
     const uint8_t packedValue1 = *pInStart;
     pInStart++;
 
+#if SYMBOL_COUNT != 0
     const uint8_t symbolIndex = packedValue1 >> (RLE8_XSYMLUT_SHORT_COUNT_BITS_PACKED + RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED);
+#endif
+
     const uint8_t count3 = (packedValue1 >> RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED) & RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID;
 
     if (count3 == RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID) // don't use 3 bit value.
@@ -875,6 +950,7 @@ static void CONCAT3(rle8_, CODEC, decompress_avx)(IN const uint8_t *pInStart, OU
       offset = (packedValue1 & RLE8_XSYMLUT_SHORT_MAX_PACKED_RANGE) + RLE8_XSYMLUT_SHORT_COUNT_VALUE_OFFSET;
     }
 
+#if SYMBOL_COUNT != 0
     switch (symbolIndex)
     {
 #if SYMBOL_COUNT != 1
@@ -945,6 +1021,10 @@ static void CONCAT3(rle8_, CODEC, decompress_avx)(IN const uint8_t *pInStart, OU
     case 0:
       break;
     }
+#elif !defined(SINGLE)
+    symbol = _mm256_set1_epi8(*pInStart);
+    pInStart++;
+#endif
 
     offset -= 2;
 
@@ -969,7 +1049,7 @@ static void CONCAT3(rle8_, CODEC, decompress_avx2)(IN const uint8_t *pInStart, O
   size_t offset, symbolCount;
   __m256i symbol = _mm256_setzero_si256();
 
-#if SYMBOL_COUNT != 1
+#if SYMBOL_COUNT > 1
   __m256i other[SYMBOL_COUNT - 1];
 
   other[0] = _mm256_set1_epi8(0x7F);
@@ -987,7 +1067,10 @@ static void CONCAT3(rle8_, CODEC, decompress_avx2)(IN const uint8_t *pInStart, O
     const uint8_t packedValue1 = *pInStart;
     pInStart++;
 
+#if SYMBOL_COUNT != 0
     const uint8_t symbolIndex = packedValue1 >> (RLE8_XSYMLUT_SHORT_COUNT_BITS_PACKED + RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED);
+#endif
+
     const uint8_t count3 = (packedValue1 >> RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED) & RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID;
 
     if (count3 == RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID) // don't use 3 bit value.
@@ -1037,6 +1120,7 @@ static void CONCAT3(rle8_, CODEC, decompress_avx2)(IN const uint8_t *pInStart, O
       offset = (packedValue1 & RLE8_XSYMLUT_SHORT_MAX_PACKED_RANGE) + RLE8_XSYMLUT_SHORT_COUNT_VALUE_OFFSET;
     }
 
+#if SYMBOL_COUNT != 0
     switch (symbolIndex)
     {
 #if SYMBOL_COUNT != 1
@@ -1107,6 +1191,10 @@ static void CONCAT3(rle8_, CODEC, decompress_avx2)(IN const uint8_t *pInStart, O
     case 0:
       break;
     }
+#elif !defined(SINGLE)
+symbol = _mm256_set1_epi8(*pInStart);
+pInStart++;
+#endif
 
     offset -= 2;
 
@@ -1131,7 +1219,7 @@ static void CONCAT3(rle8_, CODEC, decompress_avx512f)(IN const uint8_t *pInStart
   size_t offset, symbolCount;
   __m512i symbol = _mm512_setzero_si512();
 
-#if SYMBOL_COUNT != 1
+#if SYMBOL_COUNT > 1
   __m512i other[SYMBOL_COUNT - 1];
 
   other[0] = _mm512_set1_epi8(0x7F);
@@ -1149,7 +1237,10 @@ static void CONCAT3(rle8_, CODEC, decompress_avx512f)(IN const uint8_t *pInStart
     const uint8_t packedValue1 = *pInStart;
     pInStart++;
 
+#if SYMBOL_COUNT != 0
     const uint8_t symbolIndex = packedValue1 >> (RLE8_XSYMLUT_SHORT_COUNT_BITS_PACKED + RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED);
+#endif
+
     const uint8_t count3 = (packedValue1 >> RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED) & RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID;
 
     if (count3 == RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID) // don't use 3 bit value.
@@ -1166,10 +1257,6 @@ static void CONCAT3(rle8_, CODEC, decompress_avx512f)(IN const uint8_t *pInStart
 #else
       symbolCount = (packedValue2) | (((uint16_t)(packedValue1 & RLE8_XSYMLUT_SHORT_MAX_PACKED_RANGE)) << (8));
       offset = packedValue3;
-#endif
-
-#if SYMBOL_COUNT == 7
-      const bool print = symbolCount < 2 || offset < 2;
 #endif
 
       if (symbolCount == 0)
@@ -1203,6 +1290,7 @@ static void CONCAT3(rle8_, CODEC, decompress_avx512f)(IN const uint8_t *pInStart
       offset = (packedValue1 & RLE8_XSYMLUT_SHORT_MAX_PACKED_RANGE) + RLE8_XSYMLUT_SHORT_COUNT_VALUE_OFFSET;
     }
 
+#if SYMBOL_COUNT != 0
     switch (symbolIndex)
     {
 #if SYMBOL_COUNT != 1
@@ -1273,6 +1361,10 @@ static void CONCAT3(rle8_, CODEC, decompress_avx512f)(IN const uint8_t *pInStart
     case 0:
       break;
     }
+#elif !defined(SINGLE)
+    symbol = _mm512_set1_epi8(*pInStart);
+    pInStart++;
+#endif
 
     offset -= 2;
 
@@ -1318,3 +1410,22 @@ uint32_t CONCAT3(rle8_, CODEC, decompress)(IN const uint8_t *pIn, const uint32_t
 
   return (uint32_t)expectedOutSize;
 }
+
+#undef RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT
+#undef RLE8_XSYMLUT_SHORT_MIN_RANGE_LONG
+
+#undef RLE8_XSYMLUT_SHORT_LUT_BITS
+#undef RLE8_XSYMLUT_SHORT_COUNT_BITS_PACKED
+
+#undef RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED
+#undef RLE8_XSYMLUT_SHORT_MAX_PACKED_RANGE
+#undef RLE8_XSYMLUT_SHORT_MAX_PACKED_COUNT
+#undef RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID
+#undef RLE8_XSYMLUT_SHORT_COUNT_BITS
+#undef RLE8_XSYMLUT_SHORT_RANGE_BITS
+#undef RLE8_XSYMLUT_SHORT_MAX_TINY_COUNT
+#undef RLE8_XSYMLUT_SHORT_MAX_TINY_RANGE
+#undef RLE8_XSYMLUT_SHORT_COUNT_VALUE_OFFSET
+#undef RLE8_XSYMLUT_SHORT_RANGE_VALUE_OFFSET
+
+#undef CODEC
