@@ -1,6 +1,6 @@
 #ifdef BUILD_WITH_OPENCL
 
-#include "rle8.h"
+#include "rle.h"
 #include "rle8_ocl_kernel.h"
 
 #ifdef _MSC_VER

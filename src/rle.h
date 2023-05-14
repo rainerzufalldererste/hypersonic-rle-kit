@@ -1,5 +1,5 @@
-#ifndef rle8_h__
-#define rle8_h__
+#ifndef rle_h__
+#define rle_h__
 
 #include <stdint.h>
 #include <inttypes.h>
@@ -269,4 +269,4 @@ uint32_t rle8m_opencl_decompress(IN const uint8_t *pIn, const uint32_t inSize, O
 }
 #endif
 
-#endif // rle8_h__
+#endif // rle_h__

@@ -1,4 +1,4 @@
-ProjectName = "rle8"
+ProjectName = "hsrlekit"
 project(ProjectName)
 
   --Settings

@@ -1,4 +1,4 @@
-#include "rle8.h"
+#include "rle.h"
 
 #ifdef _MSC_VER
 #include <intrin.h>

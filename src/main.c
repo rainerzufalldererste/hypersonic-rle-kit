@@ -20,7 +20,7 @@
 #define ALIGNED_FREE(a) free(a)
 #endif
 
-#include "rle8.h"
+#include "rle.h"
 
 const char ArgumentTo[] = "--to";
 const char ArgumentSubSections[] = "--sub-sections";
@@ -55,7 +55,7 @@ int main(int argc, char **pArgv)
 {
   if (argc <= 1)
   {
-    printf("Usage: rle8 <InputFileName>\n\n");
+    printf("Usage: hsrlekit <InputFileName>\n\n");
     printf("\t[%s <Run Count>]\n\t[%s <Minimum Benchmark Time in Seconds>]\n\n\t", ArgumentRuns, ArgumentMinimumTime);
     printf("OR:\n\n");
     printf("\t[%s <Output File Name>]\n\n", ArgumentTo);
@@ -1002,7 +1002,7 @@ int main(int argc, char **pArgv)
     // Print Codec Description.
     if (!benchmarkAll)
     {
-      printf("Mode: rle8 ");
+      printf("Mode: hypersonic rle kit ");
 
       if (lowEntropyMode)
         fputs("Normal ", stdout);

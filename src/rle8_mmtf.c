@@ -1,4 +1,4 @@
-#include "rle8.h"
+#include "rle.h"
 #include "rleX_extreme_common.h"
 #include "bitpack.h"
 
