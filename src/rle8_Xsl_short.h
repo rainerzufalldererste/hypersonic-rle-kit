@@ -319,8 +319,6 @@ uint32_t CONCAT3(rle8_, CODEC, compress)(IN const uint8_t *pIn, const uint32_t i
 #ifndef SINGLE
   state.symbol = ~(*pIn);
 #else
-  uint8_t maxFreqSymbol;
-
   uint8_t rle8_single_compress_get_approx_optimal_symbol_sse2(IN const uint8_t * pIn, const size_t inSize);
   uint8_t rle8_single_compress_get_approx_optimal_symbol_avx2(IN const uint8_t * pIn, const size_t inSize);
 

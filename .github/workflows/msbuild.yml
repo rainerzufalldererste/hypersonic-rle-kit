@@ -7,7 +7,7 @@ on:
     branches: [ "master" ]
 
 env:
-  SOLUTION_FILE_PATH: rle8.sln
+  SOLUTION_FILE_PATH: hsrlekit.sln
   BUILD_CONFIGURATION: Release
 
 permissions:
