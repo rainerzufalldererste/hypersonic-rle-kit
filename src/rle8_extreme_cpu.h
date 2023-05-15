@@ -85,7 +85,7 @@ static void CONCAT3(rle8, CODEC, decompress_single_avx512f)(IN const uint8_t *pI
 
 uint32_t CONCAT3(rle8, CODEC, multi_compress)(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
-  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_compress_bounds(inSize))
+  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle_compress_bounds(inSize))
     return 0;
 
   rle_extreme_t header;
@@ -345,7 +345,7 @@ uint32_t CONCAT3(rle8, CODEC, multi_compress)(IN const uint8_t *pIn, const uint3
 
 uint32_t CONCAT3(rle8, CODEC, single_compress)(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
-  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_compress_bounds(inSize))
+  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle_compress_bounds(inSize))
     return 0;
 
   rle_extreme_t header;

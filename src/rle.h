@@ -97,12 +97,12 @@ uint32_t rle8_low_entropy_short_decompress_with_info(IN const uint8_t *pIn, IN c
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t rle8_compress_bounds(const uint32_t inSize);
+uint32_t rle_compress_bounds(const uint32_t inSize);
 uint32_t rle8_multi_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 uint32_t rle8_single_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 uint32_t rle8_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
-uint32_t rle8_decompress_additional_size();
+uint32_t rle_decompress_additional_size();
 
 uint32_t rle16_sym_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 uint32_t rle16_sym_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);

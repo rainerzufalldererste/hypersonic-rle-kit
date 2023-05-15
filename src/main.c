@@ -398,7 +398,7 @@ int main(int argc, char **pArgv)
 
   fseek(pFile, 0, SEEK_SET);
 
-  compressedBufferSize = rle8_compress_bounds((uint32_t)fileSize);
+  compressedBufferSize = rle_compress_bounds((uint32_t)fileSize);
 
   compressedBufferSize = max(compressedBufferSize, rle_mmtf_bounds((uint32_t)fileSize));
   compressedBufferSize = max(compressedBufferSize, rle8_sh_bounds((uint32_t)fileSize));
@@ -411,7 +411,7 @@ int main(int argc, char **pArgv)
     compressedBufferSize = max(compressedBufferSize, rle8m_compress_bounds((uint32_t)subSections, (uint32_t)fileSize));
 
   pUncompressedData = (uint8_t *)ALIGNED_ALLOC(32, fileSize);
-  pDecompressedData = (uint8_t *)ALIGNED_ALLOC(32, fileSize + rle8_decompress_additional_size());
+  pDecompressedData = (uint8_t *)ALIGNED_ALLOC(32, fileSize + rle_decompress_additional_size());
   pCompressedData = (uint8_t *)ALIGNED_ALLOC(32, compressedBufferSize);
 
   if (!pUncompressedData || !pDecompressedData || !pCompressedData)

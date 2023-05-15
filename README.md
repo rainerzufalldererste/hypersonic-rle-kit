@@ -186,20 +186,20 @@ config=release_x64 make
 ### How to use it?
 
 ```c
-#include "rle8.h"
+#include "rle.h"
 
 uint8_t *pUncompressedData; // Some Data.
 uint32_t fileSize; // Some Size.
 
 // Get Compress Bounds.
-const uint32_t compressedBufferSize = rle8_compress_bounds(fileSize);
+const uint32_t compressedBufferSize = rle_compress_bounds(fileSize);
 uint8_t *pCompressedData = (uint8_t *)malloc(compressedBufferSize);
 
 // Compress.
-const uint32_t compressedSize = rle8_compress(pUncompressedData, fileSize, pCompressedData, compressedBufferSize);
+const uint32_t compressedSize = rle8_multi_compress(pUncompressedData, fileSize, pCompressedData, compressedBufferSize);
 
 // Allocate Output Buffer.
-uint8_t *pDecompressedData = (uint8_t *)malloc(fileSize);
+uint8_t *pDecompressedData = (uint8_t *)malloc(fileSize + rle_decompress_additional_size());
 
 // Decompress.
 const uint32_t decompressedSize = rle8_decompress(pCompressedData, compressedSize, pDecompressedData, fileSize);

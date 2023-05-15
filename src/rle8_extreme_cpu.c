@@ -14,12 +14,12 @@ __attribute__((packed))
   uint8_t mode;
 } rle_extreme_t;
 
-uint32_t rle8_decompress_additional_size()
+uint32_t rle_decompress_additional_size()
 {
   return 128; // just to be on the safe side.
 }
 
-uint32_t rle8_compress_bounds(const uint32_t inSize)
+uint32_t rle_compress_bounds(const uint32_t inSize)
 {
   if (inSize > (1 << 30))
     return 0;
