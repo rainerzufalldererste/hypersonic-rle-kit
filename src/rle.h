@@ -247,6 +247,18 @@ uint32_t rle16_7symlut_byte_short_decompress(IN const uint8_t *pIn, const uint32
 
 //////////////////////////////////////////////////////////////////////////
 
+uint32_t rle16_3symlut_sym_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle16_3symlut_sym_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle16_3symlut_byte_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle16_3symlut_byte_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+uint32_t rle16_7symlut_sym_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle16_7symlut_sym_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle16_7symlut_byte_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle16_7symlut_byte_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+//////////////////////////////////////////////////////////////////////////
+
 uint32_t rle32_sym_short_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 uint32_t rle32_sym_short_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 uint32_t rle32_byte_short_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
@@ -269,6 +281,18 @@ uint32_t rle32_7symlut_byte_short_decompress(IN const uint8_t *pIn, const uint32
 
 //////////////////////////////////////////////////////////////////////////
 
+uint32_t rle32_3symlut_sym_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle32_3symlut_sym_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle32_3symlut_byte_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle32_3symlut_byte_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+uint32_t rle32_7symlut_sym_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle32_7symlut_sym_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle32_7symlut_byte_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle32_7symlut_byte_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+//////////////////////////////////////////////////////////////////////////
+
 uint32_t rle64_sym_short_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 uint32_t rle64_sym_short_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 uint32_t rle64_byte_short_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
@@ -288,6 +312,18 @@ uint32_t rle64_7symlut_sym_short_compress(IN const uint8_t *pIn, const uint32_t 
 uint32_t rle64_7symlut_sym_short_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 uint32_t rle64_7symlut_byte_short_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 uint32_t rle64_7symlut_byte_short_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+//////////////////////////////////////////////////////////////////////////
+
+uint32_t rle64_3symlut_sym_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle64_3symlut_sym_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle64_3symlut_byte_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle64_3symlut_byte_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+uint32_t rle64_7symlut_sym_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle64_7symlut_sym_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle64_7symlut_byte_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t rle64_7symlut_byte_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
 //////////////////////////////////////////////////////////////////////////
 

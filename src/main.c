@@ -452,13 +452,17 @@ int main(int argc, char **pArgv)
       Extreme16SymPacked,
       Extreme16SymShort,
       Extreme16Sym_1SLShort,
+      Extreme16Sym_3SL,
       Extreme16Sym_3SLShort,
+      Extreme16Sym_7SL,
       Extreme16Sym_7SLShort,
       Extreme16Byte,
       Extreme16BytePacked,
       Extreme16ByteShort,
       Extreme16Byte_1SLShort,
+      Extreme16Byte_3SL,
       Extreme16Byte_3SLShort,
+      Extreme16Byte_7SL,
       Extreme16Byte_7SLShort,
       Extreme24Sym,
       Extreme24SymPacked,
@@ -468,13 +472,17 @@ int main(int argc, char **pArgv)
       Extreme32SymPacked,
       Extreme32SymShort,
       Extreme32Sym_1SLShort,
+      Extreme32Sym_3SL,
       Extreme32Sym_3SLShort,
+      Extreme32Sym_7SL,
       Extreme32Sym_7SLShort,
       Extreme32Byte,
       Extreme32BytePacked,
       Extreme32ByteShort,
       Extreme32Byte_1SLShort,
+      Extreme32Byte_3SL,
       Extreme32Byte_3SLShort,
+      Extreme32Byte_7SL,
       Extreme32Byte_7SLShort,
       Extreme48Sym,
       Extreme48SymPacked,
@@ -484,13 +492,17 @@ int main(int argc, char **pArgv)
       Extreme64SymPacked,
       Extreme64SymShort,
       Extreme64Sym_1SLShort,
+      Extreme64Sym_3SL,
       Extreme64Sym_3SLShort,
+      Extreme64Sym_7SL,
       Extreme64Sym_7SLShort,
       Extreme64Byte,
       Extreme64BytePacked,
       Extreme64ByteShort,
       Extreme64Byte_1SLShort,
+      Extreme64Byte_3SL,
       Extreme64Byte_3SLShort,
+      Extreme64Byte_7SL,
       Extreme64Byte_7SLShort,
       Extreme128Sym,
       Extreme128SymPacked,
@@ -528,13 +540,17 @@ int main(int argc, char **pArgv)
       "16 Bit Packed (Symbol)        ",
       "16 Bit Short (Symbol)         ",
       "16 Bit 1LUT Short (Symbol)    ",
+      "16 Bit 3LUT (Symbol)          ",
       "16 Bit 3LUT Short (Symbol)    ",
+      "16 Bit 7LUT (Symbol)          ",
       "16 Bit 7LUT Short (Symbol)    ",
       "16 Bit (Byte)                 ",
       "16 Bit Packed (Byte)          ",
       "16 Bit Short (Byte)           ",
       "16 Bit 1LUT Short (Byte)      ",
+      "16 Bit 3LUT (Byte)            ",
       "16 Bit 3LUT Short (Byte)      ",
+      "16 Bit 7LUT (Byte)            ",
       "16 Bit 7LUT Short (Byte)      ",
       "24 Bit (Symbol)               ",
       "24 Bit Packed (Symbol)        ",
@@ -544,13 +560,17 @@ int main(int argc, char **pArgv)
       "32 Bit Packed (Symbol)        ",
       "32 Bit Short (Symbol)         ",
       "32 Bit 1LUT Short (Symbol)    ",
+      "32 Bit 3LUT (Symbol)          ",
       "32 Bit 3LUT Short (Symbol)    ",
+      "32 Bit 7LUT (Symbol)          ",
       "32 Bit 7LUT Short (Symbol)    ",
       "32 Bit (Byte)                 ",
       "32 Bit Packed (Byte)          ",
       "32 Bit Short (Byte)           ",
       "32 Bit 1LUT Short (Byte)      ",
+      "32 Bit 3LUT (Byte)            ",
       "32 Bit 3LUT Short (Byte)      ",
+      "32 Bit 7LUT (Byte)            ",
       "32 Bit 7LUT Short (Byte)      ",
       "48 Bit (Symbol)               ",
       "48 Bit Packed (Symbol)        ",
@@ -560,13 +580,17 @@ int main(int argc, char **pArgv)
       "64 Bit Packed (Symbol)        ",
       "64 Bit Short (Symbol)         ",
       "64 Bit 1LUT Short (Symbol)    ",
+      "64 Bit 3LUT (Symbol)          ",
       "64 Bit 3LUT Short (Symbol)    ",
+      "64 Bit 7LUT (Symbol)          ",
       "64 Bit 7LUT Short (Symbol)    ",
       "64 Bit (Byte)                 ",
       "64 Bit Packed (Byte)          ",
       "64 Bit Short (Byte)           ",
       "64 Bit 1LUT Short (Byte)      ",
+      "64 Bit 3LUT (Byte)            ",
       "64 Bit 3LUT Short (Byte)      ",
+      "64 Bit 7LUT (Byte)            ",
       "64 Bit 7LUT Short (Byte)      ",
       "128 Bit (Symbol)              ",
       "128 Bit Packed (Symbol)       ",
@@ -760,8 +784,16 @@ int main(int argc, char **pArgv)
           compressedSize = rle16_1symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme16Sym_3SL:
+          compressedSize = rle16_3symlut_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme16Sym_3SLShort:
           compressedSize = rle16_3symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Sym_7SL:
+          compressedSize = rle16_7symlut_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme16Sym_7SLShort:
@@ -776,8 +808,16 @@ int main(int argc, char **pArgv)
           compressedSize = rle16_1symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme16Byte_3SL:
+          compressedSize = rle16_3symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme16Byte_3SLShort:
           compressedSize = rle16_3symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Byte_7SL:
+          compressedSize = rle16_7symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme16Byte_7SLShort:
@@ -792,8 +832,16 @@ int main(int argc, char **pArgv)
           compressedSize = rle32_1symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme32Sym_3SL:
+          compressedSize = rle32_3symlut_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme32Sym_3SLShort:
           compressedSize = rle32_3symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Sym_7SL:
+          compressedSize = rle32_7symlut_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme32Sym_7SLShort:
@@ -808,8 +856,16 @@ int main(int argc, char **pArgv)
           compressedSize = rle32_1symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme32Byte_3SL:
+          compressedSize = rle32_3symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme32Byte_3SLShort:
           compressedSize = rle32_3symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte_7SL:
+          compressedSize = rle32_7symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme32Byte_7SLShort:
@@ -824,8 +880,16 @@ int main(int argc, char **pArgv)
           compressedSize = rle64_1symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme64Sym_3SL:
+          compressedSize = rle64_3symlut_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme64Sym_3SLShort:
           compressedSize = rle64_3symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Sym_7SL:
+          compressedSize = rle64_7symlut_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme64Sym_7SLShort:
@@ -840,8 +904,16 @@ int main(int argc, char **pArgv)
           compressedSize = rle64_1symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme64Byte_3SL:
+          compressedSize = rle64_3symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme64Byte_3SLShort:
           compressedSize = rle64_3symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte_7SL:
+          compressedSize = rle64_7symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme64Byte_7SLShort:
@@ -1077,8 +1149,16 @@ int main(int argc, char **pArgv)
           decompressedSize = rle16_1symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
+        case Extreme16Sym_3SL:
+          decompressedSize = rle16_3symlut_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
         case Extreme16Sym_3SLShort:
           decompressedSize = rle16_3symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Sym_7SL:
+          decompressedSize = rle16_7symlut_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Extreme16Sym_7SLShort:
@@ -1093,8 +1173,16 @@ int main(int argc, char **pArgv)
           decompressedSize = rle16_1symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
+        case Extreme16Byte_3SL:
+          decompressedSize = rle16_3symlut_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
         case Extreme16Byte_3SLShort:
           decompressedSize = rle16_3symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Byte_7SL:
+          decompressedSize = rle16_7symlut_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Extreme16Byte_7SLShort:
@@ -1109,8 +1197,16 @@ int main(int argc, char **pArgv)
           decompressedSize = rle32_1symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
+        case Extreme32Sym_3SL:
+          decompressedSize = rle32_3symlut_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
         case Extreme32Sym_3SLShort:
           decompressedSize = rle32_3symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Sym_7SL:
+          decompressedSize = rle32_7symlut_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Extreme32Sym_7SLShort:
@@ -1125,8 +1221,16 @@ int main(int argc, char **pArgv)
           decompressedSize = rle32_1symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
+        case Extreme32Byte_3SL:
+          decompressedSize = rle32_3symlut_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
         case Extreme32Byte_3SLShort:
           decompressedSize = rle32_3symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte_7SL:
+          decompressedSize = rle32_7symlut_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Extreme32Byte_7SLShort:
@@ -1141,8 +1245,16 @@ int main(int argc, char **pArgv)
           decompressedSize = rle64_1symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
+        case Extreme64Sym_3SL:
+          decompressedSize = rle64_3symlut_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
         case Extreme64Sym_3SLShort:
           decompressedSize = rle64_3symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Sym_7SL:
+          decompressedSize = rle64_7symlut_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Extreme64Sym_7SLShort:
@@ -1157,8 +1269,16 @@ int main(int argc, char **pArgv)
           decompressedSize = rle64_1symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
+        case Extreme64Byte_3SL:
+          decompressedSize = rle64_3symlut_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
         case Extreme64Byte_3SLShort:
           decompressedSize = rle64_3symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte_7SL:
+          decompressedSize = rle64_7symlut_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Extreme64Byte_7SLShort:
