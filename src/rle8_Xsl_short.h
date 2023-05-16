@@ -1720,10 +1720,6 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx512f))(IN co
       {
         offset = *(uint32_t *)pInStart;
         pInStart += sizeof(uint32_t);
-
-#if defined(UNBOUND) && TYPE_SIZE != 8
-#endif
-
       }
       else if (offset == 1)
       {
@@ -1733,8 +1729,6 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx512f))(IN co
         if (offset == 0)
           return;
       }
-#if defined(UNBOUND) && TYPE_SIZE != 8
-#endif
     }
     else
     {
@@ -1813,10 +1807,12 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx512f))(IN co
     case 0:
       break;
     }
+
 #elif !defined(SINGLE)
     symbol = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
     pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
 #endif
+
     offset -= RLE8_XSYMLUT_SHORT_RANGE_VALUE_OFFSET;
 
     // memcpy.
