@@ -466,16 +466,32 @@ int main(int argc, char **pArgv)
       Extreme24BytePacked,
       Extreme32Sym,
       Extreme32SymPacked,
+      Extreme32SymShort,
+      Extreme32Sym_1SLShort,
+      Extreme32Sym_3SLShort,
+      Extreme32Sym_7SLShort,
       Extreme32Byte,
       Extreme32BytePacked,
+      Extreme32ByteShort,
+      Extreme32Byte_1SLShort,
+      Extreme32Byte_3SLShort,
+      Extreme32Byte_7SLShort,
       Extreme48Sym,
       Extreme48SymPacked,
       Extreme48Byte,
       Extreme48BytePacked,
       Extreme64Sym,
       Extreme64SymPacked,
+      Extreme64SymShort,
+      Extreme64Sym_1SLShort,
+      Extreme64Sym_3SLShort,
+      Extreme64Sym_7SLShort,
       Extreme64Byte,
       Extreme64BytePacked,
+      Extreme64ByteShort,
+      Extreme64Byte_1SLShort,
+      Extreme64Byte_3SLShort,
+      Extreme64Byte_7SLShort,
       Extreme128Sym,
       Extreme128SymPacked,
       Extreme128Byte,
@@ -498,48 +514,64 @@ int main(int argc, char **pArgv)
     const char *codecNames[] = 
     {
       "8 Bit                         ",
-      "8 Bit Short Range             ",
+      "8 Bit Short                   ",
       "8 Bit Packed                  ",
-      "8 Bit 1 Sym LUT Short Range   ",
-      "8 Bit 3 Sym LUT               ",
-      "8 Bit 3 Sym LUT Short Range   ",
-      "8 Bit 7 Sym LUT               ",
-      "8 Bit 7 Sym LUT Short Range   ",
+      "8 Bit 1LUT Short              ",
+      "8 Bit 3LUT                    ",
+      "8 Bit 3LUT Short              ",
+      "8 Bit 7LUT                    ",
+      "8 Bit 7LUT Short              ",
       "8 Bit Single                  ",
-      "8 Bit Single Short Range      ",
+      "8 Bit Single Short            ",
       "8 Bit Single Packed           ",
-      "16 Bit (Symbol Bound)         ",
-      "16 Bit Packed (Symbol Bound)  ",
-      "16 Bit Short (Symbol Bound)   ",
+      "16 Bit (Symbol)               ",
+      "16 Bit Packed (Symbol)        ",
+      "16 Bit Short (Symbol)         ",
       "16 Bit 1LUT Short (Symbol)    ",
       "16 Bit 3LUT Short (Symbol)    ",
       "16 Bit 7LUT Short (Symbol)    ",
-      "16 Bit (Byte Bound)           ",
-      "16 Bit Packed (Byte Bound)    ",
-      "16 Bit Short (Byte Bound)     ",
-      "16 Bit 1LUT (Byte Bound)      ",
-      "16 Bit 3LUT (Byte Bound)      ",
-      "16 Bit 7LUT (Byte Bound)      ",
-      "24 Bit (Symbol Bound)         ",
-      "24 Bit Packed (Symbol Bound)  ",
-      "24 Bit (Byte Bound)           ",
-      "24 Bit Packed (Byte Bound)    ",
-      "32 Bit (Symbol Bound)         ",
-      "32 Bit Packed (Symbol Bound)  ",
-      "32 Bit (Byte Bound)           ",
-      "32 Bit Packed (Byte Bound)    ",
-      "48 Bit (Symbol Bound)         ",
-      "48 Bit Packed (Symbol Bound)  ",
-      "48 Bit (Byte Bound)           ",
-      "48 Bit Packed (Byte Bound)    ",
-      "64 Bit (Symbol Bound)         ",
-      "64 Bit Packed (Symbol Bound)  ",
-      "64 Bit (Byte Bound)           ",
-      "64 Bit Packed (Byte Bound)    ",
-      "128 Bit (Symbol Bound)        ",
-      "128 Bit Packed (Symbol Bound) ",
-      "128 Bit (Byte Bound)          ",
-      "128 Bit Packed (Byte Bound)   ",
+      "16 Bit (Byte)                 ",
+      "16 Bit Packed (Byte)          ",
+      "16 Bit Short (Byte)           ",
+      "16 Bit 1LUT Short (Byte)      ",
+      "16 Bit 3LUT Short (Byte)      ",
+      "16 Bit 7LUT Short (Byte)      ",
+      "24 Bit (Symbol)               ",
+      "24 Bit Packed (Symbol)        ",
+      "24 Bit (Byte)                 ",
+      "24 Bit Packed (Byte)          ",
+      "32 Bit (Symbol)               ",
+      "32 Bit Packed (Symbol)        ",
+      "32 Bit Short (Symbol)         ",
+      "32 Bit 1LUT Short (Symbol)    ",
+      "32 Bit 3LUT Short (Symbol)    ",
+      "32 Bit 7LUT Short (Symbol)    ",
+      "32 Bit (Byte)                 ",
+      "32 Bit Packed (Byte)          ",
+      "32 Bit Short (Byte)           ",
+      "32 Bit 1LUT Short (Byte)      ",
+      "32 Bit 3LUT Short (Byte)      ",
+      "32 Bit 7LUT Short (Byte)      ",
+      "48 Bit (Symbol)               ",
+      "48 Bit Packed (Symbol)        ",
+      "48 Bit (Byte)                 ",
+      "48 Bit Packed (Byte)          ",
+      "64 Bit (Symbol)               ",
+      "64 Bit Packed (Symbol)        ",
+      "64 Bit Short (Symbol)         ",
+      "64 Bit 1LUT Short (Symbol)    ",
+      "64 Bit 3LUT Short (Symbol)    ",
+      "64 Bit 7LUT Short (Symbol)    ",
+      "64 Bit (Byte)                 ",
+      "64 Bit Packed (Byte)          ",
+      "64 Bit Short (Byte)           ",
+      "64 Bit 1LUT Short (Byte)      ",
+      "64 Bit 3LUT Short (Byte)      ",
+      "64 Bit 7LUT Short (Byte)      ",
+      "128 Bit (Symbol)              ",
+      "128 Bit Packed (Symbol)       ",
+      "128 Bit (Byte)                ",
+      "128 Bit Packed (Byte)         ",
       "8 Bit RLE + Huffman-esque     ",
       "8 Bit MMTF 128                ",
       "Low Entropy                   ",
@@ -750,6 +782,70 @@ int main(int argc, char **pArgv)
 
         case Extreme16Byte_7SLShort:
           compressedSize = rle16_7symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32SymShort:
+          compressedSize = rle32_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Sym_1SLShort:
+          compressedSize = rle32_1symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Sym_3SLShort:
+          compressedSize = rle32_3symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Sym_7SLShort:
+          compressedSize = rle32_7symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32ByteShort:
+          compressedSize = rle32_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte_1SLShort:
+          compressedSize = rle32_1symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte_3SLShort:
+          compressedSize = rle32_3symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte_7SLShort:
+          compressedSize = rle32_7symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64SymShort:
+          compressedSize = rle64_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Sym_1SLShort:
+          compressedSize = rle64_1symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Sym_3SLShort:
+          compressedSize = rle64_3symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Sym_7SLShort:
+          compressedSize = rle64_7symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64ByteShort:
+          compressedSize = rle64_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte_1SLShort:
+          compressedSize = rle64_1symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte_3SLShort:
+          compressedSize = rle64_3symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte_7SLShort:
+          compressedSize = rle64_7symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme8MultiMTF128:
@@ -1003,6 +1099,70 @@ int main(int argc, char **pArgv)
 
         case Extreme16Byte_7SLShort:
           decompressedSize = rle16_7symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32SymShort:
+          decompressedSize = rle32_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Sym_1SLShort:
+          decompressedSize = rle32_1symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Sym_3SLShort:
+          decompressedSize = rle32_3symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Sym_7SLShort:
+          decompressedSize = rle32_7symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32ByteShort:
+          decompressedSize = rle32_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte_1SLShort:
+          decompressedSize = rle32_1symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte_3SLShort:
+          decompressedSize = rle32_3symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte_7SLShort:
+          decompressedSize = rle32_7symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64SymShort:
+          decompressedSize = rle64_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Sym_1SLShort:
+          decompressedSize = rle64_1symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Sym_3SLShort:
+          decompressedSize = rle64_3symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Sym_7SLShort:
+          decompressedSize = rle64_7symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64ByteShort:
+          decompressedSize = rle64_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte_1SLShort:
+          decompressedSize = rle64_1symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte_3SLShort:
+          decompressedSize = rle64_3symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte_7SLShort:
+          decompressedSize = rle64_7symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Extreme8MultiMTF128:

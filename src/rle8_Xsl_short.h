@@ -97,21 +97,21 @@ typedef struct
   int64_t count;
   int64_t lastRLE;
   size_t index;
-} CONCAT3(rle8_, CODEC, compress_state_t);
+} CONCAT3(rle8, TYPE_SIZE, CONCAT3(_, CODEC, compress_state_t));
 
 //////////////////////////////////////////////////////////////////////////
 
-#ifndef SINGLE
-static int64_t CONCAT3(rle8_, CODEC, compress_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8_, CODEC, compress_state_t) *pState);
-static int64_t CONCAT3(rle8_, CODEC, compress_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8_, CODEC, compress_state_t) *pState);
+#if !defined(SINGLE) && TYPE_SIZE == 8
+static int64_t CONCAT3(rle8_, CODEC, compress_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8, TYPE_SIZE, CONCAT3(_, CODEC, compress_state_t)) *pState);
+static int64_t CONCAT3(rle8_, CODEC, compress_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8, TYPE_SIZE, CONCAT3(_, CODEC, compress_state_t)) *pState);
 #else
-static int64_t CONCAT3(rle8_, CODEC, compress_single_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8_, CODEC, compress_state_t) *pState);
-static int64_t CONCAT3(rle8_, CODEC, compress_single_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8_, CODEC, compress_state_t) *pState);
+static int64_t CONCAT3(rle8_, CODEC, compress_single_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8, TYPE_SIZE, CONCAT3(_, CODEC, compress_state_t)) *pState);
+static int64_t CONCAT3(rle8_, CODEC, compress_single_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8, TYPE_SIZE, CONCAT3(_, CODEC, compress_state_t)) *pState);
 #endif
 
 //////////////////////////////////////////////////////////////////////////
 
-inline bool CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, process_symbol))(IN const uint8_t *pIn, OUT uint8_t *pOut, const size_t i, IN OUT CONCAT3(rle8_, CODEC, compress_state_t) *pState)
+inline bool CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, process_symbol))(IN const uint8_t *pIn, OUT uint8_t *pOut, const size_t i, IN OUT CONCAT3(rle8, TYPE_SIZE, CONCAT3(_, CODEC, compress_state_t)) *pState)
 {
 #if SYMBOL_COUNT > 1
   size_t symbolMatchIndex = 0;
@@ -125,7 +125,7 @@ inline bool CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, process_symbol))(IN const 
 
   const int64_t range = i - pState->lastRLE - pState->count + RLE8_XSYMLUT_SHORT_RANGE_VALUE_OFFSET;
 
-#ifndef UNBOUND
+#if defined(UNBOUND) || TYPE_SIZE == 8
   const int64_t storedCount = pState->count - RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT + RLE8_XSYMLUT_SHORT_COUNT_VALUE_OFFSET;
 #else
   const int64_t storedCount = (pState->count / (TYPE_SIZE / 8)) - (RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT / (TYPE_SIZE / 8)) + RLE8_XSYMLUT_SHORT_COUNT_VALUE_OFFSET;
@@ -328,7 +328,7 @@ uint32_t CONCAT3(rle8_, CODEC, compress)(IN const uint8_t *pIn, const uint32_t i
 
   ((uint32_t *)pOut)[0] = (uint32_t)inSize;
 
-  CONCAT3(rle8_, CODEC, compress_state_t) state;
+  CONCAT3(rle8, TYPE_SIZE, CONCAT3(_, CODEC, compress_state_t)) state;
   memset(&state, 0, sizeof(state));
   state.index = sizeof(uint32_t) * 2;
 
@@ -472,8 +472,8 @@ uint32_t CONCAT3(rle8_, CODEC, compress)(IN const uint8_t *pIn, const uint32_t i
 
 //////////////////////////////////////////////////////////////////////////
 
-#ifndef SINGLE
-static int64_t CONCAT3(rle8_, CODEC, compress_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8_, CODEC, compress_state_t) *pState)
+#if !defined(SINGLE) && TYPE_SIZE == 8
+static int64_t CONCAT3(rle8_, CODEC, compress_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8, TYPE_SIZE, CONCAT3(_, CODEC, compress_state_t)) *pState)
 {
   const int64_t endInSize128 = inSize - sizeof(__m128i);
   int64_t i = 0;
@@ -542,7 +542,7 @@ static int64_t CONCAT3(rle8_, CODEC, compress_sse2)(IN const uint8_t *pIn, const
 #ifndef _MSC_VER
 __attribute__((target("avx2")))
 #endif
-static int64_t CONCAT3(rle8_, CODEC, compress_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8_, CODEC, compress_state_t) *pState)
+static int64_t CONCAT3(rle8_, CODEC, compress_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8, TYPE_SIZE, CONCAT3(_, CODEC, compress_state_t)) *pState)
 {
   const int64_t endInSize256 = inSize - sizeof(__m256i);
   int64_t i = 0;
@@ -619,7 +619,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress))(IN const uint8_t *
 
   ((uint32_t *)pOut)[0] = (uint32_t)inSize;
 
-  CONCAT3(rle8_, CODEC, compress_state_t) state;
+  CONCAT3(rle8, TYPE_SIZE, CONCAT3(_, CODEC, compress_state_t)) state;
   memset(&state, 0, sizeof(state));
   state.index = sizeof(uint32_t) * 2;
 
@@ -682,7 +682,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress))(IN const uint8_t *
 #endif
 
           i += (offset / 8);
-          count += (offset / 8);
+          state.count += (offset / 8);
 #elif TYPE_SIZE == 64
           const symbol_t diff = state.symbol ^ *(symbol_t *)&pIn[i];
 
@@ -694,7 +694,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress))(IN const uint8_t *
 #endif
 
           i += (offset / 8);
-          count += (offset / 8);
+          state.count += (offset / 8);
 #else // backup
           uint8_t symBytes[sizeof(state.symbol)];
           memcpy(state.symBytes, &state.symbol, sizeof(state.symbol));
@@ -704,7 +704,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress))(IN const uint8_t *
             if (pIn[i] != symBytes[j])
               break;
 
-            count++;
+            state.count++;
             i++;
           }
 #endif
@@ -802,7 +802,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress))(IN const uint8_t *
 //////////////////////////////////////////////////////////////////////////
 
 #ifdef SINGLE
-static int64_t CONCAT3(rle8_, CODEC, compress_single_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8_, CODEC, compress_state_t) *pState)
+static int64_t CONCAT3(rle8_, CODEC, compress_single_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8, TYPE_SIZE, CONCAT3(_, CODEC, compress_state_t)) *pState)
 {
   int64_t i = 0;
 
@@ -868,7 +868,7 @@ static int64_t CONCAT3(rle8_, CODEC, compress_single_sse2)(IN const uint8_t *pIn
 #ifndef _MSC_VER
 __attribute__((target("avx2")))
 #endif
-static int64_t CONCAT3(rle8_, CODEC, compress_single_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8_, CODEC, compress_state_t) *pState)
+static int64_t CONCAT3(rle8_, CODEC, compress_single_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT CONCAT3(rle8, TYPE_SIZE, CONCAT3(_, CODEC, compress_state_t)) *pState)
 {
   int64_t i = 0;
 
@@ -1720,6 +1720,10 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx512f))(IN co
       {
         offset = *(uint32_t *)pInStart;
         pInStart += sizeof(uint32_t);
+
+#if defined(UNBOUND) && TYPE_SIZE != 8
+#endif
+
       }
       else if (offset == 1)
       {
@@ -1729,6 +1733,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx512f))(IN co
         if (offset == 0)
           return;
       }
+#if defined(UNBOUND) && TYPE_SIZE != 8
+#endif
     }
     else
     {
@@ -1811,7 +1817,6 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx512f))(IN co
     symbol = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
     pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
 #endif
-
     offset -= RLE8_XSYMLUT_SHORT_RANGE_VALUE_OFFSET;
 
     // memcpy.
