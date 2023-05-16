@@ -1,5 +1,5 @@
 #define RLE8_XSYMLUT_MIN_RANGE_SHORT (2 + 1) // compression ratio can be slightly improved by reducing this to 2 (because then commonly used symbols accumulate more easily etc.) but it drastically reduces decompression speed.
-#define RLE8_XSYMLUT_MIN_RANGE_LONG (2 + 4 + 4 + 1)
+#define RLE8_XSYMLUT_MIN_RANGE_LONG (2 + 4 + 4 + (TYPE_SIZE / 8))
 
 #if SYMBOL_COUNT == 3
   #define RLE8_XSYMLUT_COUNT_BITS (7)
