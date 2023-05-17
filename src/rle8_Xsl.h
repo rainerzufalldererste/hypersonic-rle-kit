@@ -49,6 +49,30 @@
   #define VALUE_BROADCAST 0x0101010101010101ULL
 #endif
 
+#if TYPE_SIZE == 8
+  #define COPY_SEGMENT_SSE    MEMCPY_SSE
+  #define COPY_SEGMENT_SSE41  MEMCPY_SSE41
+  #define COPY_SEGMENT_AVX    MEMCPY_AVX
+  #define COPY_SEGMENT_AVX2   MEMCPY_AVX2
+  #define COPY_SEGMENT_AVX512 MEMCPY_AVX512
+  #define SET_SEGMENT_SSE     MEMSET_SSE
+  #define SET_SEGMENT_SSE41   MEMSET_SSE
+  #define SET_SEGMENT_AVX     MEMSET_AVX
+  #define SET_SEGMENT_AVX2    MEMSET_AVX2
+  #define SET_SEGMENT_AVX512  MEMSET_AVX512
+#else
+  #define COPY_SEGMENT_SSE    MEMCPY_SSE_MULTI
+  #define COPY_SEGMENT_SSE41  MEMCPY_SSE41_MULTI
+  #define COPY_SEGMENT_AVX    MEMCPY_AVX_MULTI
+  #define COPY_SEGMENT_AVX2   MEMCPY_AVX2_MULTI
+  #define COPY_SEGMENT_AVX512 MEMCPY_AVX512_MULTI
+  #define SET_SEGMENT_SSE     MEMSET_SSE_MULTI
+  #define SET_SEGMENT_SSE41   MEMSET_SSE_MULTI
+  #define SET_SEGMENT_AVX     MEMSET_AVX_MULTI
+  #define SET_SEGMENT_AVX2    MEMSET_AVX_MULTI
+  #define SET_SEGMENT_AVX512  MEMSET_AVX512_MULTI
+#endif
+
 //////////////////////////////////////////////////////////////////////////
 
 typedef struct
@@ -738,7 +762,7 @@ static void CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, decompress_sse)(IN const 
     offset -= RLE8_XSYMLUT_RANGE_VALUE_OFFSET;
 
     // memcpy.
-    MEMCPY_SSE;
+    COPY_SEGMENT_SSE;
 
     if (!symbolCount)
       return;
@@ -750,7 +774,7 @@ static void CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, decompress_sse)(IN const 
 #endif
 
     // memset.
-    MEMSET_SSE;
+    SET_SEGMENT_SSE;
   }
 }
 
@@ -907,7 +931,7 @@ static void CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, decompress_sse41)(IN cons
     offset -= RLE8_XSYMLUT_RANGE_VALUE_OFFSET;
 
     // memcpy.
-    MEMCPY_SSE41;
+    COPY_SEGMENT_SSE41;
 
     if (!symbolCount)
       return;
@@ -919,7 +943,7 @@ static void CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, decompress_sse41)(IN cons
 #endif
 
     // memset.
-    MEMSET_SSE;
+    SET_SEGMENT_SSE41;
   }
 }
 
@@ -1076,7 +1100,7 @@ static void CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, decompress_avx)(IN const 
     offset -= RLE8_XSYMLUT_RANGE_VALUE_OFFSET;
 
     // memcpy.
-    MEMCPY_AVX;
+    COPY_SEGMENT_AVX;
 
     if (!symbolCount)
       return;
@@ -1088,7 +1112,7 @@ static void CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, decompress_avx)(IN const 
 #endif
 
     // memset.
-    MEMSET_AVX;
+    SET_SEGMENT_AVX;
   }
 }
 
@@ -1245,7 +1269,7 @@ static void CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, decompress_avx2)(IN const
     offset -= RLE8_XSYMLUT_RANGE_VALUE_OFFSET;
 
     // memcpy.
-    MEMCPY_AVX2;
+    COPY_SEGMENT_AVX2;
 
     if (!symbolCount)
       return;
@@ -1257,7 +1281,7 @@ static void CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, decompress_avx2)(IN const
 #endif
 
     // memset.
-    MEMSET_AVX2;
+    SET_SEGMENT_AVX2;
   }
 }
 
@@ -1417,7 +1441,7 @@ static void CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, decompress_avx512f)(IN co
     offset -= RLE8_XSYMLUT_RANGE_VALUE_OFFSET;
 
     // memcpy.
-    MEMCPY_AVX512;
+    COPY_SEGMENT_AVX512;
 
     if (!symbolCount)
       return;
@@ -1429,7 +1453,7 @@ static void CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, decompress_avx512f)(IN co
 #endif
 
     // memset.
-    MEMSET_AVX512;
+    SET_SEGMENT_AVX512;
   }
 }
 
