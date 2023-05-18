@@ -90,6 +90,7 @@ int main(int argc, char **pArgv)
   bool analyzeFileContents = false;
   bool byteGranular = false;
   bool packed = false;
+  bool noDelays = false;
   uint64_t extremeSize = 8;
 
 #ifdef _WIN32
@@ -127,10 +128,15 @@ int main(int argc, char **pArgv)
       {
         runs = atoi(pArgv[argIndex + 1]);
 
-        if (runs <= 0)
+        if (runs < 0)
         {
           puts("Invalid Parameter.");
           return 1;
+        }
+        else if (runs == 0)
+        {
+          runs = 1;
+          noDelays = true;
         }
 
         argIndex += 2;
@@ -617,7 +623,7 @@ int main(int argc, char **pArgv)
 
     for (; currentCodec < CodecCount; currentCodec++)
     {
-      if (runs > 1 && currentCodec > 0)
+      if (!noDelays && currentCodec > 0)
         SleepNs(500 * 1000 * 1000);
 
       printf("%s|          | (dry run)", codecNames[currentCodec]);
@@ -627,7 +633,7 @@ int main(int argc, char **pArgv)
       int64_t compressionRuns = -1;
       uint32_t compressedSize = 0;
 
-      if (runs == 1)
+      if (noDelays)
         compressionRuns = 0; // Skip dry run.
 
       const uint64_t compressStartTicks = GetCurrentTimeTicks();
@@ -978,7 +984,7 @@ int main(int argc, char **pArgv)
         if (compressionRuns > 0)
           printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
 
-        if (runs > 1)
+        if (!noDelays)
         {
           const uint64_t sinceSleepNs = TicksToNs(GetCurrentTimeTicks() - lastSleepTicks);
 
@@ -1001,12 +1007,12 @@ int main(int argc, char **pArgv)
       uint64_t fastestDecompresionTime = UINT64_MAX;
       uint32_t decompressedSize = 0;
 
-      if (runs == 1)
+      if (noDelays)
         decompressionRuns = 0; // Skip dry run.
 
       printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | (dry run)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
 
-      if (runs > 1)
+      if (!noDelays)
         SleepNs(500 * 1000 * 1000);
 
       const uint64_t decompressStartTicks = GetCurrentTimeTicks();
@@ -1344,7 +1350,7 @@ int main(int argc, char **pArgv)
         if (decompressionRuns > 0)
           printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | %7.1f MiB/s (%7.1f MiB/s)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0), (fileSize * (double)decompressionRuns / (double)(1024 * 1024)) / (decompressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestDecompresionTime / 1000000000.0));
 
-        if (runs > 1)
+        if (!noDelays)
         {
           const uint64_t sinceSleepNs = TicksToNs(GetCurrentTimeTicks() - lastSleepTicks);
 
