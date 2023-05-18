@@ -617,7 +617,7 @@ int main(int argc, char **pArgv)
 
     for (; currentCodec < CodecCount; currentCodec++)
     {
-      if (currentCodec > 0)
+      if (runs > 1 && currentCodec > 0)
         SleepNs(500 * 1000 * 1000);
 
       printf("%s|          | (dry run)", codecNames[currentCodec]);
