@@ -70,6 +70,16 @@
   #define _mm256_set1_epi64 _mm256_set1_epi64x
 #endif
 
+#if TYPE_SIZE == 24
+  #define uintXX_t uint32_t
+  #define SYMBOL_MASK 0xFFFFFF
+#elif TYPE_SIZE == 48
+  #define uintXX_t uint64_t
+  #define SYMBOL_MASK 0xFFFFFFFFFFFF
+#else
+  #define uintXX_t CONCAT3(uint, TYPE_SIZE, _t)
+#endif
+
 #if TYPE_SIZE == 8
   #define VALUE_BROADCAST 0x01
 #elif TYPE_SIZE == 16
@@ -112,11 +122,11 @@
 
 typedef struct
 {
-  CONCAT3(uint, TYPE_SIZE, _t) symbol;
+  uintXX_t symbol;
 #if SYMBOL_COUNT == 1
-  CONCAT3(uint, TYPE_SIZE, _t) lastSymbol;
+  uintXX_t lastSymbol;
 #elif SYMBOL_COUNT > 0
-  CONCAT3(uint, TYPE_SIZE, _t) lastSymbols[SYMBOL_COUNT];
+  uintXX_t lastSymbols[SYMBOL_COUNT];
 #endif
   int64_t count;
   int64_t lastRLE;
@@ -165,7 +175,7 @@ inline bool CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, process_symbol))(IN const 
   is19BitRangeCount = storedCount <= RLE8_XSYMLUT_SHORT_MAX_TINY_COUNT && range <= RLE8_XSYMLUT_SHORT_MAX_TINY_RANGE;
 
 #if SYMBOL_COUNT != 0
-  int64_t penalty = (size_t)(symbolMatchIndex == SYMBOL_COUNT);
+  int64_t penalty = (size_t)(symbolMatchIndex == SYMBOL_COUNT) * (TYPE_SIZE / 8);
 #else
   int64_t penalty = 0;
 #endif
@@ -323,8 +333,8 @@ inline bool CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, process_symbol))(IN const 
     if (symbolMatchIndex == SYMBOL_COUNT)
   #endif
     {
-      *((CONCAT3(uint, TYPE_SIZE, _t) *)&(pOut[pState->index])) = pState->symbol;
-      pState->index += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+      *((uintXX_t *)&(pOut[pState->index])) = pState->symbol;
+      pState->index += (TYPE_SIZE / 8);
     }
 #endif
 
@@ -647,7 +657,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress))(IN const uint8_t *
   memset(&state, 0, sizeof(state));
   state.index = sizeof(uint32_t) * 2;
 
-  typedef CONCAT3(uint, TYPE_SIZE, _t) symbol_t;
+  typedef uintXX_t symbol_t;
 
 #if SYMBOL_COUNT != 0
 #if SYMBOL_COUNT != 1
@@ -965,8 +975,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse))(IN const 
 #ifndef SINGLE
   __m128i symbol = _mm_setzero_si128();
 #else
-  const __m128i symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-  pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+  const __m128i symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+  pInStart += (TYPE_SIZE / 8);
 #endif
 
 #if SYMBOL_COUNT > 1
@@ -1053,8 +1063,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse))(IN const 
       other[2] = other[1];
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-      pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      pInStart += (TYPE_SIZE / 8);
       break;
     }
 
@@ -1077,8 +1087,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse))(IN const 
     {
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-      pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      pInStart += (TYPE_SIZE / 8);
       break;
     }
   #endif
@@ -1102,8 +1112,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse))(IN const 
 #else
     case 1:
     {
-      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-      pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      pInStart += (TYPE_SIZE / 8);
       break;
     }
 #endif
@@ -1112,8 +1122,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse))(IN const 
       break;
     }
 #elif !defined(SINGLE)
-    symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-    pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+    symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+    pInStart += (TYPE_SIZE / 8);
 #endif
 
     offset -= RLE8_XSYMLUT_SHORT_RANGE_VALUE_OFFSET;
@@ -1145,8 +1155,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse41))(IN cons
 #ifndef SINGLE
   __m128i symbol = _mm_setzero_si128();
 #else
-  const __m128i symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-  pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+  const __m128i symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+  pInStart += (TYPE_SIZE / 8);
 #endif
 
 #if SYMBOL_COUNT > 1
@@ -1233,8 +1243,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse41))(IN cons
       other[2] = other[1];
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-      pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      pInStart += (TYPE_SIZE / 8);
       break;
     }
 
@@ -1257,8 +1267,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse41))(IN cons
     {
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-      pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      pInStart += (TYPE_SIZE / 8);
       break;
     }
   #endif
@@ -1282,8 +1292,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse41))(IN cons
 #else
     case 1:
     {
-      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-      pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      pInStart += (TYPE_SIZE / 8);
       break;
     }
 #endif
@@ -1292,8 +1302,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse41))(IN cons
       break;
     }
 #elif !defined(SINGLE)
-    symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-    pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+    symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+    pInStart += (TYPE_SIZE / 8);
 #endif
 
     offset -= RLE8_XSYMLUT_SHORT_RANGE_VALUE_OFFSET;
@@ -1325,8 +1335,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx))(IN const 
 #ifndef SINGLE
   __m256i symbol = _mm256_setzero_si256();
 #else
-  const __m256i symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-  pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+  const __m256i symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+  pInStart += (TYPE_SIZE / 8);
 #endif
 
 #if SYMBOL_COUNT > 1
@@ -1413,8 +1423,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx))(IN const 
       other[2] = other[1];
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-      pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      pInStart += (TYPE_SIZE / 8);
       break;
     }
 
@@ -1437,8 +1447,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx))(IN const 
     {
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-      pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      pInStart += (TYPE_SIZE / 8);
       break;
     }
   #endif
@@ -1462,8 +1472,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx))(IN const 
 #else
     case 1:
     {
-      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-      pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      pInStart += (TYPE_SIZE / 8);
       break;
     }
 #endif
@@ -1472,8 +1482,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx))(IN const 
       break;
     }
 #elif !defined(SINGLE)
-    symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-    pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+    symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+    pInStart += (TYPE_SIZE / 8);
 #endif
 
     offset -= RLE8_XSYMLUT_SHORT_RANGE_VALUE_OFFSET;
@@ -1505,8 +1515,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx2))(IN const
 #ifndef SINGLE
   __m256i symbol = _mm256_setzero_si256();
 #else
-  const __m256i symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-  pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+  const __m256i symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+  pInStart += (TYPE_SIZE / 8);
 #endif
 
 #if SYMBOL_COUNT > 1
@@ -1593,8 +1603,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx2))(IN const
       other[2] = other[1];
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-      pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      pInStart += (TYPE_SIZE / 8);
       break;
     }
 
@@ -1617,8 +1627,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx2))(IN const
     {
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-      pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      pInStart += (TYPE_SIZE / 8);
       break;
     }
   #endif
@@ -1642,8 +1652,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx2))(IN const
 #else
     case 1:
     {
-      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-      pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      pInStart += (TYPE_SIZE / 8);
       break;
     }
 #endif
@@ -1652,8 +1662,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx2))(IN const
       break;
     }
 #elif !defined(SINGLE)
-    symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-    pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+    symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+    pInStart += (TYPE_SIZE / 8);
 #endif
 
     offset -= RLE8_XSYMLUT_SHORT_RANGE_VALUE_OFFSET;
@@ -1685,8 +1695,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx512f))(IN co
 #ifndef SINGLE
   __m512i symbol = _mm512_setzero_si512();
 #else
-  const __m512i symbol = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-  pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+  const __m512i symbol = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+  pInStart += (TYPE_SIZE / 8);
 #endif
 
 #if SYMBOL_COUNT > 1
@@ -1773,8 +1783,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx512f))(IN co
       other[2] = other[1];
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-      pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+      symbol = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      pInStart += (TYPE_SIZE / 8);
       break;
     }
 
@@ -1797,8 +1807,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx512f))(IN co
     {
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-      pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+      symbol = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      pInStart += (TYPE_SIZE / 8);
       break;
     }
   #endif
@@ -1822,8 +1832,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx512f))(IN co
 #else
     case 1:
     {
-      symbol = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-      pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+      symbol = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      pInStart += (TYPE_SIZE / 8);
       break;
     }
 #endif
@@ -1833,8 +1843,8 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx512f))(IN co
     }
 
 #elif !defined(SINGLE)
-    symbol = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(*(CONCAT3(uint, TYPE_SIZE, _t) *)pInStart);
-    pInStart += sizeof(CONCAT3(uint, TYPE_SIZE, _t));
+    symbol = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+    pInStart += (TYPE_SIZE / 8);
 #endif
 
     offset -= RLE8_XSYMLUT_SHORT_RANGE_VALUE_OFFSET;
