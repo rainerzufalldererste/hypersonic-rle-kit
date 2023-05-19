@@ -173,3 +173,97 @@
 #undef TYPE_SIZE
 
 //////////////////////////////////////////////////////////////////////////
+
+#define TYPE_SIZE 24
+#define SYMBOL_COUNT 3
+
+#include "rle8_Xsl_short.h"
+
+#undef SYMBOL_COUNT
+#define SYMBOL_COUNT 7
+
+#include "rle8_Xsl_short.h"
+
+#undef SYMBOL_COUNT
+#define SYMBOL_COUNT 1
+
+#include "rle8_Xsl_short.h"
+
+#undef SYMBOL_COUNT
+#define SYMBOL_COUNT 0
+
+#include "rle8_Xsl_short.h"
+
+#undef SYMBOL_COUNT
+#define UNBOUND
+#define SYMBOL_COUNT 3
+
+#include "rle8_Xsl_short.h"
+
+#undef SYMBOL_COUNT
+#define SYMBOL_COUNT 7
+
+#include "rle8_Xsl_short.h"
+
+#undef SYMBOL_COUNT
+#define SYMBOL_COUNT 1
+
+#include "rle8_Xsl_short.h"
+
+#undef SYMBOL_COUNT
+#define SYMBOL_COUNT 0
+
+#include "rle8_Xsl_short.h"
+
+#undef SYMBOL_COUNT
+#undef UNBOUND
+#undef TYPE_SIZE
+
+//////////////////////////////////////////////////////////////////////////
+
+#define TYPE_SIZE 48
+#define SYMBOL_COUNT 3
+
+#include "rle8_Xsl_short.h"
+
+#undef SYMBOL_COUNT
+#define SYMBOL_COUNT 7
+
+#include "rle8_Xsl_short.h"
+
+#undef SYMBOL_COUNT
+#define SYMBOL_COUNT 1
+
+#include "rle8_Xsl_short.h"
+
+#undef SYMBOL_COUNT
+#define SYMBOL_COUNT 0
+
+#include "rle8_Xsl_short.h"
+
+#undef SYMBOL_COUNT
+#define UNBOUND
+#define SYMBOL_COUNT 3
+
+#include "rle8_Xsl_short.h"
+
+#undef SYMBOL_COUNT
+#define SYMBOL_COUNT 7
+
+#include "rle8_Xsl_short.h"
+
+#undef SYMBOL_COUNT
+#define SYMBOL_COUNT 1
+
+#include "rle8_Xsl_short.h"
+
+#undef SYMBOL_COUNT
+#define SYMBOL_COUNT 0
+
+#include "rle8_Xsl_short.h"
+
+#undef SYMBOL_COUNT
+#undef UNBOUND
+#undef TYPE_SIZE
+
+//////////////////////////////////////////////////////////////////////////

@@ -71,12 +71,15 @@
 #endif
 
 #if TYPE_SIZE == 24
+  #define SIMD_TYPE_SIZE 32
   #define uintXX_t uint32_t
   #define SYMBOL_MASK 0xFFFFFF
 #elif TYPE_SIZE == 48
+  #define SIMD_TYPE_SIZE 64x
   #define uintXX_t uint64_t
   #define SYMBOL_MASK 0xFFFFFFFFFFFF
 #else
+  #define SIMD_TYPE_SIZE TYPE_SIZE
   #define uintXX_t CONCAT3(uint, TYPE_SIZE, _t)
 #endif
 
@@ -677,6 +680,10 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress))(IN const uint8_t *
 
   state.symbol = ~(*((symbol_t *)(pIn)));
 
+#ifdef SYMBOL_MASK
+  state.symbol &= SYMBOL_MASK;
+#endif
+
   size_t i = 0;
 
   while (i < inSize)
@@ -685,7 +692,11 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress))(IN const uint8_t *
     {
       if (i + (TYPE_SIZE / 8) <= inSize)
       {
+#ifndef SYMBOL_MASK
         const symbol_t next = *(symbol_t *)&pIn[i];
+#else
+        const symbol_t next = *(symbol_t *)&pIn[i] & SYMBOL_MASK;
+#endif
 
         if (next == state.symbol)
         {
@@ -705,7 +716,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress))(IN const uint8_t *
             state.count++;
             i++;
           }
-#elif TYPE_SIZE == 32
+#elif TYPE_SIZE == 32 || TYPE_SIZE == 24
           const symbol_t diff = state.symbol ^ *(symbol_t *)&pIn[i];
 
 #ifdef _MSC_VER
@@ -717,7 +728,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress))(IN const uint8_t *
 
           i += (offset / 8);
           state.count += (offset / 8);
-#elif TYPE_SIZE == 64
+#elif TYPE_SIZE == 64 || TYPE_SIZE == 48
           const symbol_t diff = state.symbol ^ *(symbol_t *)&pIn[i];
 
 #ifdef _MSC_VER
@@ -731,7 +742,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress))(IN const uint8_t *
           state.count += (offset / 8);
 #else // backup
           uint8_t symBytes[sizeof(state.symbol)];
-          memcpy(state.symBytes, &state.symbol, sizeof(state.symbol));
+          memcpy(symBytes, &state.symbol, sizeof(state.symbol));
 
           for (size_t j = 0; j < (sizeof(state.symbol) - 1); j++) // can't reach the absolute max.
           {
@@ -750,9 +761,17 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress))(IN const uint8_t *
     {
       CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, process_symbol))(pIn, pOut, i, &state);
 
+#ifndef SYMBOL_MASK
       state.symbol = *(symbol_t *)(&pIn[i]);
+#else
+      state.symbol = *(symbol_t *)(&pIn[i]) & SYMBOL_MASK;
+#endif
 
+#ifndef SYMBOL_MASK
       if (i + (TYPE_SIZE / 8) <= inSize && ((symbol_t *)(&pIn[i]))[1] == state.symbol)
+#else
+      if (i + (TYPE_SIZE / 8) <= inSize && (*((symbol_t *)(&pIn[i + (TYPE_SIZE / 8)])) & SYMBOL_MASK) == state.symbol)
+#endif
       {
         state.count = (TYPE_SIZE / 8) * 2;
         i += (TYPE_SIZE / 8) * 2;
@@ -975,21 +994,56 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse))(IN const 
 #ifndef SINGLE
   __m128i symbol = _mm_setzero_si128();
 #else
-  const __m128i symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+  const __m128i symbol = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
   pInStart += (TYPE_SIZE / 8);
 #endif
 
 #if SYMBOL_COUNT > 1
   __m128i other[SYMBOL_COUNT - 1];
 
-  other[0] = CONCAT2(_mm_set1_epi, TYPE_SIZE)(0x7F * VALUE_BROADCAST);
-  other[1] = CONCAT2(_mm_set1_epi, TYPE_SIZE)(0xFF * VALUE_BROADCAST);
+  other[0] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x7F * VALUE_BROADCAST);
+  other[1] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0xFF * VALUE_BROADCAST);
   #if SYMBOL_COUNT == 7
-  other[2] = CONCAT2(_mm_set1_epi, TYPE_SIZE)(0x01 * VALUE_BROADCAST);
-  other[3] = CONCAT2(_mm_set1_epi, TYPE_SIZE)(0x7E * VALUE_BROADCAST);
-  other[4] = CONCAT2(_mm_set1_epi, TYPE_SIZE)(0x80 * VALUE_BROADCAST);
-  other[5] = CONCAT2(_mm_set1_epi, TYPE_SIZE)(0xFE * VALUE_BROADCAST);
+  other[2] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x01 * VALUE_BROADCAST);
+  other[3] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x7E * VALUE_BROADCAST);
+  other[4] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x80 * VALUE_BROADCAST);
+  other[5] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0xFE * VALUE_BROADCAST);
   #endif
+#endif
+
+#if TYPE_SIZE == 24
+  const __m128i pattern00 = _mm_set_epi8(0, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1);
+  const __m128i pattern01 = _mm_set_epi8(-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, 0, 0, 0);
+  const __m128i pattern02 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, -1, -1, -1, 0, 0, 0, 0, 0, 0);
+  const __m128i pattern03 = _mm_set_epi8(0, 0, 0, 0, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+  const __m128i pattern10 = _mm_set_epi8(0, 0, 0, 0, 0, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0);
+  const __m128i pattern11 = _mm_set_epi8(0, 0, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1);
+  const __m128i pattern12 = _mm_set_epi8(-1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, 0, 0);
+  const __m128i pattern13 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, 0, 0, 0, 0, 0);
+
+  const __m128i pattern20 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, 0, 0, 0, 0);
+  const __m128i pattern21 = _mm_set_epi8(0, 0, 0, 0, 0, 0, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0);
+  const __m128i pattern22 = _mm_set_epi8(0, 0, 0, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1);
+  const __m128i pattern23 = _mm_set_epi8(-1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, 0);
+
+  __m128i symbol0 = symbol, symbol1 = symbol, symbol2 = symbol;
+#elif TYPE_SIZE == 48
+  const __m128i pattern00 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1);
+  const __m128i pattern10 = _mm_set_epi8(0, 0, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0);
+
+  const __m128i pattern02 = _mm_set_epi8(0, 0, 0, 0, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0);
+  const __m128i pattern12 = _mm_set_epi8(-1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+  const __m128i pattern22 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -1);
+
+  const __m128i pattern04 = _mm_set_epi8(-1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+  const __m128i pattern14 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1);
+  const __m128i pattern24 = _mm_set_epi8(0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0);
+
+  const __m128i pattern16 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1, 0, 0);
+  const __m128i pattern26 = _mm_set_epi8(-1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+  __m128i symbol0 = symbol, symbol1 = symbol, symbol2 = symbol;
 #endif
 
   while (true)
@@ -1063,7 +1117,7 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse))(IN const 
       other[2] = other[1];
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      symbol = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
       pInStart += (TYPE_SIZE / 8);
       break;
     }
@@ -1087,7 +1141,7 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse))(IN const 
     {
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      symbol = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
       pInStart += (TYPE_SIZE / 8);
       break;
     }
@@ -1112,7 +1166,7 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse))(IN const 
 #else
     case 1:
     {
-      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      symbol = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
       pInStart += (TYPE_SIZE / 8);
       break;
     }
@@ -1122,8 +1176,46 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse))(IN const 
       break;
     }
 #elif !defined(SINGLE)
-    symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+    symbol = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
     pInStart += (TYPE_SIZE / 8);
+#endif
+
+#if !defined(SINGLE) && defined(SYMBOL_MASK)
+#if SYMBOL_COUNT != 0
+    if (symbolIndex)
+#endif
+    {
+#if TYPE_SIZE == 24
+      const __m128i shift1 = _mm_or_si128(_mm_srli_si128(symbol, 1), _mm_slli_si128(symbol, 15));
+
+      symbol0 = _mm_or_si128(_mm_and_si128(symbol, pattern00), _mm_and_si128(shift1, pattern01));
+      symbol1 = _mm_or_si128(_mm_and_si128(symbol, pattern10), _mm_and_si128(shift1, pattern11));
+      symbol2 = _mm_or_si128(_mm_and_si128(symbol, pattern20), _mm_and_si128(shift1, pattern21));
+
+      const __m128i shift2 = _mm_or_si128(_mm_srli_si128(symbol, 2), _mm_slli_si128(symbol, 14));
+      const __m128i shift3 = _mm_or_si128(_mm_srli_si128(symbol, 3), _mm_slli_si128(symbol, 13));
+
+      symbol0 = _mm_or_si128(symbol0, _mm_or_si128(_mm_and_si128(shift3, pattern03), _mm_and_si128(shift2, pattern02)));
+      symbol1 = _mm_or_si128(symbol1, _mm_or_si128(_mm_and_si128(shift3, pattern13), _mm_and_si128(shift2, pattern12)));
+      symbol2 = _mm_or_si128(symbol2, _mm_or_si128(_mm_and_si128(shift3, pattern23), _mm_and_si128(shift2, pattern22)));
+#elif TYPE_SIZE == 48
+      const __m128i shift2 = _mm_or_si128(_mm_srli_si128(symbol, 2), _mm_slli_si128(symbol, 14));
+
+      symbol0 = _mm_or_si128(_mm_and_si128(symbol, pattern00), _mm_and_si128(shift2, pattern02));
+      const __m128i symbol1a = _mm_or_si128(_mm_and_si128(symbol, pattern10), _mm_and_si128(shift2, pattern12));
+
+      const __m128i shift4 = _mm_or_si128(_mm_srli_si128(symbol, 4), _mm_slli_si128(symbol, 12));
+
+      symbol0 = _mm_or_si128(symbol0, _mm_and_si128(shift4, pattern04));
+      symbol2 = _mm_or_si128(_mm_and_si128(shift2, pattern22), _mm_and_si128(shift4, pattern24));
+
+      const __m128i shift6 = _mm_or_si128(_mm_srli_si128(symbol, 6), _mm_slli_si128(symbol, 10));
+
+      const __m128i symbol1b = _mm_or_si128(_mm_and_si128(shift4, pattern14), _mm_and_si128(shift6, pattern16));
+      symbol2 = _mm_or_si128(symbol2, _mm_and_si128(shift6, pattern26));
+      symbol1 = _mm_or_si128(symbol1a, symbol1b);
+#endif
+    }
 #endif
 
     offset -= RLE8_XSYMLUT_SHORT_RANGE_VALUE_OFFSET;
@@ -1140,36 +1232,71 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse))(IN const 
     symbolCount = (symbolCount + (RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT / (TYPE_SIZE / 8)) - RLE8_XSYMLUT_SHORT_COUNT_VALUE_OFFSET) * (TYPE_SIZE / 8);
 #endif
 
+#if TYPE_SIZE == 24 || TYPE_SIZE == 48
+    // memset.
+    {
+      uint8_t *pCOut = pOut;
+      uint8_t *pCOutEnd = pOut + symbolCount;
+
+      while (pCOut < pCOutEnd)
+      {
+        _mm_storeu_si128((__m128i *)pCOut, symbol0);
+        pCOut += sizeof(symbol0);
+        _mm_storeu_si128((__m128i *)pCOut, symbol1);
+        pCOut += sizeof(symbol1);
+        _mm_storeu_si128((__m128i *)pCOut, symbol2);
+        pCOut += sizeof(symbol2);
+      }
+
+      pOut = pCOutEnd;
+    }
+#else
     // memset.
     SET_SEGMENT_SSE;
+#endif
   }
 }
 
+#ifdef SYMBOL_MASK
 #ifndef _MSC_VER
-__attribute__((target("sse4.1")))
+__attribute__((target("ssse3")))
 #endif
-static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse41))(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_ssse3))(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
 
 #ifndef SINGLE
   __m128i symbol = _mm_setzero_si128();
 #else
-  const __m128i symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+  const __m128i symbol = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
   pInStart += (TYPE_SIZE / 8);
 #endif
 
 #if SYMBOL_COUNT > 1
   __m128i other[SYMBOL_COUNT - 1];
 
-  other[0] = CONCAT2(_mm_set1_epi, TYPE_SIZE)(0x7F * VALUE_BROADCAST);
-  other[1] = CONCAT2(_mm_set1_epi, TYPE_SIZE)(0xFF * VALUE_BROADCAST);
+  other[0] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x7F * VALUE_BROADCAST);
+  other[1] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0xFF * VALUE_BROADCAST);
   #if SYMBOL_COUNT == 7
-  other[2] = CONCAT2(_mm_set1_epi, TYPE_SIZE)(0x01 * VALUE_BROADCAST);
-  other[3] = CONCAT2(_mm_set1_epi, TYPE_SIZE)(0x7E * VALUE_BROADCAST);
-  other[4] = CONCAT2(_mm_set1_epi, TYPE_SIZE)(0x80 * VALUE_BROADCAST);
-  other[5] = CONCAT2(_mm_set1_epi, TYPE_SIZE)(0xFE * VALUE_BROADCAST);
+  other[2] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x01 * VALUE_BROADCAST);
+  other[3] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x7E * VALUE_BROADCAST);
+  other[4] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x80 * VALUE_BROADCAST);
+  other[5] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0xFE * VALUE_BROADCAST);
   #endif
+#endif
+
+#if TYPE_SIZE == 24
+  const __m128i shuffle0 = _mm_set_epi8(0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0);
+  const __m128i shuffle1 = _mm_set_epi8(1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1);
+  const __m128i shuffle2 = _mm_set_epi8(2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2);
+
+  __m128i symbol0 = symbol, symbol1 = symbol, symbol2 = symbol;
+#elif TYPE_SIZE == 48
+  const __m128i shuffle0 = _mm_set_epi8(3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0);
+  const __m128i shuffle1 = _mm_set_epi8(1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4);
+  const __m128i shuffle2 = _mm_set_epi8(5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2);
+
+  __m128i symbol0 = symbol, symbol1 = symbol, symbol2 = symbol;
 #endif
 
   while (true)
@@ -1243,7 +1370,7 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse41))(IN cons
       other[2] = other[1];
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      symbol = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
       pInStart += (TYPE_SIZE / 8);
       break;
     }
@@ -1267,7 +1394,7 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse41))(IN cons
     {
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      symbol = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
       pInStart += (TYPE_SIZE / 8);
       break;
     }
@@ -1292,7 +1419,7 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse41))(IN cons
 #else
     case 1:
     {
-      symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      symbol = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
       pInStart += (TYPE_SIZE / 8);
       break;
     }
@@ -1302,8 +1429,249 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse41))(IN cons
       break;
     }
 #elif !defined(SINGLE)
-    symbol = CONCAT2(_mm_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+    symbol = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
     pInStart += (TYPE_SIZE / 8);
+#endif
+
+#if !defined(SINGLE) && defined(SYMBOL_MASK)
+#if SYMBOL_COUNT != 0
+    if (symbolIndex)
+#endif
+    {
+#if TYPE_SIZE == 24 || TYPE_SIZE == 48
+      symbol0 = _mm_shuffle_epi8(symbol, shuffle0);
+      symbol1 = _mm_shuffle_epi8(symbol, shuffle1);
+      symbol2 = _mm_shuffle_epi8(symbol, shuffle2);
+#endif
+    }
+#endif
+
+    offset -= RLE8_XSYMLUT_SHORT_RANGE_VALUE_OFFSET;
+
+    // memcpy.
+    COPY_SEGMENT_SSE;
+
+    if (!symbolCount)
+      return;
+
+#if defined(UNBOUND) || TYPE_SIZE == 8
+    symbolCount += (RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT - RLE8_XSYMLUT_SHORT_COUNT_VALUE_OFFSET);
+#else
+    symbolCount = (symbolCount + (RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT / (TYPE_SIZE / 8)) - RLE8_XSYMLUT_SHORT_COUNT_VALUE_OFFSET) * (TYPE_SIZE / 8);
+#endif
+
+#if TYPE_SIZE == 24 || TYPE_SIZE == 48
+    // memset.
+    {
+      uint8_t *pCOut = pOut;
+      uint8_t *pCOutEnd = pOut + symbolCount;
+
+      while (pCOut < pCOutEnd)
+      {
+        _mm_storeu_si128((__m128i *)pCOut, symbol0);
+        pCOut += sizeof(symbol0);
+        _mm_storeu_si128((__m128i *)pCOut, symbol1);
+        pCOut += sizeof(symbol1);
+        _mm_storeu_si128((__m128i *)pCOut, symbol2);
+        pCOut += sizeof(symbol2);
+      }
+
+      pOut = pCOutEnd;
+    }
+#else
+    // memset.
+    SET_SEGMENT_SSE;
+#endif
+  }
+}
+#endif
+
+#ifndef _MSC_VER
+__attribute__((target("sse4.1")))
+#endif
+static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse41))(IN const uint8_t *pInStart, OUT uint8_t *pOut)
+{
+  size_t offset, symbolCount;
+
+#ifndef SINGLE
+  __m128i symbol = _mm_setzero_si128();
+#else
+  const __m128i symbol = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
+  pInStart += (TYPE_SIZE / 8);
+#endif
+
+#if SYMBOL_COUNT > 1
+  __m128i other[SYMBOL_COUNT - 1];
+
+  other[0] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x7F * VALUE_BROADCAST);
+  other[1] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0xFF * VALUE_BROADCAST);
+  #if SYMBOL_COUNT == 7
+  other[2] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x01 * VALUE_BROADCAST);
+  other[3] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x7E * VALUE_BROADCAST);
+  other[4] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x80 * VALUE_BROADCAST);
+  other[5] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0xFE * VALUE_BROADCAST);
+  #endif
+#endif
+
+#if TYPE_SIZE == 24
+  const __m128i shuffle0 = _mm_set_epi8(0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0);
+  const __m128i shuffle1 = _mm_set_epi8(1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1);
+  const __m128i shuffle2 = _mm_set_epi8(2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2);
+
+  __m128i symbol0 = symbol, symbol1 = symbol, symbol2 = symbol;
+#elif TYPE_SIZE == 48
+  const __m128i shuffle0 = _mm_set_epi8(3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0);
+  const __m128i shuffle1 = _mm_set_epi8(1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4);
+  const __m128i shuffle2 = _mm_set_epi8(5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2);
+
+  __m128i symbol0 = symbol, symbol1 = symbol, symbol2 = symbol;
+#endif
+
+  while (true)
+  {
+    const uint8_t packedValue1 = *pInStart;
+    pInStart++;
+
+#if SYMBOL_COUNT != 0
+    const uint8_t symbolIndex = packedValue1 >> (RLE8_XSYMLUT_SHORT_COUNT_BITS_PACKED + RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED);
+#endif
+
+    const uint8_t count3 = (packedValue1 >> RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED) & RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID;
+
+    if (count3 == RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID) // don't use 3 bit value.
+    {
+      const uint8_t packedValue2 = *pInStart;
+      pInStart++;
+
+      const uint8_t packedValue3 = *pInStart;
+      pInStart++;
+
+#if RLE8_XSYMLUT_SHORT_RANGE_BITS != 8
+      symbolCount = ((packedValue2 >> (RLE8_XSYMLUT_SHORT_RANGE_BITS - 8))) | (((uint16_t)(packedValue1 & RLE8_XSYMLUT_SHORT_MAX_PACKED_RANGE)) << (8 - (RLE8_XSYMLUT_SHORT_RANGE_BITS - 8)));
+      offset = packedValue3 | ((uint16_t)(packedValue2 & ((1 << (RLE8_XSYMLUT_SHORT_RANGE_BITS - 8)) - 1)) << 8);
+#else
+      symbolCount = (packedValue2) | (((uint16_t)(packedValue1 & RLE8_XSYMLUT_SHORT_MAX_PACKED_RANGE)) << (8));
+      offset = packedValue3;
+#endif
+
+      if (symbolCount == 0)
+      {
+        symbolCount = *(uint32_t *)pInStart;
+        pInStart += sizeof(uint32_t);
+      }
+      else if (symbolCount == 1)
+      {
+        symbolCount = *(uint16_t *)pInStart;
+        pInStart += sizeof(uint16_t);
+      }
+
+      if (offset == 0)
+      {
+        offset = *(uint32_t *)pInStart;
+        pInStart += sizeof(uint32_t);
+      }
+      else if (offset == 1)
+      {
+        offset = *(uint16_t *)pInStart;
+        pInStart += sizeof(uint16_t);
+
+        if (offset == 0)
+          return;
+      }
+    }
+    else
+    {
+      symbolCount = count3 + RLE8_XSYMLUT_SHORT_COUNT_VALUE_OFFSET;
+      offset = (packedValue1 & RLE8_XSYMLUT_SHORT_MAX_PACKED_RANGE) + RLE8_XSYMLUT_SHORT_COUNT_VALUE_OFFSET;
+    }
+
+#if SYMBOL_COUNT != 0
+    switch (symbolIndex)
+    {
+#if SYMBOL_COUNT != 1
+  #if SYMBOL_COUNT == 7
+    case 7:
+    {
+      other[5] = other[4];
+      other[4] = other[3];
+      other[3] = other[2];
+      other[2] = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
+      pInStart += (TYPE_SIZE / 8);
+      break;
+    }
+
+    case 6:
+    case 5:
+    case 4:
+    case 3:
+    {
+      const __m128i tmp = other[symbolIndex - 1];
+
+      for (size_t q = symbolIndex - 1; q > 0; q--)
+        other[q] = other[q - 1];
+
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+  #else
+    case 3:
+    {
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
+      pInStart += (TYPE_SIZE / 8);
+      break;
+    }
+  #endif
+
+    case 2:
+    {
+      const __m128i tmp = other[1];
+      other[1] = other[0];
+      other[0] = symbol;
+      symbol = tmp;
+      break;
+    }
+
+    case 1:
+    {
+      const __m128i tmp = symbol;
+      symbol = other[0];
+      other[0] = tmp;
+      break;
+    }
+#else
+    case 1:
+    {
+      symbol = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
+      pInStart += (TYPE_SIZE / 8);
+      break;
+    }
+#endif
+
+    case 0:
+      break;
+    }
+#elif !defined(SINGLE)
+    symbol = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
+    pInStart += (TYPE_SIZE / 8);
+#endif
+
+#if !defined(SINGLE) && defined(SYMBOL_MASK)
+#if SYMBOL_COUNT != 0
+    if (symbolIndex)
+#endif
+    {
+#if TYPE_SIZE == 24 || TYPE_SIZE == 48
+      symbol0 = _mm_shuffle_epi8(symbol, shuffle0);
+      symbol1 = _mm_shuffle_epi8(symbol, shuffle1);
+      symbol2 = _mm_shuffle_epi8(symbol, shuffle2);
+#endif
+    }
 #endif
 
     offset -= RLE8_XSYMLUT_SHORT_RANGE_VALUE_OFFSET;
@@ -1320,8 +1688,28 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse41))(IN cons
     symbolCount = (symbolCount + (RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT / (TYPE_SIZE / 8)) - RLE8_XSYMLUT_SHORT_COUNT_VALUE_OFFSET) * (TYPE_SIZE / 8);
 #endif
 
+#if TYPE_SIZE == 24 || TYPE_SIZE == 48
+    // memset.
+    {
+      uint8_t *pCOut = pOut;
+      uint8_t *pCOutEnd = pOut + symbolCount;
+
+      while (pCOut < pCOutEnd)
+      {
+        _mm_storeu_si128((__m128i *)pCOut, symbol0);
+        pCOut += sizeof(symbol0);
+        _mm_storeu_si128((__m128i *)pCOut, symbol1);
+        pCOut += sizeof(symbol1);
+        _mm_storeu_si128((__m128i *)pCOut, symbol2);
+        pCOut += sizeof(symbol2);
+      }
+
+      pOut = pCOutEnd;
+    }
+#else
     // memset.
     SET_SEGMENT_SSE41;
+#endif
   }
 }
 
@@ -1332,24 +1720,64 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx))(IN const 
 {
   size_t offset, symbolCount;
 
-#ifndef SINGLE
-  __m256i symbol = _mm256_setzero_si256();
-#else
-  const __m256i symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+#ifdef SINGLE
+  const __m256i symbol = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
   pInStart += (TYPE_SIZE / 8);
 #endif
+
+#ifndef SYMBOL_MASK
+#ifndef SINGLE
+  __m256i symbol = _mm256_setzero_si256();
+#endif
+
+  typedef __m256i simd_t;
 
 #if SYMBOL_COUNT > 1
   __m256i other[SYMBOL_COUNT - 1];
 
-  other[0] = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(0x7F * VALUE_BROADCAST);
-  other[1] = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(0xFF * VALUE_BROADCAST);
+  other[0] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0x7F * VALUE_BROADCAST);
+  other[1] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0xFF * VALUE_BROADCAST);
   #if SYMBOL_COUNT == 7
-  other[2] = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(0x01 * VALUE_BROADCAST);
-  other[3] = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(0x7E * VALUE_BROADCAST);
-  other[4] = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(0x80 * VALUE_BROADCAST);
-  other[5] = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(0xFE * VALUE_BROADCAST);
+  other[2] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0x01 * VALUE_BROADCAST);
+  other[3] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0x7E * VALUE_BROADCAST);
+  other[4] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0x80 * VALUE_BROADCAST);
+  other[5] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0xFE * VALUE_BROADCAST);
   #endif
+#endif
+#else
+#ifdef SINGLE
+#fail NOT SUPPORTED!
+#endif
+  typedef __m128i simd_t;
+
+  __m128i symbol = _mm_setzero_si128();
+
+#if SYMBOL_COUNT > 1
+  __m128i other[SYMBOL_COUNT - 1];
+
+  other[0] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x7F * VALUE_BROADCAST);
+  other[1] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0xFF * VALUE_BROADCAST);
+#if SYMBOL_COUNT == 7
+  other[2] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x01 * VALUE_BROADCAST);
+  other[3] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x7E * VALUE_BROADCAST);
+  other[4] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x80 * VALUE_BROADCAST);
+  other[5] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0xFE * VALUE_BROADCAST);
+#endif
+#endif
+#endif
+
+#if TYPE_SIZE == 24
+  const __m128i shuffle0 = _mm_set_epi8(0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0);
+  const __m128i shuffle1 = _mm_set_epi8(1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1);
+  const __m128i shuffle2 = _mm_set_epi8(2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2);
+
+  __m128i symbol0 = symbol, symbol1 = symbol, symbol2 = symbol;
+#elif TYPE_SIZE == 48
+  const __m128i shuffle0 = _mm_set_epi8(3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0);
+  const __m128i shuffle1 = _mm_set_epi8(1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4);
+  const __m128i shuffle2 = _mm_set_epi8(5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2);
+
+  __m128i symbol0 = symbol, symbol1 = symbol, symbol2 = symbol;
 #endif
 
   while (true)
@@ -1423,7 +1851,11 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx))(IN const 
       other[2] = other[1];
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+#ifndef SYMBOL_MASK
+      symbol = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
+#else
+      symbol = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
+#endif
       pInStart += (TYPE_SIZE / 8);
       break;
     }
@@ -1433,7 +1865,7 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx))(IN const 
     case 4:
     case 3:
     {
-      const __m256i tmp = other[symbolIndex - 1];
+      const simd_t tmp = other[symbolIndex - 1];
 
       for (size_t q = symbolIndex - 1; q > 0; q--)
         other[q] = other[q - 1];
@@ -1447,7 +1879,11 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx))(IN const 
     {
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+#ifndef SYMBOL_MASK
+      symbol = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
+#else
+      symbol = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
+#endif
       pInStart += (TYPE_SIZE / 8);
       break;
     }
@@ -1455,7 +1891,7 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx))(IN const 
 
     case 2:
     {
-      const __m256i tmp = other[1];
+      const simd_t tmp = other[1];
       other[1] = other[0];
       other[0] = symbol;
       symbol = tmp;
@@ -1464,7 +1900,7 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx))(IN const 
 
     case 1:
     {
-      const __m256i tmp = symbol;
+      const simd_t tmp = symbol;
       symbol = other[0];
       other[0] = tmp;
       break;
@@ -1472,7 +1908,11 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx))(IN const 
 #else
     case 1:
     {
-      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+#ifndef SYMBOL_MASK
+      symbol = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
+#else
+      symbol = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
+#endif
       pInStart += (TYPE_SIZE / 8);
       break;
     }
@@ -1482,8 +1922,25 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx))(IN const 
       break;
     }
 #elif !defined(SINGLE)
-    symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+#ifndef SYMBOL_MASK
+    symbol = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
+#else
+    symbol = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
+#endif
     pInStart += (TYPE_SIZE / 8);
+#endif
+
+#if !defined(SINGLE) && defined(SYMBOL_MASK)
+#if SYMBOL_COUNT != 0
+    if (symbolIndex)
+#endif
+    {
+#if TYPE_SIZE == 24 || TYPE_SIZE == 48
+      symbol0 = _mm_shuffle_epi8(symbol, shuffle0);
+      symbol1 = _mm_shuffle_epi8(symbol, shuffle1);
+      symbol2 = _mm_shuffle_epi8(symbol, shuffle2);
+#endif
+    }
 #endif
 
     offset -= RLE8_XSYMLUT_SHORT_RANGE_VALUE_OFFSET;
@@ -1500,8 +1957,28 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx))(IN const 
     symbolCount = (symbolCount + (RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT / (TYPE_SIZE / 8)) - RLE8_XSYMLUT_SHORT_COUNT_VALUE_OFFSET) * (TYPE_SIZE / 8);
 #endif
 
+#if TYPE_SIZE == 24 || TYPE_SIZE == 48
+    // memset.
+    {
+      uint8_t *pCOut = pOut;
+      uint8_t *pCOutEnd = pOut + symbolCount;
+
+      while (pCOut < pCOutEnd)
+      {
+        _mm_storeu_si128((__m128i *)pCOut, symbol0);
+        pCOut += sizeof(symbol0);
+        _mm_storeu_si128((__m128i *)pCOut, symbol1);
+        pCOut += sizeof(symbol1);
+        _mm_storeu_si128((__m128i *)pCOut, symbol2);
+        pCOut += sizeof(symbol2);
+      }
+
+      pOut = pCOutEnd;
+    }
+#else
     // memset.
     SET_SEGMENT_AVX;
+#endif
   }
 }
 
@@ -1515,22 +1992,37 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx2))(IN const
 #ifndef SINGLE
   __m256i symbol = _mm256_setzero_si256();
 #else
-  const __m256i symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+  const __m256i symbol = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
   pInStart += (TYPE_SIZE / 8);
 #endif
 
 #if SYMBOL_COUNT > 1
   __m256i other[SYMBOL_COUNT - 1];
 
-  other[0] = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(0x7F * VALUE_BROADCAST);
-  other[1] = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(0xFF * VALUE_BROADCAST);
+  other[0] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0x7F * VALUE_BROADCAST);
+  other[1] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0xFF * VALUE_BROADCAST);
   #if SYMBOL_COUNT == 7
-  other[2] = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(0x01 * VALUE_BROADCAST);
-  other[3] = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(0x7E * VALUE_BROADCAST);
-  other[4] = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(0x80 * VALUE_BROADCAST);
-  other[5] = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(0xFE * VALUE_BROADCAST);
+  other[2] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0x01 * VALUE_BROADCAST);
+  other[3] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0x7E * VALUE_BROADCAST);
+  other[4] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0x80 * VALUE_BROADCAST);
+  other[5] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0xFE * VALUE_BROADCAST);
   #endif
 #endif
+
+#if TYPE_SIZE == 24
+  const __m256i shuffle0 = _mm256_set_epi8(1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0);
+  const __m256i shuffle1 = _mm256_set_epi8(0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2);
+  const __m256i shuffle2 = _mm256_set_epi8(2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1);
+
+  __m256i symbol0 = symbol, symbol1 = symbol, symbol2 = symbol;
+#elif TYPE_SIZE == 48
+  const __m256i shuffle0 = _mm256_set_epi8(1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0);
+  const __m256i shuffle1 = _mm256_set_epi8(3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2);
+  const __m256i shuffle2 = _mm256_set_epi8(5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4);
+
+  __m256i symbol0 = symbol, symbol1 = symbol, symbol2 = symbol;
+#endif
+
 
   while (true)
   {
@@ -1603,7 +2095,7 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx2))(IN const
       other[2] = other[1];
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      symbol = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
       pInStart += (TYPE_SIZE / 8);
       break;
     }
@@ -1627,7 +2119,7 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx2))(IN const
     {
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      symbol = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
       pInStart += (TYPE_SIZE / 8);
       break;
     }
@@ -1652,7 +2144,7 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx2))(IN const
 #else
     case 1:
     {
-      symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      symbol = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
       pInStart += (TYPE_SIZE / 8);
       break;
     }
@@ -1662,8 +2154,21 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx2))(IN const
       break;
     }
 #elif !defined(SINGLE)
-    symbol = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+    symbol = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
     pInStart += (TYPE_SIZE / 8);
+#endif
+
+#if !defined(SINGLE) && defined(SYMBOL_MASK)
+#if SYMBOL_COUNT != 0
+    if (symbolIndex)
+#endif
+    {
+#if TYPE_SIZE == 24 || TYPE_SIZE == 48
+      symbol0 = _mm256_shuffle_epi8(symbol, shuffle0);
+      symbol1 = _mm256_shuffle_epi8(symbol, shuffle1);
+      symbol2 = _mm256_shuffle_epi8(symbol, shuffle2);
+#endif
+    }
 #endif
 
     offset -= RLE8_XSYMLUT_SHORT_RANGE_VALUE_OFFSET;
@@ -1680,11 +2185,32 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx2))(IN const
     symbolCount = (symbolCount + (RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT / (TYPE_SIZE / 8)) - RLE8_XSYMLUT_SHORT_COUNT_VALUE_OFFSET) * (TYPE_SIZE / 8);
 #endif
 
+#if TYPE_SIZE == 24 || TYPE_SIZE == 48
+    // memset.
+    {
+      uint8_t *pCOut = pOut;
+      uint8_t *pCOutEnd = pOut + symbolCount;
+
+      while (pCOut < pCOutEnd)
+      {
+        _mm256_storeu_si256((__m256i *)pCOut, symbol0);
+        pCOut += sizeof(symbol0);
+        _mm256_storeu_si256((__m256i *)pCOut, symbol1);
+        pCOut += sizeof(symbol1);
+        _mm256_storeu_si256((__m256i *)pCOut, symbol2);
+        pCOut += sizeof(symbol2);
+      }
+
+      pOut = pCOutEnd;
+    }
+#else
     // memset.
     SET_SEGMENT_AVX2;
+#endif
   }
 }
 
+#ifndef SYMBOL_MASK
 #ifndef _MSC_VER
 __attribute__((target("avx512f")))
 #endif
@@ -1695,20 +2221,20 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx512f))(IN co
 #ifndef SINGLE
   __m512i symbol = _mm512_setzero_si512();
 #else
-  const __m512i symbol = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+  const __m512i symbol = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
   pInStart += (TYPE_SIZE / 8);
 #endif
 
 #if SYMBOL_COUNT > 1
   __m512i other[SYMBOL_COUNT - 1];
 
-  other[0] = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(0x7F * VALUE_BROADCAST);
-  other[1] = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(0xFF * VALUE_BROADCAST);
+  other[0] = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)(0x7F * VALUE_BROADCAST);
+  other[1] = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)(0xFF * VALUE_BROADCAST);
   #if SYMBOL_COUNT == 7
-  other[2] = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(0x01 * VALUE_BROADCAST);
-  other[3] = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(0x7E * VALUE_BROADCAST);
-  other[4] = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(0x80 * VALUE_BROADCAST);
-  other[5] = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(0xFE * VALUE_BROADCAST);
+  other[2] = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)(0x01 * VALUE_BROADCAST);
+  other[3] = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)(0x7E * VALUE_BROADCAST);
+  other[4] = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)(0x80 * VALUE_BROADCAST);
+  other[5] = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)(0xFE * VALUE_BROADCAST);
   #endif
 #endif
 
@@ -1783,7 +2309,7 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx512f))(IN co
       other[2] = other[1];
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      symbol = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
       pInStart += (TYPE_SIZE / 8);
       break;
     }
@@ -1807,7 +2333,7 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx512f))(IN co
     {
       other[1] = other[0];
       other[0] = symbol;
-      symbol = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      symbol = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
       pInStart += (TYPE_SIZE / 8);
       break;
     }
@@ -1832,7 +2358,7 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx512f))(IN co
 #else
     case 1:
     {
-      symbol = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+      symbol = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
       pInStart += (TYPE_SIZE / 8);
       break;
     }
@@ -1843,7 +2369,7 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx512f))(IN co
     }
 
 #elif !defined(SINGLE)
-    symbol = CONCAT2(_mm512_set1_epi, TYPE_SIZE)(*(uintXX_t *)pInStart);
+    symbol = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)(*(uintXX_t *)pInStart);
     pInStart += (TYPE_SIZE / 8);
 #endif
 
@@ -1865,6 +2391,7 @@ static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx512f))(IN co
     SET_SEGMENT_AVX512;
   }
 }
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -1886,14 +2413,21 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress))(IN const uint8_t
 
   _DetectCPUFeatures();
 
+#ifndef SYMBOL_MASK
   if (avx512FSupported)
     CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx512f))(pIn, pOut);
-  else if (avx2Supported)
+  else 
+#endif
+    if (avx2Supported)
     CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx2))(pIn, pOut);
   else if (avxSupported)
     CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_avx))(pIn, pOut);
   else if (sse41Supported)
     CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse41))(pIn, pOut);
+#ifdef SYMBOL_MASK
+  else if (ssse3Supported)
+      CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_ssse3))(pIn, pOut);
+#endif
   else
     CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse))(pIn, pOut);
 
