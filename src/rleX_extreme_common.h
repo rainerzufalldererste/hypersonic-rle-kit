@@ -40,10 +40,12 @@ void _DetectCPUFeatures();
 
 //////////////////////////////////////////////////////////////////////////
 
-#define CONCAT_LITERALS3(a, b, c) a ## b ## c
+#define _CONCAT_LITERALS3(a, b, c) a ## b ## c
+#define CONCAT_LITERALS3(a, b, c) _CONCAT_LITERALS3(a, b, c)
 #define CONCAT3(a, b, c) CONCAT_LITERALS3(a, b, c)
 
-#define CONCAT_LITERALS2(a, b) a ## b
+#define _CONCAT_LITERALS2(a, b) a ## b
+#define CONCAT_LITERALS2(a, b) _CONCAT_LITERALS2(a, b)
 #define CONCAT2(a, b) CONCAT_LITERALS2(a, b)
 
 //////////////////////////////////////////////////////////////////////////

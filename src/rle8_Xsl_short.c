@@ -28,6 +28,7 @@
 
 #include "rle8_Xsl_short.h"
 
+#undef SYMBOL_COUNT
 #undef SINGLE
 #undef TYPE_SIZE
 

@@ -49,18 +49,20 @@
 #endif
 
 #if TYPE_SIZE == 8
-  #define VALUE_BROADCAST 0x01
+  #define VALUE_BROADCAST_INTERNAL 0x01
 #elif TYPE_SIZE == 16
-  #define VALUE_BROADCAST 0x0101
+  #define VALUE_BROADCAST_INTERNAL 0x0101
 #elif TYPE_SIZE == 24
-  #define VALUE_BROADCAST 0x010101
+  #define VALUE_BROADCAST_INTERNAL 0x010101
 #elif TYPE_SIZE == 32
-  #define VALUE_BROADCAST 0x01010101
+  #define VALUE_BROADCAST_INTERNAL 0x01010101
 #elif TYPE_SIZE == 48
-  #define VALUE_BROADCAST 0x010101010101ULL
+  #define VALUE_BROADCAST_INTERNAL 0x010101010101ULL
 #elif TYPE_SIZE == 64
-  #define VALUE_BROADCAST 0x0101010101010101ULL
+  #define VALUE_BROADCAST_INTERNAL 0x0101010101010101ULL
 #endif
+
+#define VALUE_BROADCAST ((uintXX_t)(VALUE_BROADCAST_INTERNAL))
 
 #if TYPE_SIZE == 8
   #define COPY_SEGMENT_SSE    MEMCPY_SSE
@@ -106,7 +108,10 @@ static int64_t CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, compress_avx2)(IN cons
 
 //////////////////////////////////////////////////////////////////////////
 
-inline bool CONCAT3(CONCAT3(_rle, TYPE_SIZE, _), CODEC, process_symbol)(IN const uint8_t *pIn, OUT uint8_t *pOut, const size_t i, IN OUT CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, compress_state_t) *pState)
+#ifdef _MSC_VER
+inline 
+#endif
+bool CONCAT3(CONCAT3(_rle, TYPE_SIZE, _), CODEC, process_symbol)(IN const uint8_t *pIn, OUT uint8_t *pOut, const size_t i, IN OUT CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, compress_state_t) *pState)
 {
   size_t symbolMatchIndex = 0;
 
@@ -134,24 +139,32 @@ inline bool CONCAT3(CONCAT3(_rle, TYPE_SIZE, _), CODEC, process_symbol)(IN const
       pState->lastSymbols[6] = pState->lastSymbols[5];
 #ifdef __cplusplus
       [[fallthrough]]; // intentional fallthrough!
+#elif !defined(_MSC_VER)
+      __attribute__((fallthrough));
 #endif
 
     case 5:
       pState->lastSymbols[5] = pState->lastSymbols[4];
 #ifdef __cplusplus
       [[fallthrough]]; // intentional fallthrough!
+#elif !defined(_MSC_VER)
+      __attribute__((fallthrough));
 #endif
 
     case 4:
       pState->lastSymbols[4] = pState->lastSymbols[3];
 #ifdef __cplusplus
       [[fallthrough]]; // intentional fallthrough!
+#elif !defined(_MSC_VER)
+      __attribute__((fallthrough));
 #endif
 
     case 3:
       pState->lastSymbols[3] = pState->lastSymbols[2];
 #ifdef __cplusplus
       [[fallthrough]]; // intentional fallthrough!
+#elif !defined(_MSC_VER)
+      __attribute__((fallthrough));
 #endif
 
 #elif SYMBOL_COUNT == 3
@@ -161,6 +174,8 @@ inline bool CONCAT3(CONCAT3(_rle, TYPE_SIZE, _), CODEC, process_symbol)(IN const
       pState->lastSymbols[2] = pState->lastSymbols[1];
 #ifdef __cplusplus
       [[fallthrough]]; // intentional fallthrough!
+#elif !defined(_MSC_VER)
+      __attribute__((fallthrough));
 #endif
 
     case 1:
@@ -634,7 +649,7 @@ uint32_t CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, compress)(IN const uint8_t *
   }
 
   // Store compressed length.
-  ((uint32_t *)pOut)[1] = (uint32_t)state.index;
+  return ((uint32_t *)pOut)[1] = (uint32_t)state.index;
 }
 #endif
 
@@ -2000,6 +2015,32 @@ uint32_t CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, decompress)(IN const uint8_t
 #undef RLE8_XSYMLUT_RANGE_BITS
 #undef RLE8_XSYMLUT_MAX_TINY_COUNT
 #undef RLE8_XSYMLUT_MAX_TINY_RANGE
+
+#undef SIMD_TYPE_SIZE
+#undef VALUE_BROADCAST
+#undef VALUE_BROADCAST_INTERNAL
+#undef uintXX_t
+
+#undef CODEC
+
+#ifdef CODEC_POSTFIX
+  #undef CODEC_POSTFIX
+#endif
+
+#ifdef SYMBOL_MASK
+  #undef SYMBOL_MASK
+#endif
+
+#undef COPY_SEGMENT_SSE
+#undef COPY_SEGMENT_SSE41
+#undef COPY_SEGMENT_AVX
+#undef COPY_SEGMENT_AVX2
+#undef COPY_SEGMENT_AVX512
+#undef SET_SEGMENT_SSE
+#undef SET_SEGMENT_SSE41   
+#undef SET_SEGMENT_AVX
+#undef SET_SEGMENT_AVX2
+#undef SET_SEGMENT_AVX512
 
 #if TYPE_SIZE == 64
   #undef _mm_set1_epi64

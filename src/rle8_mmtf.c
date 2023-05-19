@@ -1,9 +1,13 @@
 #include "rle.h"
 #include "rleX_extreme_common.h"
-#include "bitpack.h"
 
-//#define COMMENT(...) printf(__VA_ARGS__)
 #define COMMENT(...)
+
+#ifndef _MSC_VER
+  #define inline
+#endif
+
+#include "bitpack.h"
 
 //////////////////////////////////////////////////////////////////////////
 
