@@ -455,22 +455,23 @@ int main(int argc, char **pArgv)
       Extreme8SingleShort,
       Extreme8PackedSingle,
       Extreme16Sym,
-      Extreme16SymPacked,
       Extreme16SymShort,
+      Extreme16SymPacked,
       Extreme16Sym_1SLShort,
       Extreme16Sym_3SL,
       Extreme16Sym_3SLShort,
       Extreme16Sym_7SL,
       Extreme16Sym_7SLShort,
       Extreme16Byte,
-      Extreme16BytePacked,
       Extreme16ByteShort,
+      Extreme16BytePacked,
       Extreme16Byte_1SLShort,
       Extreme16Byte_3SL,
       Extreme16Byte_3SLShort,
       Extreme16Byte_7SL,
       Extreme16Byte_7SLShort,
       Extreme24Sym,
+      Extreme24SymShort,
       Extreme24SymPacked,
       Extreme24Sym_1SLShort,
       Extreme24Sym_3SL,
@@ -478,6 +479,7 @@ int main(int argc, char **pArgv)
       Extreme24Sym_7SL,
       Extreme24Sym_7SLShort,
       Extreme24Byte,
+      Extreme24ByteShort,
       Extreme24BytePacked,
       Extreme24Byte_1SLShort,
       Extreme24Byte_3SL,
@@ -485,22 +487,23 @@ int main(int argc, char **pArgv)
       Extreme24Byte_7SL,
       Extreme24Byte_7SLShort,
       Extreme32Sym,
-      Extreme32SymPacked,
       Extreme32SymShort,
+      Extreme32SymPacked,
       Extreme32Sym_1SLShort,
       Extreme32Sym_3SL,
       Extreme32Sym_3SLShort,
       Extreme32Sym_7SL,
       Extreme32Sym_7SLShort,
       Extreme32Byte,
-      Extreme32BytePacked,
       Extreme32ByteShort,
+      Extreme32BytePacked,
       Extreme32Byte_1SLShort,
       Extreme32Byte_3SL,
       Extreme32Byte_3SLShort,
       Extreme32Byte_7SL,
       Extreme32Byte_7SLShort,
       Extreme48Sym,
+      Extreme48SymShort,
       Extreme48SymPacked,
       Extreme48Sym_1SLShort,
       Extreme48Sym_3SL,
@@ -508,6 +511,7 @@ int main(int argc, char **pArgv)
       Extreme48Sym_7SL,
       Extreme48Sym_7SLShort,
       Extreme48Byte,
+      Extreme48ByteShort,
       Extreme48BytePacked,
       Extreme48Byte_1SLShort,
       Extreme48Byte_3SL,
@@ -515,16 +519,16 @@ int main(int argc, char **pArgv)
       Extreme48Byte_7SL,
       Extreme48Byte_7SLShort,
       Extreme64Sym,
-      Extreme64SymPacked,
       Extreme64SymShort,
+      Extreme64SymPacked,
       Extreme64Sym_1SLShort,
       Extreme64Sym_3SL,
       Extreme64Sym_3SLShort,
       Extreme64Sym_7SL,
       Extreme64Sym_7SLShort,
       Extreme64Byte,
-      Extreme64BytePacked,
       Extreme64ByteShort,
+      Extreme64BytePacked,
       Extreme64Byte_1SLShort,
       Extreme64Byte_3SL,
       Extreme64Byte_3SLShort,
@@ -563,22 +567,23 @@ int main(int argc, char **pArgv)
       "8 Bit Single Short            ",
       "8 Bit Single Packed           ",
       "16 Bit (Symbol)               ",
-      "16 Bit Packed (Symbol)        ",
       "16 Bit Short (Symbol)         ",
+      "16 Bit Packed (Symbol)        ",
       "16 Bit 1LUT Short (Symbol)    ",
       "16 Bit 3LUT (Symbol)          ",
       "16 Bit 3LUT Short (Symbol)    ",
       "16 Bit 7LUT (Symbol)          ",
       "16 Bit 7LUT Short (Symbol)    ",
       "16 Bit (Byte)                 ",
-      "16 Bit Packed (Byte)          ",
       "16 Bit Short (Byte)           ",
+      "16 Bit Packed (Byte)          ",
       "16 Bit 1LUT Short (Byte)      ",
       "16 Bit 3LUT (Byte)            ",
       "16 Bit 3LUT Short (Byte)      ",
       "16 Bit 7LUT (Byte)            ",
       "16 Bit 7LUT Short (Byte)      ",
       "24 Bit (Symbol)               ",
+      "24 Bit Short (Symbol)         ",
       "24 Bit Packed (Symbol)        ",
       "24 Bit 1LUT Short (Symbol)    ",
       "24 Bit 3LUT (Symbol)          ",
@@ -586,6 +591,7 @@ int main(int argc, char **pArgv)
       "24 Bit 7LUT (Symbol)          ",
       "24 Bit 7LUT Short (Symbol)    ",
       "24 Bit (Byte)                 ",
+      "24 Bit Short (Byte)           ",
       "24 Bit Packed (Byte)          ",
       "24 Bit 1LUT Short (Byte)      ",
       "24 Bit 3LUT (Byte)            ",
@@ -593,22 +599,23 @@ int main(int argc, char **pArgv)
       "24 Bit 7LUT (Byte)            ",
       "24 Bit 7LUT Short (Byte)      ",
       "32 Bit (Symbol)               ",
-      "32 Bit Packed (Symbol)        ",
       "32 Bit Short (Symbol)         ",
+      "32 Bit Packed (Symbol)        ",
       "32 Bit 1LUT Short (Symbol)    ",
       "32 Bit 3LUT (Symbol)          ",
       "32 Bit 3LUT Short (Symbol)    ",
       "32 Bit 7LUT (Symbol)          ",
       "32 Bit 7LUT Short (Symbol)    ",
       "32 Bit (Byte)                 ",
-      "32 Bit Packed (Byte)          ",
       "32 Bit Short (Byte)           ",
+      "32 Bit Packed (Byte)          ",
       "32 Bit 1LUT Short (Byte)      ",
       "32 Bit 3LUT (Byte)            ",
       "32 Bit 3LUT Short (Byte)      ",
       "32 Bit 7LUT (Byte)            ",
       "32 Bit 7LUT Short (Byte)      ",
       "48 Bit (Symbol)               ",
+      "48 Bit Short (Symbol)         ",
       "48 Bit Packed (Symbol)        ",
       "48 Bit 1LUT Short (Symbol)    ",
       "48 Bit 3LUT (Symbol)          ",
@@ -616,6 +623,7 @@ int main(int argc, char **pArgv)
       "48 Bit 7LUT (Symbol)          ",
       "48 Bit 7LUT Short (Symbol)    ",
       "48 Bit (Byte)                 ",
+      "48 Bit Short (Byte)           ",
       "48 Bit Packed (Byte)          ",
       "48 Bit 1LUT Short (Byte)      ",
       "48 Bit 3LUT (Byte)            ",
@@ -623,16 +631,16 @@ int main(int argc, char **pArgv)
       "48 Bit 7LUT (Byte)            ",
       "48 Bit 7LUT Short (Byte)      ",
       "64 Bit (Symbol)               ",
-      "64 Bit Packed (Symbol)        ",
       "64 Bit Short (Symbol)         ",
+      "64 Bit Packed (Symbol)        ",
       "64 Bit 1LUT Short (Symbol)    ",
       "64 Bit 3LUT (Symbol)          ",
       "64 Bit 3LUT Short (Symbol)    ",
       "64 Bit 7LUT (Symbol)          ",
       "64 Bit 7LUT Short (Symbol)    ",
       "64 Bit (Byte)                 ",
-      "64 Bit Packed (Byte)          ",
       "64 Bit Short (Byte)           ",
+      "64 Bit Packed (Byte)          ",
       "64 Bit 1LUT Short (Byte)      ",
       "64 Bit 3LUT (Byte)            ",
       "64 Bit 3LUT Short (Byte)      ",
@@ -969,6 +977,10 @@ int main(int argc, char **pArgv)
           compressedSize = rle64_7symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme24SymShort:
+          compressedSize = rle24_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme24Sym_1SLShort:
           compressedSize = rle24_1symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
@@ -987,6 +999,10 @@ int main(int argc, char **pArgv)
 
         case Extreme24Sym_7SLShort:
           compressedSize = rle24_7symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24ByteShort:
+          compressedSize = rle24_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme24Byte_1SLShort:
@@ -1009,6 +1025,10 @@ int main(int argc, char **pArgv)
           compressedSize = rle24_7symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme48SymShort:
+          compressedSize = rle48_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme48Sym_1SLShort:
           compressedSize = rle48_1symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
@@ -1027,6 +1047,10 @@ int main(int argc, char **pArgv)
 
         case Extreme48Sym_7SLShort:
           compressedSize = rle48_7symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48ByteShort:
+          compressedSize = rle48_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme48Byte_1SLShort:
@@ -1421,6 +1445,10 @@ int main(int argc, char **pArgv)
           decompressedSize = rle64_7symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
+        case Extreme24SymShort:
+          decompressedSize = rle24_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
         case Extreme24Sym_1SLShort:
           decompressedSize = rle24_1symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
@@ -1439,6 +1467,10 @@ int main(int argc, char **pArgv)
 
         case Extreme24Sym_7SLShort:
           decompressedSize = rle24_7symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24ByteShort:
+          decompressedSize = rle24_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Extreme24Byte_1SLShort:
@@ -1461,6 +1493,10 @@ int main(int argc, char **pArgv)
           decompressedSize = rle24_7symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
+        case Extreme48SymShort:
+          decompressedSize = rle48_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
         case Extreme48Sym_1SLShort:
           decompressedSize = rle48_1symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
@@ -1479,6 +1515,10 @@ int main(int argc, char **pArgv)
 
         case Extreme48Sym_7SLShort:
           decompressedSize = rle48_7symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48ByteShort:
+          decompressedSize = rle48_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Extreme48Byte_1SLShort:
