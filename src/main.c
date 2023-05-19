@@ -27,20 +27,264 @@ const char ArgumentSubSections[] = "--sub-sections";
 const char ArgumentRuns[] = "--runs";
 const char ArgumentNormal[] = "--low-entropy";
 const char ArgumentSingle[] = "--single";
+const char ArgumentMulti[] = "--multi";
+const char ArgumentShort[] = "--short";
+const char ArgumentNotShort[] = "--not-short";
 const char ArgumentUltra[] = "--low-entropy-short";
 const char ArgumentExtreme[] = "--extreme";
 const char ArgumentExtremeSize[] = "--x-size";
 const char ArgumentExtremeByteGran[] = "--byte-granularity";
+const char ArgumentExtremeSymbolGran[] = "--symbol-granularity";
 const char ArgumentExtremePacked[] = "--packed";
+const char ArgumentExtremeNotPacked[] = "--not-packed";
+const char ArgumentExtremeLutSize[] = "--lut-size";
 const char ArgumentMinimumTime[] = "--min-time";
 const char ArgumentExtremeMMTF[] = "--rle-mmtf";
 const char ArgumentMMTF[] = "--mmtf";
 const char ArgumentSH[] = "--sh";
 const char ArgumentAnalyze[] = "--analyze";
+const char ArgumentMatch[] = "--match";
 
 #ifdef _WIN32
 const char ArgumentCpuCore[] = "--cpu-core";
 #endif
+
+typedef enum
+{
+  Extreme8,
+  Extreme8Short,
+  Extreme8Packed,
+  Extreme8_1SLShort,
+  Extreme8_3SL,
+  Extreme8_3SLShort,
+  Extreme8_7SL,
+  Extreme8_7SLShort,
+  Extreme8Single,
+  Extreme8SingleShort,
+  Extreme8PackedSingle,
+  Extreme16Sym,
+  Extreme16SymShort,
+  Extreme16SymPacked,
+  Extreme16Sym_1SLShort,
+  Extreme16Sym_3SL,
+  Extreme16Sym_3SLShort,
+  Extreme16Sym_7SL,
+  Extreme16Sym_7SLShort,
+  Extreme16Byte,
+  Extreme16ByteShort,
+  Extreme16BytePacked,
+  Extreme16Byte_1SLShort,
+  Extreme16Byte_3SL,
+  Extreme16Byte_3SLShort,
+  Extreme16Byte_7SL,
+  Extreme16Byte_7SLShort,
+  Extreme24Sym,
+  Extreme24SymShort,
+  Extreme24SymPacked,
+  Extreme24Sym_1SLShort,
+  Extreme24Sym_3SL,
+  Extreme24Sym_3SLShort,
+  Extreme24Sym_7SL,
+  Extreme24Sym_7SLShort,
+  Extreme24Byte,
+  Extreme24ByteShort,
+  Extreme24BytePacked,
+  Extreme24Byte_1SLShort,
+  Extreme24Byte_3SL,
+  Extreme24Byte_3SLShort,
+  Extreme24Byte_7SL,
+  Extreme24Byte_7SLShort,
+  Extreme32Sym,
+  Extreme32SymShort,
+  Extreme32SymPacked,
+  Extreme32Sym_1SLShort,
+  Extreme32Sym_3SL,
+  Extreme32Sym_3SLShort,
+  Extreme32Sym_7SL,
+  Extreme32Sym_7SLShort,
+  Extreme32Byte,
+  Extreme32ByteShort,
+  Extreme32BytePacked,
+  Extreme32Byte_1SLShort,
+  Extreme32Byte_3SL,
+  Extreme32Byte_3SLShort,
+  Extreme32Byte_7SL,
+  Extreme32Byte_7SLShort,
+  Extreme48Sym,
+  Extreme48SymShort,
+  Extreme48SymPacked,
+  Extreme48Sym_1SLShort,
+  Extreme48Sym_3SL,
+  Extreme48Sym_3SLShort,
+  Extreme48Sym_7SL,
+  Extreme48Sym_7SLShort,
+  Extreme48Byte,
+  Extreme48ByteShort,
+  Extreme48BytePacked,
+  Extreme48Byte_1SLShort,
+  Extreme48Byte_3SL,
+  Extreme48Byte_3SLShort,
+  Extreme48Byte_7SL,
+  Extreme48Byte_7SLShort,
+  Extreme64Sym,
+  Extreme64SymShort,
+  Extreme64SymPacked,
+  Extreme64Sym_1SLShort,
+  Extreme64Sym_3SL,
+  Extreme64Sym_3SLShort,
+  Extreme64Sym_7SL,
+  Extreme64Sym_7SLShort,
+  Extreme64Byte,
+  Extreme64ByteShort,
+  Extreme64BytePacked,
+  Extreme64Byte_1SLShort,
+  Extreme64Byte_3SL,
+  Extreme64Byte_3SLShort,
+  Extreme64Byte_7SL,
+  Extreme64Byte_7SLShort,
+  Extreme128Sym,
+  Extreme128SymPacked,
+  Extreme128Byte,
+  Extreme128BytePacked,
+
+  Rle8SH,
+  Extreme8MultiMTF128,
+
+  LowEntropy,
+  LowEntropySingle,
+  LowEntropyShort,
+  LowEntropyShortSingle,
+
+  MultiMTF128,
+  MultiMTF256,
+
+  MemCopy,
+
+  CodecCount
+} codec_t;
+
+static const char *codecNames[] =
+{
+  "8 Bit                         ",
+  "8 Bit Short                   ",
+  "8 Bit Packed                  ",
+  "8 Bit 1LUT Short              ",
+  "8 Bit 3LUT                    ",
+  "8 Bit 3LUT Short              ",
+  "8 Bit 7LUT                    ",
+  "8 Bit 7LUT Short              ",
+  "8 Bit Single                  ",
+  "8 Bit Single Short            ",
+  "8 Bit Single Packed           ",
+  "16 Bit (Symbol)               ",
+  "16 Bit Short (Symbol)         ",
+  "16 Bit Packed (Symbol)        ",
+  "16 Bit 1LUT Short (Symbol)    ",
+  "16 Bit 3LUT (Symbol)          ",
+  "16 Bit 3LUT Short (Symbol)    ",
+  "16 Bit 7LUT (Symbol)          ",
+  "16 Bit 7LUT Short (Symbol)    ",
+  "16 Bit (Byte)                 ",
+  "16 Bit Short (Byte)           ",
+  "16 Bit Packed (Byte)          ",
+  "16 Bit 1LUT Short (Byte)      ",
+  "16 Bit 3LUT (Byte)            ",
+  "16 Bit 3LUT Short (Byte)      ",
+  "16 Bit 7LUT (Byte)            ",
+  "16 Bit 7LUT Short (Byte)      ",
+  "24 Bit (Symbol)               ",
+  "24 Bit Short (Symbol)         ",
+  "24 Bit Packed (Symbol)        ",
+  "24 Bit 1LUT Short (Symbol)    ",
+  "24 Bit 3LUT (Symbol)          ",
+  "24 Bit 3LUT Short (Symbol)    ",
+  "24 Bit 7LUT (Symbol)          ",
+  "24 Bit 7LUT Short (Symbol)    ",
+  "24 Bit (Byte)                 ",
+  "24 Bit Short (Byte)           ",
+  "24 Bit Packed (Byte)          ",
+  "24 Bit 1LUT Short (Byte)      ",
+  "24 Bit 3LUT (Byte)            ",
+  "24 Bit 3LUT Short (Byte)      ",
+  "24 Bit 7LUT (Byte)            ",
+  "24 Bit 7LUT Short (Byte)      ",
+  "32 Bit (Symbol)               ",
+  "32 Bit Short (Symbol)         ",
+  "32 Bit Packed (Symbol)        ",
+  "32 Bit 1LUT Short (Symbol)    ",
+  "32 Bit 3LUT (Symbol)          ",
+  "32 Bit 3LUT Short (Symbol)    ",
+  "32 Bit 7LUT (Symbol)          ",
+  "32 Bit 7LUT Short (Symbol)    ",
+  "32 Bit (Byte)                 ",
+  "32 Bit Short (Byte)           ",
+  "32 Bit Packed (Byte)          ",
+  "32 Bit 1LUT Short (Byte)      ",
+  "32 Bit 3LUT (Byte)            ",
+  "32 Bit 3LUT Short (Byte)      ",
+  "32 Bit 7LUT (Byte)            ",
+  "32 Bit 7LUT Short (Byte)      ",
+  "48 Bit (Symbol)               ",
+  "48 Bit Short (Symbol)         ",
+  "48 Bit Packed (Symbol)        ",
+  "48 Bit 1LUT Short (Symbol)    ",
+  "48 Bit 3LUT (Symbol)          ",
+  "48 Bit 3LUT Short (Symbol)    ",
+  "48 Bit 7LUT (Symbol)          ",
+  "48 Bit 7LUT Short (Symbol)    ",
+  "48 Bit (Byte)                 ",
+  "48 Bit Short (Byte)           ",
+  "48 Bit Packed (Byte)          ",
+  "48 Bit 1LUT Short (Byte)      ",
+  "48 Bit 3LUT (Byte)            ",
+  "48 Bit 3LUT Short (Byte)      ",
+  "48 Bit 7LUT (Byte)            ",
+  "48 Bit 7LUT Short (Byte)      ",
+  "64 Bit (Symbol)               ",
+  "64 Bit Short (Symbol)         ",
+  "64 Bit Packed (Symbol)        ",
+  "64 Bit 1LUT Short (Symbol)    ",
+  "64 Bit 3LUT (Symbol)          ",
+  "64 Bit 3LUT Short (Symbol)    ",
+  "64 Bit 7LUT (Symbol)          ",
+  "64 Bit 7LUT Short (Symbol)    ",
+  "64 Bit (Byte)                 ",
+  "64 Bit Short (Byte)           ",
+  "64 Bit Packed (Byte)          ",
+  "64 Bit 1LUT Short (Byte)      ",
+  "64 Bit 3LUT (Byte)            ",
+  "64 Bit 3LUT Short (Byte)      ",
+  "64 Bit 7LUT (Byte)            ",
+  "64 Bit 7LUT Short (Byte)      ",
+  "128 Bit (Symbol)              ",
+  "128 Bit Packed (Symbol)       ",
+  "128 Bit (Byte)                ",
+  "128 Bit Packed (Byte)         ",
+  "8 Bit RLE + Huffman-esque     ",
+  "8 Bit MMTF 128                ",
+  "Low Entropy                   ",
+  "Low Entropy Single            ",
+  "Low Entropy Short             ",
+  "Low Entropy Short Single      ",
+  "Multi MTF 128 Bit (Transform) ",
+  "Multi MTF 256 Bit (Transform) ",
+  "memcpy                        ",
+};
+
+_STATIC_ASSERT(ARRAYSIZE(codecNames) == CodecCount);
+
+struct
+{
+  bool hasMode, isModeExtreme, isModeLowEntropy, isModeSH, isModeRleMMTF, isModeMMTF;
+  bool hasShortMode, isShortMode;
+  bool hasSingleMode, isSingleMode;
+  bool hasAlignment, isAlignmentByte;
+  bool hasPackedMode, isPacked;
+  bool hasLutSize;
+  size_t lutSize;
+  bool hasBitCount;
+  size_t bitCount;
+} _Args;
 
 uint64_t GetCurrentTimeTicks();
 uint64_t TicksToNs(const uint64_t ticks);
@@ -48,6 +292,7 @@ void SleepNs(const uint64_t sleepNs);
 bool Validate(const uint8_t *pUncompressedData, const uint8_t *pDecompressedData, const size_t fileSize);
 double GetInformationRatio(const uint8_t *pData, const size_t length);
 void AnalyzeData(const uint8_t *pData, const size_t size);
+bool CodecMatchesArgs(const codec_t codec);
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -56,15 +301,22 @@ int main(int argc, char **pArgv)
   if (argc <= 1)
   {
     printf("Usage: hsrlekit <InputFileName>\n\n");
-    printf("\t[%s <Run Count>]\n\t[%s <Minimum Benchmark Time in Seconds>]\n\n\t", ArgumentRuns, ArgumentMinimumTime);
-    printf("OR:\n\n");
+    printf("\t[%s <Run Count>]\n\t[%s <Minimum Benchmark Time in Seconds>]\n", ArgumentRuns, ArgumentMinimumTime);
+    printf("\t\t[%s (restrict to a subset of codecs to benchmark)]\n", ArgumentMatch);
+    printf("\t\t\tif '%s': [%s / %s / %s / %s]\n", ArgumentMatch, ArgumentExtreme, ArgumentExtremeMMTF, ArgumentMMTF, ArgumentNormal);
+    printf("\t\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentExtremePacked, ArgumentExtremeNotPacked);
+    printf("\t\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentExtremeByteGran, ArgumentExtremeSymbolGran);
+    printf("\t\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentMulti, ArgumentSingle);
+    printf("\t\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentShort, ArgumentNotShort);
+    printf("\t\t\tif '%s': [%s 0, 1, 3, 7]\n", ArgumentMatch, ArgumentExtremeLutSize);
+    printf("\n\tOR: (for debugging purposes only)\n\n");
     printf("\t[%s <Output File Name>]\n\n", ArgumentTo);
     printf("\t[%s]\n\t\tif '%s': [%s (8 | 16 | 24 | 32 | 48 | 64 | 128)] (symbol size)\n\t\tif '%s': [%s] (include unaligned repeats, capacity vs. accuracy tradeoff)\n\t\tif '%s': [%s] (preferable if many rle-symbol-repeats)\n\n", ArgumentExtreme, ArgumentExtreme, ArgumentExtremeSize, ArgumentExtreme, ArgumentExtremeByteGran, ArgumentExtreme, ArgumentExtremePacked);
     printf("\t[%s (try to preserve symbol frequencies)]\n\t\tif '%s': [%s <Sub Section Count>] \n\n", ArgumentNormal, ArgumentNormal, ArgumentSubSections);
     printf("\t[%s ('%s' optimized for fewer repititions)]\n\n", ArgumentUltra, ArgumentNormal);
     printf("\t[%s]\n\t\tif '%s': [%s (128 | 256)] (mtf width)\n\n", ArgumentExtremeMMTF, ArgumentExtremeMMTF, ArgumentExtremeSize);
     printf("\t[%s (only transform, no compression)]\n\t\tif '%s': [%s(128 | 256)] (mtf width)\n\n", ArgumentMMTF, ArgumentMMTF, ArgumentExtremeSize);
-    printf("\t[%s (separate bit packed header, doesn't support '%s')]\n\n", ArgumentSH, ArgumentSingle);
+    printf("\t[%s (separate bit (_Args.hasPackedMode && _Args.isPacked) header, doesn't support '%s')]\n\n", ArgumentSH, ArgumentSingle);
     printf("\t[%s (only rle most frequent symbol, only available for 8 bit modes)]\n\n\t[%s <Run Count>]\n", ArgumentSingle, ArgumentRuns);
     printf("\t[%s (analyze file contents for compressability)]n", ArgumentAnalyze);
 
@@ -75,23 +327,16 @@ int main(int argc, char **pArgv)
     return 1;
   }
 
+  memset(&_Args, 0, sizeof(_Args));
+
   const char *outputFileName = NULL;
   int32_t subSections = 0;
   int32_t runs = 8;
   int32_t minSeconds = 2;
-  bool lowEntropyMode = false;
-  bool singleSymbol = false;
-  bool lowEntropyShortMode = false;
-  bool extremeMode = false;
-  bool mmtfMode = false;
-  bool extremeMmtfMode = false;
-  bool shMode = false;
   bool benchmarkAll = false;
+  bool matchBenchmarks = false;
   bool analyzeFileContents = false;
-  bool byteGranular = false;
-  bool packed = false;
   bool noDelays = false;
-  uint64_t extremeSize = 8;
 
 #ifdef _WIN32
   size_t cpuCoreIndex = 0;
@@ -110,6 +355,12 @@ int main(int argc, char **pArgv)
         outputFileName = pArgv[argIndex + 1];
         argIndex += 2;
         argsRemaining -= 2;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentMatch, sizeof(ArgumentMatch)) == 0)
+      {
+        matchBenchmarks = true;
+        argIndex++;
+        argsRemaining--;
       }
       else if (argsRemaining >= 2 && strncmp(pArgv[argIndex], ArgumentSubSections, sizeof(ArgumentSubSections)) == 0)
       {
@@ -157,51 +408,111 @@ int main(int argc, char **pArgv)
       }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentNormal, sizeof(ArgumentNormal)) == 0)
       {
-        lowEntropyMode = true;
+        _Args.hasMode = true;
+        _Args.isModeLowEntropy = true;
+
         argIndex += 1;
         argsRemaining -= 1;
       }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentSingle, sizeof(ArgumentSingle)) == 0)
       {
-        singleSymbol = true;
+        if (_Args.hasSingleMode)
+        {
+          puts("Single mode has already been specified.");
+          return 1;
+        }
+
+        _Args.hasSingleMode = true;
+        _Args.isSingleMode = true;
+
+        argIndex += 1;
+        argsRemaining -= 1;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentMulti, sizeof(ArgumentMulti)) == 0)
+      {
+        if (_Args.hasSingleMode)
+        {
+          puts("Single mode has already been specified.");
+          return 1;
+        }
+
+        _Args.hasSingleMode = true;
+        _Args.isSingleMode = false;
+
+        argIndex += 1;
+        argsRemaining -= 1;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentShort, sizeof(ArgumentShort)) == 0)
+      {
+        if (_Args.hasShortMode)
+        {
+          puts("Short mode has already been specified.");
+          return 1;
+        }
+
+        _Args.hasShortMode = true;
+        _Args.isShortMode = true;
+
+        argIndex += 1;
+        argsRemaining -= 1;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentNotShort, sizeof(ArgumentNotShort)) == 0)
+      {
+        if (_Args.hasShortMode)
+        {
+          puts("Short mode has already been specified.");
+          return 1;
+        }
+
+        _Args.hasShortMode = true;
+        _Args.isShortMode = false;
+
         argIndex += 1;
         argsRemaining -= 1;
       }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentUltra, sizeof(ArgumentUltra)) == 0)
       {
-        lowEntropyShortMode = true;
+        _Args.hasMode = true;
+        _Args.isModeLowEntropy = true;
+        _Args.hasShortMode = true;
+        _Args.isShortMode = true;
+
         argIndex += 1;
         argsRemaining -= 1;
       }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentExtreme, sizeof(ArgumentExtreme)) == 0)
       {
-        extremeMode = true;
+        _Args.hasMode = true;
+        _Args.isModeExtreme = true;
+
         argIndex += 1;
         argsRemaining -= 1;
       }
       else if (argsRemaining >= 2 && strncmp(pArgv[argIndex], ArgumentExtremeSize, sizeof(ArgumentExtremeSize)) == 0)
       {
-        if (!extremeMode && !mmtfMode && !extremeMmtfMode)
+        if (_Args.hasBitCount)
         {
-          printf("Invalid Parameter. Expected '%s', '%s' or '%s' with '%s'.", ArgumentExtreme, ArgumentMMTF, ArgumentExtremeMMTF, ArgumentExtremeSize);
+          puts("Bit count has already been specified.");
           return 1;
         }
+
+        _Args.hasBitCount = true;
         
         switch (pArgv[argIndex + 1][0])
         {
         case '8':
-          extremeSize = 8;
+          _Args.bitCount = 8;
           break;
 
         case '1':
           switch (pArgv[argIndex + 1][1])
           {
           case '6':
-            extremeSize = 16;
+            _Args.bitCount = 16;
             break;
 
           case '2':
-            extremeSize = 128;
+            _Args.bitCount = 128;
             break;
 
           default:
@@ -214,11 +525,11 @@ int main(int argc, char **pArgv)
           switch (pArgv[argIndex + 1][1])
           {
           case '4':
-            extremeSize = 24;
+            _Args.bitCount = 24;
             break;
 
           case '5':
-            extremeSize = 256;
+            _Args.bitCount = 256;
             break;
 
           default:
@@ -228,15 +539,51 @@ int main(int argc, char **pArgv)
           break;
 
         case '3':
-          extremeSize = 32;
+          _Args.bitCount = 32;
           break;
 
         case '4':
-          extremeSize = 48;
+          _Args.bitCount = 48;
           break;
 
         case '6':
-          extremeSize = 64;
+          _Args.bitCount = 64;
+          break;
+
+        default:
+          puts("Invalid Parameter.");
+          return 1;
+        }
+
+        argIndex += 2;
+        argsRemaining -= 2;
+      }
+      else if (argsRemaining >= 2 && strncmp(pArgv[argIndex], ArgumentExtremeLutSize, sizeof(ArgumentExtremeLutSize)) == 0)
+      {
+        if (_Args.hasLutSize)
+        {
+          puts("Lut size has already been specified.");
+          return 1;
+        }
+
+        _Args.hasLutSize = true;
+        
+        switch (pArgv[argIndex + 1][0])
+        {
+        case '0':
+          _Args.lutSize = 0;
+          break;
+          
+        case '1':
+          _Args.lutSize = 1;
+          break;
+          
+        case '3':
+          _Args.lutSize = 3;
+          break;
+          
+        case '7':
+          _Args.lutSize = 7;
           break;
 
         default:
@@ -249,57 +596,81 @@ int main(int argc, char **pArgv)
       }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentExtremeByteGran, sizeof(ArgumentExtremeByteGran)) == 0)
       {
-        if (!extremeMode)
+        if (_Args.hasAlignment)
         {
-          printf("Invalid Parameter. Expected '%s' with '%s'.", ArgumentExtreme, ArgumentExtremeByteGran);
+          puts("Alignment has already been specified.");
           return 1;
         }
 
-        if (extremeSize != 16 && extremeSize != 24 && extremeSize != 32 && extremeSize != 48 && extremeSize != 64 && extremeSize != 128)
+        _Args.hasAlignment = true;
+        _Args.isAlignmentByte = true;
+
+        argIndex += 1;
+        argsRemaining -= 1;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentExtremeSymbolGran, sizeof(ArgumentExtremeSymbolGran)) == 0)
+      {
+        if (_Args.hasAlignment)
         {
-          printf("Not Supported. Expected '%s %s [16 / 24 / 32 / 48 / 64 / 128]' with '%s'.", ArgumentExtreme, ArgumentExtremeSize, ArgumentExtremeByteGran);
+          puts("Alignment has already been specified.");
           return 1;
         }
 
-        byteGranular = true;
+        _Args.hasAlignment = true;
+        _Args.isAlignmentByte = false;
+
         argIndex += 1;
         argsRemaining -= 1;
       }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentExtremePacked, sizeof(ArgumentExtremePacked)) == 0)
       {
-        if (!extremeMode)
+        if (_Args.hasPackedMode)
         {
-          printf("Invalid Parameter. Expected '%s' with '%s'.", ArgumentExtreme, ArgumentExtremePacked);
+          puts("Packed mode has already been specified.");
           return 1;
         }
 
-        if (extremeSize != 8 && extremeSize != 16 && extremeSize != 24 && extremeSize != 32 && extremeSize != 48 && extremeSize != 64 && extremeSize != 128)
+        _Args.hasPackedMode = true;
+        _Args.isPacked = true;
+
+        argIndex += 1;
+        argsRemaining -= 1;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentExtremeNotPacked, sizeof(ArgumentExtremeNotPacked)) == 0)
+      {
+        if (_Args.hasPackedMode)
         {
-          printf("Not Supported. Expected '%s %s [8 / 16 / 24 / 32 / 48 / 64 / 128]' with '%s'.", ArgumentExtreme, ArgumentExtremeSize, ArgumentExtremePacked);
+          puts("Packed mode has already been specified.");
           return 1;
         }
 
-        packed = true;
+        _Args.hasPackedMode = true;
+        _Args.isPacked = false;
+
         argIndex += 1;
         argsRemaining -= 1;
       }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentMMTF, sizeof(ArgumentMMTF)) == 0)
       {
-        mmtfMode = true;
-        extremeSize = 128;
+        _Args.hasMode = true;
+        _Args.isModeMMTF = true;
+
         argIndex += 1;
         argsRemaining -= 1;
       }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentSH, sizeof(ArgumentSH)) == 0)
       {
-        shMode = true;
+        _Args.hasMode = true;
+        _Args.isModeSH = true;
+
         argIndex += 1;
         argsRemaining -= 1;
       }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentExtremeMMTF, sizeof(ArgumentExtremeMMTF)) == 0)
       {
-        extremeMmtfMode = true;
-        extremeSize = 128;
+        _Args.hasMode = true;
+        _Args.isModeRleMMTF = true;
+
         argIndex += 1;
         argsRemaining -= 1;
       }
@@ -319,7 +690,7 @@ int main(int argc, char **pArgv)
 #endif
       else
       {
-        puts("Invalid Parameter.");
+        printf("Invalid Parameter '%s'.", pArgv[argIndex]);
         return 1;
       }
     }
@@ -334,49 +705,43 @@ int main(int argc, char **pArgv)
 
   // Validate Parameters.
   {
-    if (singleSymbol && subSections != 0)
+    if ((_Args.hasSingleMode && _Args.isSingleMode) && subSections != 0)
     {
       puts("Single Symbol Encoding is only available without sub sections.");
       return 1;
     }
 
-    if (lowEntropyShortMode && subSections != 0)
+    if ((_Args.hasMode && _Args.isModeLowEntropy && _Args.hasShortMode && _Args.isShortMode) && subSections != 0)
     {
       puts("Ultra Mode Encoding is only available without sub sections.");
       return 1;
     }
 
-    if (extremeMode && subSections != 0)
+    if ((_Args.hasMode && _Args.isModeExtreme) && subSections != 0)
     {
       puts("Extreme Mode Encoding is only available without sub sections.");
       return 1;
     }
 
-    if (lowEntropyMode + lowEntropyShortMode + extremeMode + mmtfMode + extremeMmtfMode + shMode > 1)
-    {
-      puts("Normal, Extreme, Ultra and MMTF cannot be used at the same time.");
-      return 1;
-    }
-
-    if (extremeMode && singleSymbol && extremeSize != 8)
+    if ((_Args.hasMode && _Args.isModeExtreme) && (_Args.hasSingleMode && _Args.isSingleMode) && (_Args.hasBitCount && _Args.bitCount != 8))
     {
       puts("Single Symbol in Extreme Mode is only supported for symbol size 8.");
       return 1;
     }
 
-    if (extremeMode && extremeSize == 256)
+    if ((_Args.hasMode && _Args.isModeExtreme) && (_Args.hasBitCount && _Args.bitCount == 256))
     {
       puts("Extreme Mode doesn't support symbol size 256.");
       return 1;
     }
 
-    if ((mmtfMode || extremeMmtfMode) && extremeSize != 128 && extremeSize != 256)
+    if ((_Args.hasMode && (_Args.isModeMMTF || _Args.isModeRleMMTF)) && (_Args.hasBitCount && _Args.bitCount != 256 && _Args.bitCount != 128))
     {
       puts("MMTF Modes only supports mtf width of 128 or 256.");
       return 1;
     }
 
-    benchmarkAll = !lowEntropyMode && !lowEntropyShortMode && !extremeMode && !mmtfMode && !extremeMmtfMode && !shMode;
+    benchmarkAll = _Args.hasMode && !matchBenchmarks;
   }
 
   size_t fileSize = 0;
@@ -439,229 +804,9 @@ int main(int argc, char **pArgv)
 
   //////////////////////////////////////////////////////////////////////////
 
-  if (benchmarkAll)
+  if (benchmarkAll || matchBenchmarks)
   {
-    enum
-    {
-      Extreme8,
-      Extreme8Short,
-      Extreme8Packed,
-      Extreme8_1SLShort,
-      Extreme8_3SL,
-      Extreme8_3SLShort,
-      Extreme8_7SL,
-      Extreme8_7SLShort,
-      Extreme8Single,
-      Extreme8SingleShort,
-      Extreme8PackedSingle,
-      Extreme16Sym,
-      Extreme16SymShort,
-      Extreme16SymPacked,
-      Extreme16Sym_1SLShort,
-      Extreme16Sym_3SL,
-      Extreme16Sym_3SLShort,
-      Extreme16Sym_7SL,
-      Extreme16Sym_7SLShort,
-      Extreme16Byte,
-      Extreme16ByteShort,
-      Extreme16BytePacked,
-      Extreme16Byte_1SLShort,
-      Extreme16Byte_3SL,
-      Extreme16Byte_3SLShort,
-      Extreme16Byte_7SL,
-      Extreme16Byte_7SLShort,
-      Extreme24Sym,
-      Extreme24SymShort,
-      Extreme24SymPacked,
-      Extreme24Sym_1SLShort,
-      Extreme24Sym_3SL,
-      Extreme24Sym_3SLShort,
-      Extreme24Sym_7SL,
-      Extreme24Sym_7SLShort,
-      Extreme24Byte,
-      Extreme24ByteShort,
-      Extreme24BytePacked,
-      Extreme24Byte_1SLShort,
-      Extreme24Byte_3SL,
-      Extreme24Byte_3SLShort,
-      Extreme24Byte_7SL,
-      Extreme24Byte_7SLShort,
-      Extreme32Sym,
-      Extreme32SymShort,
-      Extreme32SymPacked,
-      Extreme32Sym_1SLShort,
-      Extreme32Sym_3SL,
-      Extreme32Sym_3SLShort,
-      Extreme32Sym_7SL,
-      Extreme32Sym_7SLShort,
-      Extreme32Byte,
-      Extreme32ByteShort,
-      Extreme32BytePacked,
-      Extreme32Byte_1SLShort,
-      Extreme32Byte_3SL,
-      Extreme32Byte_3SLShort,
-      Extreme32Byte_7SL,
-      Extreme32Byte_7SLShort,
-      Extreme48Sym,
-      Extreme48SymShort,
-      Extreme48SymPacked,
-      Extreme48Sym_1SLShort,
-      Extreme48Sym_3SL,
-      Extreme48Sym_3SLShort,
-      Extreme48Sym_7SL,
-      Extreme48Sym_7SLShort,
-      Extreme48Byte,
-      Extreme48ByteShort,
-      Extreme48BytePacked,
-      Extreme48Byte_1SLShort,
-      Extreme48Byte_3SL,
-      Extreme48Byte_3SLShort,
-      Extreme48Byte_7SL,
-      Extreme48Byte_7SLShort,
-      Extreme64Sym,
-      Extreme64SymShort,
-      Extreme64SymPacked,
-      Extreme64Sym_1SLShort,
-      Extreme64Sym_3SL,
-      Extreme64Sym_3SLShort,
-      Extreme64Sym_7SL,
-      Extreme64Sym_7SLShort,
-      Extreme64Byte,
-      Extreme64ByteShort,
-      Extreme64BytePacked,
-      Extreme64Byte_1SLShort,
-      Extreme64Byte_3SL,
-      Extreme64Byte_3SLShort,
-      Extreme64Byte_7SL,
-      Extreme64Byte_7SLShort,
-      Extreme128Sym,
-      Extreme128SymPacked,
-      Extreme128Byte,
-      Extreme128BytePacked,
-      Rle8SH,
-      Extreme8MultiMTF128,
-      LowEntropy,
-      LowEntropySingle,
-      LowEntropyShort,
-      LowEntropyShortSingle,
-
-      MultiMTF128,
-      MultiMTF256,
-
-      MemCopy,
-
-      CodecCount
-    } currentCodec = 0;
-
-    const char *codecNames[] = 
-    {
-      "8 Bit                         ",
-      "8 Bit Short                   ",
-      "8 Bit Packed                  ",
-      "8 Bit 1LUT Short              ",
-      "8 Bit 3LUT                    ",
-      "8 Bit 3LUT Short              ",
-      "8 Bit 7LUT                    ",
-      "8 Bit 7LUT Short              ",
-      "8 Bit Single                  ",
-      "8 Bit Single Short            ",
-      "8 Bit Single Packed           ",
-      "16 Bit (Symbol)               ",
-      "16 Bit Short (Symbol)         ",
-      "16 Bit Packed (Symbol)        ",
-      "16 Bit 1LUT Short (Symbol)    ",
-      "16 Bit 3LUT (Symbol)          ",
-      "16 Bit 3LUT Short (Symbol)    ",
-      "16 Bit 7LUT (Symbol)          ",
-      "16 Bit 7LUT Short (Symbol)    ",
-      "16 Bit (Byte)                 ",
-      "16 Bit Short (Byte)           ",
-      "16 Bit Packed (Byte)          ",
-      "16 Bit 1LUT Short (Byte)      ",
-      "16 Bit 3LUT (Byte)            ",
-      "16 Bit 3LUT Short (Byte)      ",
-      "16 Bit 7LUT (Byte)            ",
-      "16 Bit 7LUT Short (Byte)      ",
-      "24 Bit (Symbol)               ",
-      "24 Bit Short (Symbol)         ",
-      "24 Bit Packed (Symbol)        ",
-      "24 Bit 1LUT Short (Symbol)    ",
-      "24 Bit 3LUT (Symbol)          ",
-      "24 Bit 3LUT Short (Symbol)    ",
-      "24 Bit 7LUT (Symbol)          ",
-      "24 Bit 7LUT Short (Symbol)    ",
-      "24 Bit (Byte)                 ",
-      "24 Bit Short (Byte)           ",
-      "24 Bit Packed (Byte)          ",
-      "24 Bit 1LUT Short (Byte)      ",
-      "24 Bit 3LUT (Byte)            ",
-      "24 Bit 3LUT Short (Byte)      ",
-      "24 Bit 7LUT (Byte)            ",
-      "24 Bit 7LUT Short (Byte)      ",
-      "32 Bit (Symbol)               ",
-      "32 Bit Short (Symbol)         ",
-      "32 Bit Packed (Symbol)        ",
-      "32 Bit 1LUT Short (Symbol)    ",
-      "32 Bit 3LUT (Symbol)          ",
-      "32 Bit 3LUT Short (Symbol)    ",
-      "32 Bit 7LUT (Symbol)          ",
-      "32 Bit 7LUT Short (Symbol)    ",
-      "32 Bit (Byte)                 ",
-      "32 Bit Short (Byte)           ",
-      "32 Bit Packed (Byte)          ",
-      "32 Bit 1LUT Short (Byte)      ",
-      "32 Bit 3LUT (Byte)            ",
-      "32 Bit 3LUT Short (Byte)      ",
-      "32 Bit 7LUT (Byte)            ",
-      "32 Bit 7LUT Short (Byte)      ",
-      "48 Bit (Symbol)               ",
-      "48 Bit Short (Symbol)         ",
-      "48 Bit Packed (Symbol)        ",
-      "48 Bit 1LUT Short (Symbol)    ",
-      "48 Bit 3LUT (Symbol)          ",
-      "48 Bit 3LUT Short (Symbol)    ",
-      "48 Bit 7LUT (Symbol)          ",
-      "48 Bit 7LUT Short (Symbol)    ",
-      "48 Bit (Byte)                 ",
-      "48 Bit Short (Byte)           ",
-      "48 Bit Packed (Byte)          ",
-      "48 Bit 1LUT Short (Byte)      ",
-      "48 Bit 3LUT (Byte)            ",
-      "48 Bit 3LUT Short (Byte)      ",
-      "48 Bit 7LUT (Byte)            ",
-      "48 Bit 7LUT Short (Byte)      ",
-      "64 Bit (Symbol)               ",
-      "64 Bit Short (Symbol)         ",
-      "64 Bit Packed (Symbol)        ",
-      "64 Bit 1LUT Short (Symbol)    ",
-      "64 Bit 3LUT (Symbol)          ",
-      "64 Bit 3LUT Short (Symbol)    ",
-      "64 Bit 7LUT (Symbol)          ",
-      "64 Bit 7LUT Short (Symbol)    ",
-      "64 Bit (Byte)                 ",
-      "64 Bit Short (Byte)           ",
-      "64 Bit Packed (Byte)          ",
-      "64 Bit 1LUT Short (Byte)      ",
-      "64 Bit 3LUT (Byte)            ",
-      "64 Bit 3LUT Short (Byte)      ",
-      "64 Bit 7LUT (Byte)            ",
-      "64 Bit 7LUT Short (Byte)      ",
-      "128 Bit (Symbol)              ",
-      "128 Bit Packed (Symbol)       ",
-      "128 Bit (Byte)                ",
-      "128 Bit Packed (Byte)         ",
-      "8 Bit RLE + Huffman-esque     ",
-      "8 Bit MMTF 128                ",
-      "Low Entropy                   ",
-      "Low Entropy Single            ",
-      "Low Entropy Short             ",
-      "Low Entropy Short Single      ",
-      "Multi MTF 128 Bit (Transform) ",
-      "Multi MTF 256 Bit (Transform) ",
-      "memcpy                        ",
-    };
-
-    _STATIC_ASSERT(ARRAYSIZE(codecNames) == CodecCount);
+    codec_t currentCodec = 0;
 
     uint32_t fileSize32 = (uint32_t)fileSize;
 
@@ -671,6 +816,9 @@ int main(int argc, char **pArgv)
 
     for (; currentCodec < CodecCount; currentCodec++)
     {
+      if (matchBenchmarks && !CodecMatchesArgs(currentCodec))
+        continue;
+
       if (!noDelays && currentCodec > 0)
         SleepNs(500 * 1000 * 1000);
 
@@ -1621,34 +1769,44 @@ int main(int argc, char **pArgv)
     // Print Codec Description.
     if (!benchmarkAll)
     {
+      if (!_Args.hasBitCount)
+      {
+        _Args.hasBitCount = true;
+
+        if (_Args.hasMode && _Args.isModeMMTF)
+          _Args.bitCount = 128;
+        else
+          _Args.bitCount = 8;
+      }
+
       printf("Mode: hypersonic rle kit ");
 
-      if (lowEntropyMode)
+      if (_Args.hasMode && _Args.isModeLowEntropy)
         fputs("Normal ", stdout);
-      else if (extremeMode)
+      else if (_Args.hasMode && _Args.isModeExtreme)
         fputs("Extreme ", stdout);
-      else if (mmtfMode)
+      else if (_Args.hasMode && _Args.isModeMMTF)
         fputs("MMTF ", stdout);
-      else if (extremeMmtfMode)
+      else if (_Args.hasMode && _Args.isModeMMTF)
         fputs("Exreme MMTF ", stdout);
-      else if (shMode)
+      else if (_Args.hasMode && _Args.isModeSH)
         fputs("SH ", stdout);
       else
         fputs("Ultra ", stdout);
 
-      if ((!extremeMode || extremeSize == 8) && singleSymbol)
+      if ((!(_Args.hasMode && _Args.isModeExtreme) || (_Args.hasBitCount && _Args.bitCount == 8) && (_Args.hasSingleMode && _Args.isSingleMode)))
         fputs("Single-Symbol-Mode ", stdout);
 
-      if (extremeMode && packed)
+      if ((_Args.hasMode && _Args.isModeExtreme) && (_Args.hasPackedMode && _Args.isPacked))
         fputs("Packed ", stdout);
 
-      if (extremeMode && byteGranular && extremeSize != 8)
+      if ((_Args.hasMode && _Args.isModeExtreme) && (_Args.hasAlignment && _Args.isAlignmentByte) && (_Args.hasBitCount && _Args.bitCount != 8))
         fputs("Unbound ", stdout);
 
-      if (extremeMode)
-        printf("with %" PRIu64 " Bit Symbols ", extremeSize);
-      else if (mmtfMode || extremeMmtfMode)
-        printf("with %" PRIu64 " Bit width ", extremeSize);
+      if ((_Args.hasMode && _Args.isModeExtreme))
+        printf("with %" PRIu64 " Bit Symbols ", _Args.bitCount);
+      else if (_Args.hasMode && (_Args.isModeMMTF || _Args.isModeRleMMTF))
+        printf("with %" PRIu64 " Bit width ", _Args.bitCount);
 
       printf("(%" PRIi32 " Run%s)\n\n", runs, runs > 1 ? "s" : "");
     }
@@ -1667,31 +1825,31 @@ int main(int argc, char **pArgv)
 
       if (subSections == 0)
       {
-        if (lowEntropyMode)
+        if (_Args.hasMode && _Args.isModeLowEntropy)
         {
-          if (singleSymbol)
+          if ((_Args.hasSingleMode && _Args.isSingleMode))
             compressedSize = rle8_low_entropy_compress_only_max_frequency(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
           else
             compressedSize = rle8_low_entropy_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
         }
-        else if (lowEntropyShortMode)
+        else if ((_Args.hasMode && _Args.isModeLowEntropy && _Args.hasShortMode && _Args.isShortMode))
         {
-          if (singleSymbol)
+          if ((_Args.hasSingleMode && _Args.isSingleMode))
             compressedSize = rle8_low_entropy_short_compress_only_max_frequency(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
           else
             compressedSize = rle8_low_entropy_short_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
         }
-        else if (extremeMode)
+        else if ((_Args.hasMode && _Args.isModeExtreme))
         {
-          if (!byteGranular)
+          if (!(_Args.hasAlignment && _Args.isAlignmentByte))
           {
-            if (packed)
+            if (_Args.hasPackedMode && _Args.isPacked)
             {
-              switch (extremeSize)
+              switch (_Args.bitCount)
               {
               default:
               case 8:
-                if (singleSymbol)
+                if ((_Args.hasSingleMode && _Args.isSingleMode))
                   compressedSize = rle8_packed_single_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
                 else
                   compressedSize = rle8_packed_multi_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
@@ -1724,11 +1882,11 @@ int main(int argc, char **pArgv)
             }
             else
             {
-              switch (extremeSize)
+              switch (_Args.bitCount)
               {
               case 8:
               default:
-                if (singleSymbol)
+                if ((_Args.hasSingleMode && _Args.isSingleMode))
                   compressedSize = rle8_single_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
                 else
                   compressedSize = rle8_multi_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
@@ -1762,13 +1920,13 @@ int main(int argc, char **pArgv)
           }
           else
           {
-            if (packed)
+            if (_Args.hasPackedMode && _Args.isPacked)
             {
-              switch (extremeSize)
+              switch (_Args.bitCount)
               {
               default:
               case 8:
-                if (singleSymbol)
+                if ((_Args.hasSingleMode && _Args.isSingleMode))
                   compressedSize = rle8_packed_single_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
                 else
                   compressedSize = rle8_packed_multi_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
@@ -1801,7 +1959,7 @@ int main(int argc, char **pArgv)
             }
             else
             {
-              switch (extremeSize)
+              switch (_Args.bitCount)
               {
               default:
               case 16:
@@ -1831,9 +1989,9 @@ int main(int argc, char **pArgv)
             }
           }
         }
-        else if (mmtfMode)
+        else if (_Args.hasMode && _Args.isModeMMTF)
         {
-          switch (extremeSize)
+          switch (_Args.bitCount)
           {
           case 128:
             compressedSize = rle_mmtf128_encode(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
@@ -1844,9 +2002,9 @@ int main(int argc, char **pArgv)
             break;
           }
         }
-        else if (extremeMmtfMode)
+        else if (_Args.hasMode && _Args.isModeRleMMTF)
         {
-          switch (extremeSize)
+          switch (_Args.bitCount)
           {
           case 128:
             compressedSize = rle8_mmtf128_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
@@ -1857,7 +2015,7 @@ int main(int argc, char **pArgv)
           //  break;
           }
         }
-        else if (shMode)
+        else if (_Args.hasMode && _Args.isModeSH)
         {
           compressedSize = rle8_sh_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
         }
@@ -1925,21 +2083,21 @@ int main(int argc, char **pArgv)
 
       if (subSections == 0)
       {
-        if (lowEntropyMode)
+        if (_Args.hasMode && _Args.isModeLowEntropy)
         {
           decompressedSize = rle8_low_entropy_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
         }
-        else if (lowEntropyShortMode)
+        else if ((_Args.hasMode && _Args.isModeLowEntropy && _Args.hasShortMode && _Args.isShortMode))
         {
           decompressedSize = rle8_low_entropy_short_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
         }
-        else if (extremeMode)
+        else if (_Args.hasMode && _Args.isModeExtreme)
         {
-          if (!byteGranular)
+          if (!(_Args.hasAlignment && _Args.isAlignmentByte))
           {
-            if (packed)
+            if (_Args.hasPackedMode && _Args.isPacked)
             {
-              switch (extremeSize)
+              switch (_Args.bitCount)
               {
               default:
               case 8:
@@ -1973,7 +2131,7 @@ int main(int argc, char **pArgv)
             }
             else
             {
-              switch (extremeSize)
+              switch (_Args.bitCount)
               {
               case 8:
               default:
@@ -2008,9 +2166,9 @@ int main(int argc, char **pArgv)
           }
           else
           {
-            if (packed)
+            if (_Args.hasPackedMode && _Args.isPacked)
             {
-              switch (extremeSize)
+              switch (_Args.bitCount)
               {
               default:
               case 8:
@@ -2044,7 +2202,7 @@ int main(int argc, char **pArgv)
             }
             else
             {
-              switch (extremeSize)
+              switch (_Args.bitCount)
               {
               default:
               case 16:
@@ -2074,9 +2232,9 @@ int main(int argc, char **pArgv)
             }
           }
         }
-        else if (mmtfMode)
+        else if (_Args.hasMode && _Args.isModeMMTF)
         {
-          switch (extremeSize)
+          switch (_Args.bitCount)
           {
           case 128:
             decompressedSize = rle_mmtf128_decode(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
@@ -2087,9 +2245,9 @@ int main(int argc, char **pArgv)
             break;
           }
         }
-        else if (extremeMmtfMode)
+        else if (_Args.hasMode && _Args.isModeRleMMTF)
         {
-          switch (extremeSize)
+          switch (_Args.bitCount)
           {
           case 128:
             decompressedSize = rle8_mmtf128_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
@@ -2100,7 +2258,7 @@ int main(int argc, char **pArgv)
           //  break;
           }
         }
-        else if (shMode)
+        else if (_Args.hasMode && _Args.isModeSH)
         {
           decompressedSize = rle8_sh_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
         }
@@ -2139,7 +2297,7 @@ int main(int argc, char **pArgv)
     }
 
 #ifdef BUILD_WITH_OPENCL
-    if (lowEntropyMode && subSections > 0)
+    if (_Args.hasMode && _Args.isModeLowEntropy && subSections > 0)
     {
       memset(pDecompressedData, 0, fileSize);
 
@@ -2785,4 +2943,478 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
   }
 
   puts("\n\n");
+}
+
+bool CodecMatchesArgs(const codec_t codec)
+{
+  if (_Args.hasMode)
+  {
+    if (_Args.isModeExtreme && (codec > Extreme128BytePacked || codec < Extreme8))
+      return false;
+
+    if (_Args.isModeLowEntropy && (codec < LowEntropy || codec > LowEntropyShortSingle))
+      return false;
+
+    if (_Args.isModeMMTF && codec != MultiMTF128 && codec != MultiMTF256)
+      return false;
+
+    if (_Args.isModeSH && codec != Rle8SH)
+      return false;
+
+    if (_Args.isModeMMTF && codec != Extreme8MultiMTF128)
+      return false;
+  }
+
+  if (_Args.hasAlignment)
+  {
+    switch (codec)
+    {
+      case Extreme16Sym:
+      case Extreme16SymShort:
+      case Extreme16SymPacked:
+      case Extreme16Sym_1SLShort:
+      case Extreme16Sym_3SL:
+      case Extreme16Sym_3SLShort:
+      case Extreme16Sym_7SL:
+      case Extreme16Sym_7SLShort:
+      case Extreme24Sym:
+      case Extreme24SymShort:
+      case Extreme24SymPacked:
+      case Extreme24Sym_1SLShort:
+      case Extreme24Sym_3SL:
+      case Extreme24Sym_3SLShort:
+      case Extreme24Sym_7SL:
+      case Extreme24Sym_7SLShort:
+      case Extreme32Sym:
+      case Extreme32SymShort:
+      case Extreme32SymPacked:
+      case Extreme32Sym_1SLShort:
+      case Extreme32Sym_3SL:
+      case Extreme32Sym_3SLShort:
+      case Extreme32Sym_7SL:
+      case Extreme32Sym_7SLShort:
+      case Extreme48Sym:
+      case Extreme48SymShort:
+      case Extreme48SymPacked:
+      case Extreme48Sym_1SLShort:
+      case Extreme48Sym_3SL:
+      case Extreme48Sym_3SLShort:
+      case Extreme48Sym_7SL:
+      case Extreme48Sym_7SLShort:
+      case Extreme64Sym:
+      case Extreme64SymShort:
+      case Extreme64SymPacked:
+      case Extreme64Sym_1SLShort:
+      case Extreme64Sym_3SL:
+      case Extreme64Sym_3SLShort:
+      case Extreme64Sym_7SL:
+      case Extreme64Sym_7SLShort:
+      case Extreme128Sym:
+      case Extreme128SymPacked:
+        if (_Args.isAlignmentByte)
+          return false;
+        break;
+
+      case Extreme16Byte:
+      case Extreme16ByteShort:
+      case Extreme16BytePacked:
+      case Extreme16Byte_1SLShort:
+      case Extreme16Byte_3SL:
+      case Extreme16Byte_3SLShort:
+      case Extreme16Byte_7SL:
+      case Extreme16Byte_7SLShort:
+      case Extreme24Byte:
+      case Extreme24ByteShort:
+      case Extreme24BytePacked:
+      case Extreme24Byte_1SLShort:
+      case Extreme24Byte_3SL:
+      case Extreme24Byte_3SLShort:
+      case Extreme24Byte_7SL:
+      case Extreme24Byte_7SLShort:
+      case Extreme32Byte:
+      case Extreme32ByteShort:
+      case Extreme32BytePacked:
+      case Extreme32Byte_1SLShort:
+      case Extreme32Byte_3SL:
+      case Extreme32Byte_3SLShort:
+      case Extreme32Byte_7SL:
+      case Extreme32Byte_7SLShort:
+      case Extreme48Byte:
+      case Extreme48ByteShort:
+      case Extreme48BytePacked:
+      case Extreme48Byte_1SLShort:
+      case Extreme48Byte_3SL:
+      case Extreme48Byte_3SLShort:
+      case Extreme48Byte_7SL:
+      case Extreme48Byte_7SLShort:
+      case Extreme64Byte:
+      case Extreme64ByteShort:
+      case Extreme64BytePacked:
+      case Extreme64Byte_1SLShort:
+      case Extreme64Byte_3SL:
+      case Extreme64Byte_3SLShort:
+      case Extreme64Byte_7SL:
+      case Extreme64Byte_7SLShort:
+      case Extreme128Byte:
+      case Extreme128BytePacked:
+        if (!_Args.isAlignmentByte)
+          return false;
+        break;
+
+      default:
+        return false;
+    }
+  }
+
+  if (_Args.hasSingleMode)
+  {
+    switch (codec)
+    {
+    case Extreme8Single:
+    case Extreme8SingleShort:
+    case Extreme8PackedSingle:
+    case LowEntropySingle:
+    case LowEntropyShortSingle:
+      if (!_Args.isSingleMode)
+        return false;
+      break;
+
+    case Rle8SH:
+    case Extreme8MultiMTF128:
+    case MultiMTF128:
+    case MultiMTF256:
+      return false; // the entire concept of single/multi makes no sense here.
+
+    default:
+      if (_Args.isSingleMode)
+        return false;
+      break;
+    }
+  }
+
+  if (_Args.hasPackedMode)
+  {
+    switch (codec)
+    {
+    case Extreme8Packed:
+    case Extreme8PackedSingle:
+    case Extreme16SymPacked:
+    case Extreme16BytePacked:
+    case Extreme24SymPacked:
+    case Extreme24BytePacked:
+    case Extreme32SymPacked:
+    case Extreme32BytePacked:
+    case Extreme48SymPacked:
+    case Extreme48BytePacked:
+    case Extreme64SymPacked:
+    case Extreme64BytePacked:
+    case Extreme128SymPacked:
+    case Extreme128BytePacked:
+      if (!_Args.isPacked)
+        return false;
+      break;
+
+    default:
+      if (_Args.isPacked)
+        return false;
+      break;
+    }
+  }
+
+  if (_Args.isShortMode)
+  {
+    switch (codec)
+    {
+    case Extreme8Short:
+    case Extreme8_1SLShort:
+    case Extreme8_3SLShort:
+    case Extreme8_7SLShort:
+    case Extreme8SingleShort:
+    case Extreme16SymShort:
+    case Extreme16Sym_1SLShort:
+    case Extreme16Sym_3SLShort:
+    case Extreme16Sym_7SLShort:
+    case Extreme16ByteShort:
+    case Extreme16Byte_1SLShort:
+    case Extreme16Byte_3SLShort:
+    case Extreme16Byte_7SLShort:
+    case Extreme24SymShort:
+    case Extreme24Sym_1SLShort:
+    case Extreme24Sym_3SLShort:
+    case Extreme24Sym_7SLShort:
+    case Extreme24ByteShort:
+    case Extreme24Byte_1SLShort:
+    case Extreme24Byte_3SLShort:
+    case Extreme24Byte_7SLShort:
+    case Extreme32SymShort:
+    case Extreme32Sym_1SLShort:
+    case Extreme32Sym_3SLShort:
+    case Extreme32Sym_7SLShort:
+    case Extreme32ByteShort:
+    case Extreme32Byte_1SLShort:
+    case Extreme32Byte_3SLShort:
+    case Extreme32Byte_7SLShort:
+    case Extreme48SymShort:
+    case Extreme48Sym_1SLShort:
+    case Extreme48Sym_3SLShort:
+    case Extreme48Sym_7SLShort:
+    case Extreme48ByteShort:
+    case Extreme48Byte_1SLShort:
+    case Extreme48Byte_3SLShort:
+    case Extreme48Byte_7SLShort:
+    case Extreme64SymShort:
+    case Extreme64Sym_1SLShort:
+    case Extreme64Sym_3SLShort:
+    case Extreme64Sym_7SLShort:
+    case Extreme64ByteShort:
+    case Extreme64Byte_1SLShort:
+    case Extreme64Byte_3SLShort:
+    case Extreme64Byte_7SLShort:
+    case LowEntropyShort:
+    case LowEntropyShortSingle:
+      if (!_Args.isShortMode)
+        return false;
+      break;
+
+    default:
+      if (_Args.isShortMode)
+        return false;
+      break;
+    }
+  }
+
+  if (_Args.hasLutSize)
+  {
+    switch (codec)
+    {
+    case Extreme8Packed:
+    case Extreme8_1SLShort:
+    case Extreme16SymPacked:
+    case Extreme16Sym_1SLShort:
+    case Extreme16BytePacked:
+    case Extreme16Byte_1SLShort:
+    case Extreme24SymPacked:
+    case Extreme24Sym_1SLShort:
+    case Extreme24BytePacked:
+    case Extreme24Byte_1SLShort:
+    case Extreme32SymPacked:
+    case Extreme32Sym_1SLShort:
+    case Extreme32BytePacked:
+    case Extreme32Byte_1SLShort:
+    case Extreme48SymPacked:
+    case Extreme48Sym_1SLShort:
+    case Extreme48BytePacked:
+    case Extreme48Byte_1SLShort:
+    case Extreme64SymPacked:
+    case Extreme64Sym_1SLShort:
+    case Extreme64BytePacked:
+    case Extreme64Byte_1SLShort:
+      if (_Args.lutSize != 1)
+        return false;
+      break;
+
+    case Extreme8_3SL:
+    case Extreme8_3SLShort:
+    case Extreme16Sym_3SL:
+    case Extreme16Sym_3SLShort:
+    case Extreme16Byte_3SL:
+    case Extreme16Byte_3SLShort:
+    case Extreme24Sym_3SL:
+    case Extreme24Sym_3SLShort:
+    case Extreme24Byte_3SL:
+    case Extreme24Byte_3SLShort:
+    case Extreme32Sym_3SL:
+    case Extreme32Sym_3SLShort:
+    case Extreme32Byte_3SL:
+    case Extreme32Byte_3SLShort:
+    case Extreme48Sym_3SL:
+    case Extreme48Sym_3SLShort:
+    case Extreme48Byte_3SL:
+    case Extreme48Byte_3SLShort:
+    case Extreme64Sym_3SL:
+    case Extreme64Sym_3SLShort:
+    case Extreme64Byte_3SL:
+    case Extreme64Byte_3SLShort:
+      if (_Args.lutSize != 3)
+        return false;
+      break;
+    
+    case Extreme8_7SL:
+    case Extreme8_7SLShort:
+    case Extreme16Sym_7SL:
+    case Extreme16Sym_7SLShort:
+    case Extreme16Byte_7SL:
+    case Extreme16Byte_7SLShort:
+    case Extreme24Sym_7SL:
+    case Extreme24Sym_7SLShort:
+    case Extreme24Byte_7SL:
+    case Extreme24Byte_7SLShort:
+    case Extreme32Sym_7SL:
+    case Extreme32Sym_7SLShort:
+    case Extreme32Byte_7SL:
+    case Extreme32Byte_7SLShort:
+    case Extreme48Sym_7SL:
+    case Extreme48Sym_7SLShort:
+    case Extreme48Byte_7SL:
+    case Extreme48Byte_7SLShort:
+    case Extreme64Sym_7SL:
+    case Extreme64Sym_7SLShort:
+    case Extreme64Byte_7SL:
+    case Extreme64Byte_7SLShort:
+      if (_Args.lutSize != 7)
+        return false;
+      break;
+
+    default:
+      if (_Args.lutSize != 0)
+        return false;
+      break;
+    }
+  }
+
+  if (_Args.hasBitCount)
+  {
+    switch (codec)
+    {
+    case Extreme8:
+    case Extreme8Short:
+    case Extreme8Packed:
+    case Extreme8_1SLShort:
+    case Extreme8_3SL:
+    case Extreme8_3SLShort:
+    case Extreme8_7SL:
+    case Extreme8_7SLShort:
+    case Extreme8Single:
+    case Extreme8SingleShort:
+    case Extreme8PackedSingle:
+    case Rle8SH:
+    case LowEntropy:
+    case LowEntropySingle:
+    case LowEntropyShort:
+    case LowEntropyShortSingle:
+      if (_Args.bitCount != 8)
+        return false;
+      break;
+
+    case Extreme16Sym:
+    case Extreme16SymShort:
+    case Extreme16SymPacked:
+    case Extreme16Sym_1SLShort:
+    case Extreme16Sym_3SL:
+    case Extreme16Sym_3SLShort:
+    case Extreme16Sym_7SL:
+    case Extreme16Sym_7SLShort:
+    case Extreme16Byte:
+    case Extreme16ByteShort:
+    case Extreme16BytePacked:
+    case Extreme16Byte_1SLShort:
+    case Extreme16Byte_3SL:
+    case Extreme16Byte_3SLShort:
+    case Extreme16Byte_7SL:
+    case Extreme16Byte_7SLShort:
+      if (_Args.bitCount != 16)
+        return false;
+      break;
+
+    case Extreme24Sym:
+    case Extreme24SymShort:
+    case Extreme24SymPacked:
+    case Extreme24Sym_1SLShort:
+    case Extreme24Sym_3SL:
+    case Extreme24Sym_3SLShort:
+    case Extreme24Sym_7SL:
+    case Extreme24Sym_7SLShort:
+    case Extreme24Byte:
+    case Extreme24ByteShort:
+    case Extreme24BytePacked:
+    case Extreme24Byte_1SLShort:
+    case Extreme24Byte_3SL:
+    case Extreme24Byte_3SLShort:
+    case Extreme24Byte_7SL:
+    case Extreme24Byte_7SLShort:
+      if (_Args.bitCount != 24)
+        return false;
+      break;
+
+    case Extreme32Sym:
+    case Extreme32SymShort:
+    case Extreme32SymPacked:
+    case Extreme32Sym_1SLShort:
+    case Extreme32Sym_3SL:
+    case Extreme32Sym_3SLShort:
+    case Extreme32Sym_7SL:
+    case Extreme32Sym_7SLShort:
+    case Extreme32Byte:
+    case Extreme32ByteShort:
+    case Extreme32BytePacked:
+    case Extreme32Byte_1SLShort:
+    case Extreme32Byte_3SL:
+    case Extreme32Byte_3SLShort:
+    case Extreme32Byte_7SL:
+    case Extreme32Byte_7SLShort:
+      if (_Args.bitCount != 32)
+        return false;
+      break;
+
+    case Extreme48Sym:
+    case Extreme48SymShort:
+    case Extreme48SymPacked:
+    case Extreme48Sym_1SLShort:
+    case Extreme48Sym_3SL:
+    case Extreme48Sym_3SLShort:
+    case Extreme48Sym_7SL:
+    case Extreme48Sym_7SLShort:
+    case Extreme48Byte:
+    case Extreme48ByteShort:
+    case Extreme48BytePacked:
+    case Extreme48Byte_1SLShort:
+    case Extreme48Byte_3SL:
+    case Extreme48Byte_3SLShort:
+    case Extreme48Byte_7SL:
+    case Extreme48Byte_7SLShort:
+      if (_Args.bitCount != 48)
+        return false;
+      break;
+
+    case Extreme64Sym:
+    case Extreme64SymShort:
+    case Extreme64SymPacked:
+    case Extreme64Sym_1SLShort:
+    case Extreme64Sym_3SL:
+    case Extreme64Sym_3SLShort:
+    case Extreme64Sym_7SL:
+    case Extreme64Sym_7SLShort:
+    case Extreme64Byte:
+    case Extreme64ByteShort:
+    case Extreme64BytePacked:
+    case Extreme64Byte_1SLShort:
+    case Extreme64Byte_3SL:
+    case Extreme64Byte_3SLShort:
+    case Extreme64Byte_7SL:
+    case Extreme64Byte_7SLShort:
+      if (_Args.bitCount != 64)
+        return false;
+      break;
+
+    case Extreme128Sym:
+    case Extreme128SymPacked:
+    case Extreme128Byte:
+    case Extreme128BytePacked:
+    case Extreme8MultiMTF128:
+    case MultiMTF128:
+      if (_Args.bitCount != 128)
+        return false;
+      break;
+
+    case MultiMTF256:
+      if (_Args.bitCount != 256)
+        return false;
+      break;
+
+    default:
+      return false;
+    }
+  }
+  
+  return true;
 }
