@@ -1,4 +1,4 @@
-ProjectName = "rle8"
+ProjectName = "hsrlekit"
 project(ProjectName)
 
   --Settings
@@ -28,22 +28,26 @@ project(ProjectName)
   files { "src/**.cpp", "src/**.c", "src/**.cc", "src/**.h", "src/**.hh", "src/**.hpp", "src/**.inl", "src/**rc" }
   files { "project.lua" }
   
-  includedirs { "3rdParty/OpenCL/include" }
+  filter { "system:windows" }
+    includedirs { "3rdParty/OpenCL/include" }
+  filter { }
 
   filter { "configurations:Debug", "system:Windows" }
     ignoredefaultlibraries { "libcmt" }
   filter { }
 
-  filter { "system:linux" }
-    libdirs { "3rdParty/OpenCL/lib/x64/" }
-    links { "opencl" }
+  --filter { "system:linux" }
+  --  libdirs { "3rdParty/OpenCL/lib/x64/" }
+  --  links { "opencl" }
 
   filter { "system:windows" }
     links { "3rdParty/OpenCL/lib/x64/OpenCL.lib" }
 
   filter {}
   
-  defines { "BUILD_WITH_OPENCL" }
+  filter { "system:windows" }
+    defines { "BUILD_WITH_OPENCL" }
+  filter {}
   
   targetname(ProjectName)
   targetdir "builds/bin"

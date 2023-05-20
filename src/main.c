@@ -20,25 +20,271 @@
 #define ALIGNED_FREE(a) free(a)
 #endif
 
-#include "rle8.h"
+#include "rle.h"
 
 const char ArgumentTo[] = "--to";
 const char ArgumentSubSections[] = "--sub-sections";
 const char ArgumentRuns[] = "--runs";
-const char ArgumentNormal[] = "--normal";
+const char ArgumentNormal[] = "--low-entropy";
 const char ArgumentSingle[] = "--single";
-const char ArgumentUltra[] = "--ultra";
+const char ArgumentMulti[] = "--multi";
+const char ArgumentShort[] = "--short";
+const char ArgumentNotShort[] = "--not-short";
+const char ArgumentUltra[] = "--low-entropy-short";
 const char ArgumentExtreme[] = "--extreme";
 const char ArgumentExtremeSize[] = "--x-size";
+const char ArgumentExtremeByteGran[] = "--byte-granularity";
+const char ArgumentExtremeSymbolGran[] = "--symbol-granularity";
+const char ArgumentExtremePacked[] = "--packed";
+const char ArgumentExtremeNotPacked[] = "--not-packed";
+const char ArgumentExtremeLutSize[] = "--lut-size";
 const char ArgumentMinimumTime[] = "--min-time";
-const char ArgumentExtremeMMTF[] = "--extreme-mmtf";
+const char ArgumentExtremeMMTF[] = "--rle-mmtf";
 const char ArgumentMMTF[] = "--mmtf";
 const char ArgumentSH[] = "--sh";
 const char ArgumentAnalyze[] = "--analyze";
+const char ArgumentMatch[] = "--match";
 
 #ifdef _WIN32
 const char ArgumentCpuCore[] = "--cpu-core";
 #endif
+
+typedef enum
+{
+  Extreme8,
+  Extreme8Short,
+  Extreme8Packed,
+  Extreme8_1SLShort,
+  Extreme8_3SL,
+  Extreme8_3SLShort,
+  Extreme8_7SL,
+  Extreme8_7SLShort,
+  Extreme8Single,
+  Extreme8SingleShort,
+  Extreme8PackedSingle,
+  Extreme16Sym,
+  Extreme16SymShort,
+  Extreme16SymPacked,
+  Extreme16Sym_1SLShort,
+  Extreme16Sym_3SL,
+  Extreme16Sym_3SLShort,
+  Extreme16Sym_7SL,
+  Extreme16Sym_7SLShort,
+  Extreme16Byte,
+  Extreme16ByteShort,
+  Extreme16BytePacked,
+  Extreme16Byte_1SLShort,
+  Extreme16Byte_3SL,
+  Extreme16Byte_3SLShort,
+  Extreme16Byte_7SL,
+  Extreme16Byte_7SLShort,
+  Extreme24Sym,
+  Extreme24SymShort,
+  Extreme24SymPacked,
+  Extreme24Sym_1SLShort,
+  Extreme24Sym_3SL,
+  Extreme24Sym_3SLShort,
+  Extreme24Sym_7SL,
+  Extreme24Sym_7SLShort,
+  Extreme24Byte,
+  Extreme24ByteShort,
+  Extreme24BytePacked,
+  Extreme24Byte_1SLShort,
+  Extreme24Byte_3SL,
+  Extreme24Byte_3SLShort,
+  Extreme24Byte_7SL,
+  Extreme24Byte_7SLShort,
+  Extreme32Sym,
+  Extreme32SymShort,
+  Extreme32SymPacked,
+  Extreme32Sym_1SLShort,
+  Extreme32Sym_3SL,
+  Extreme32Sym_3SLShort,
+  Extreme32Sym_7SL,
+  Extreme32Sym_7SLShort,
+  Extreme32Byte,
+  Extreme32ByteShort,
+  Extreme32BytePacked,
+  Extreme32Byte_1SLShort,
+  Extreme32Byte_3SL,
+  Extreme32Byte_3SLShort,
+  Extreme32Byte_7SL,
+  Extreme32Byte_7SLShort,
+  Extreme48Sym,
+  Extreme48SymShort,
+  Extreme48SymPacked,
+  Extreme48Sym_1SLShort,
+  Extreme48Sym_3SL,
+  Extreme48Sym_3SLShort,
+  Extreme48Sym_7SL,
+  Extreme48Sym_7SLShort,
+  Extreme48Byte,
+  Extreme48ByteShort,
+  Extreme48BytePacked,
+  Extreme48Byte_1SLShort,
+  Extreme48Byte_3SL,
+  Extreme48Byte_3SLShort,
+  Extreme48Byte_7SL,
+  Extreme48Byte_7SLShort,
+  Extreme64Sym,
+  Extreme64SymShort,
+  Extreme64SymPacked,
+  Extreme64Sym_1SLShort,
+  Extreme64Sym_3SL,
+  Extreme64Sym_3SLShort,
+  Extreme64Sym_7SL,
+  Extreme64Sym_7SLShort,
+  Extreme64Byte,
+  Extreme64ByteShort,
+  Extreme64BytePacked,
+  Extreme64Byte_1SLShort,
+  Extreme64Byte_3SL,
+  Extreme64Byte_3SLShort,
+  Extreme64Byte_7SL,
+  Extreme64Byte_7SLShort,
+  Extreme128Sym,
+  Extreme128SymPacked,
+  Extreme128Byte,
+  Extreme128BytePacked,
+
+  Rle8SH,
+  Extreme8MultiMTF128,
+
+  LowEntropy,
+  LowEntropySingle,
+  LowEntropyShort,
+  LowEntropyShortSingle,
+
+  MultiMTF128,
+  MultiMTF256,
+
+  MemCopy,
+
+  CodecCount
+} codec_t;
+
+static const char *codecNames[] =
+{
+  "8 Bit                         ",
+  "8 Bit Short                   ",
+  "8 Bit Packed                  ",
+  "8 Bit 1LUT Short              ",
+  "8 Bit 3LUT                    ",
+  "8 Bit 3LUT Short              ",
+  "8 Bit 7LUT                    ",
+  "8 Bit 7LUT Short              ",
+  "8 Bit Single                  ",
+  "8 Bit Single Short            ",
+  "8 Bit Single Packed           ",
+  "16 Bit (Symbol)               ",
+  "16 Bit Short (Symbol)         ",
+  "16 Bit Packed (Symbol)        ",
+  "16 Bit 1LUT Short (Symbol)    ",
+  "16 Bit 3LUT (Symbol)          ",
+  "16 Bit 3LUT Short (Symbol)    ",
+  "16 Bit 7LUT (Symbol)          ",
+  "16 Bit 7LUT Short (Symbol)    ",
+  "16 Bit (Byte)                 ",
+  "16 Bit Short (Byte)           ",
+  "16 Bit Packed (Byte)          ",
+  "16 Bit 1LUT Short (Byte)      ",
+  "16 Bit 3LUT (Byte)            ",
+  "16 Bit 3LUT Short (Byte)      ",
+  "16 Bit 7LUT (Byte)            ",
+  "16 Bit 7LUT Short (Byte)      ",
+  "24 Bit (Symbol)               ",
+  "24 Bit Short (Symbol)         ",
+  "24 Bit Packed (Symbol)        ",
+  "24 Bit 1LUT Short (Symbol)    ",
+  "24 Bit 3LUT (Symbol)          ",
+  "24 Bit 3LUT Short (Symbol)    ",
+  "24 Bit 7LUT (Symbol)          ",
+  "24 Bit 7LUT Short (Symbol)    ",
+  "24 Bit (Byte)                 ",
+  "24 Bit Short (Byte)           ",
+  "24 Bit Packed (Byte)          ",
+  "24 Bit 1LUT Short (Byte)      ",
+  "24 Bit 3LUT (Byte)            ",
+  "24 Bit 3LUT Short (Byte)      ",
+  "24 Bit 7LUT (Byte)            ",
+  "24 Bit 7LUT Short (Byte)      ",
+  "32 Bit (Symbol)               ",
+  "32 Bit Short (Symbol)         ",
+  "32 Bit Packed (Symbol)        ",
+  "32 Bit 1LUT Short (Symbol)    ",
+  "32 Bit 3LUT (Symbol)          ",
+  "32 Bit 3LUT Short (Symbol)    ",
+  "32 Bit 7LUT (Symbol)          ",
+  "32 Bit 7LUT Short (Symbol)    ",
+  "32 Bit (Byte)                 ",
+  "32 Bit Short (Byte)           ",
+  "32 Bit Packed (Byte)          ",
+  "32 Bit 1LUT Short (Byte)      ",
+  "32 Bit 3LUT (Byte)            ",
+  "32 Bit 3LUT Short (Byte)      ",
+  "32 Bit 7LUT (Byte)            ",
+  "32 Bit 7LUT Short (Byte)      ",
+  "48 Bit (Symbol)               ",
+  "48 Bit Short (Symbol)         ",
+  "48 Bit Packed (Symbol)        ",
+  "48 Bit 1LUT Short (Symbol)    ",
+  "48 Bit 3LUT (Symbol)          ",
+  "48 Bit 3LUT Short (Symbol)    ",
+  "48 Bit 7LUT (Symbol)          ",
+  "48 Bit 7LUT Short (Symbol)    ",
+  "48 Bit (Byte)                 ",
+  "48 Bit Short (Byte)           ",
+  "48 Bit Packed (Byte)          ",
+  "48 Bit 1LUT Short (Byte)      ",
+  "48 Bit 3LUT (Byte)            ",
+  "48 Bit 3LUT Short (Byte)      ",
+  "48 Bit 7LUT (Byte)            ",
+  "48 Bit 7LUT Short (Byte)      ",
+  "64 Bit (Symbol)               ",
+  "64 Bit Short (Symbol)         ",
+  "64 Bit Packed (Symbol)        ",
+  "64 Bit 1LUT Short (Symbol)    ",
+  "64 Bit 3LUT (Symbol)          ",
+  "64 Bit 3LUT Short (Symbol)    ",
+  "64 Bit 7LUT (Symbol)          ",
+  "64 Bit 7LUT Short (Symbol)    ",
+  "64 Bit (Byte)                 ",
+  "64 Bit Short (Byte)           ",
+  "64 Bit Packed (Byte)          ",
+  "64 Bit 1LUT Short (Byte)      ",
+  "64 Bit 3LUT (Byte)            ",
+  "64 Bit 3LUT Short (Byte)      ",
+  "64 Bit 7LUT (Byte)            ",
+  "64 Bit 7LUT Short (Byte)      ",
+  "128 Bit (Symbol)              ",
+  "128 Bit Packed (Symbol)       ",
+  "128 Bit (Byte)                ",
+  "128 Bit Packed (Byte)         ",
+  "8 Bit RLE + Huffman-esque     ",
+  "8 Bit MMTF 128                ",
+  "Low Entropy                   ",
+  "Low Entropy Single            ",
+  "Low Entropy Short             ",
+  "Low Entropy Short Single      ",
+  "Multi MTF 128 Bit (Transform) ",
+  "Multi MTF 256 Bit (Transform) ",
+  "memcpy                        ",
+};
+
+_STATIC_ASSERT(ARRAYSIZE(codecNames) == CodecCount);
+
+struct
+{
+  bool hasMode, isModeExtreme, isModeLowEntropy, isModeSH, isModeRleMMTF, isModeMMTF;
+  bool hasShortMode, isShortMode;
+  bool hasSingleMode, isSingleMode;
+  bool hasAlignment, isAlignmentByte;
+  bool hasPackedMode, isPacked;
+  bool hasLutSize;
+  size_t lutSize;
+  bool hasBitCount;
+  size_t bitCount;
+} _Args;
 
 uint64_t GetCurrentTimeTicks();
 uint64_t TicksToNs(const uint64_t ticks);
@@ -46,6 +292,7 @@ void SleepNs(const uint64_t sleepNs);
 bool Validate(const uint8_t *pUncompressedData, const uint8_t *pDecompressedData, const size_t fileSize);
 double GetInformationRatio(const uint8_t *pData, const size_t length);
 void AnalyzeData(const uint8_t *pData, const size_t size);
+bool CodecMatchesArgs(const codec_t codec);
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -53,12 +300,23 @@ int main(int argc, char **pArgv)
 {
   if (argc <= 1)
   {
-    printf("Usage: rle8 <InputFileName>\n\n");
-    printf("\t[%s <Run Count>]\n\t[%s <Minimum Benchmark Time in Seconds>]\n\n\t", ArgumentRuns, ArgumentMinimumTime);
-    printf("OR:\n\n");
-    printf("\t[%s <Output File Name>]\n\n\t[%s]\n\t\tif '%s': [%s (8 | 16 | 24 | 32 | 48 | 64 | 128)] (symbol size)\n\n\t[%s (original rle8 codec)]\n\t\tif '%s': [%s <Sub Section Count>] \n\n\t[%s ('%s' optimized for fewer repititions)]\n\n", ArgumentTo, ArgumentExtreme, ArgumentExtreme, ArgumentExtremeSize, ArgumentNormal, ArgumentNormal, ArgumentSubSections, ArgumentUltra, ArgumentNormal);
-    printf("\t[%s]\n\t\tif '%s': [%s (128 | 256)] (mtf width)\n\n\t[%s (only transform, no compression)]\n\t\tif '%s': [%s(128 | 256)] (mtf width)\n\n", ArgumentExtremeMMTF, ArgumentExtremeMMTF, ArgumentExtremeSize, ArgumentMMTF, ArgumentMMTF, ArgumentExtremeSize);
-    printf("\t[%s (separate bit packed header, doesn't support '%s')]\n\n", ArgumentSH, ArgumentSingle);
+    printf("Usage: hsrlekit <InputFileName>\n\n");
+    printf("\t[%s <Run Count>]\n\n\t[%s <Minimum Benchmark Time in Seconds>]\n\n", ArgumentRuns, ArgumentMinimumTime);
+    printf("\t[%s (restrict to a subset of codecs to benchmark)]\n", ArgumentMatch);
+    printf("\t\tif '%s': [%s / %s / %s / %s / %s]\n", ArgumentMatch, ArgumentExtreme, ArgumentExtremeMMTF, ArgumentMMTF, ArgumentNormal, ArgumentSH);
+    printf("\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentExtremePacked, ArgumentExtremeNotPacked);
+    printf("\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentExtremeByteGran, ArgumentExtremeSymbolGran);
+    printf("\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentMulti, ArgumentSingle);
+    printf("\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentShort, ArgumentNotShort);
+    printf("\t\tif '%s': [%s 0, 1, 3, 7]\n", ArgumentMatch, ArgumentExtremeLutSize);
+    printf("\n\n\tOR: (for debugging purposes only)\n\n");
+    printf("\t[%s <Output File Name>]\n\n", ArgumentTo);
+    printf("\t[%s]\n\t\tif '%s': [%s (8 | 16 | 24 | 32 | 48 | 64 | 128)] (symbol size)\n\t\tif '%s': [%s] (include unaligned repeats, capacity vs. accuracy tradeoff)\n\t\tif '%s': [%s] (preferable if many rle-symbol-repeats)\n\n", ArgumentExtreme, ArgumentExtreme, ArgumentExtremeSize, ArgumentExtreme, ArgumentExtremeByteGran, ArgumentExtreme, ArgumentExtremePacked);
+    printf("\t[%s (try to preserve symbol frequencies)]\n\t\tif '%s': [%s <Sub Section Count>] \n\n", ArgumentNormal, ArgumentNormal, ArgumentSubSections);
+    printf("\t[%s ('%s' optimized for fewer repititions)]\n\n", ArgumentUltra, ArgumentNormal);
+    printf("\t[%s]\n\t\tif '%s': [%s (128 | 256)] (mtf width)\n\n", ArgumentExtremeMMTF, ArgumentExtremeMMTF, ArgumentExtremeSize);
+    printf("\t[%s (only transform, no compression)]\n\t\tif '%s': [%s(128 | 256)] (mtf width)\n\n", ArgumentMMTF, ArgumentMMTF, ArgumentExtremeSize);
+    printf("\t[%s (separate bit (_Args.hasPackedMode && _Args.isPacked) header, doesn't support '%s')]\n\n", ArgumentSH, ArgumentSingle);
     printf("\t[%s (only rle most frequent symbol, only available for 8 bit modes)]\n\n\t[%s <Run Count>]\n", ArgumentSingle, ArgumentRuns);
     printf("\t[%s (analyze file contents for compressability)]n", ArgumentAnalyze);
 
@@ -69,20 +327,16 @@ int main(int argc, char **pArgv)
     return 1;
   }
 
+  memset(&_Args, 0, sizeof(_Args));
+
   const char *outputFileName = NULL;
   int32_t subSections = 0;
   int32_t runs = 8;
   int32_t minSeconds = 2;
-  bool normalMode = false;
-  bool singleSymbol = false;
-  bool ultraMode = false;
-  bool extremeMode = false;
-  bool mmtfMode = false;
-  bool extremeMmtfMode = false;
-  bool shMode = false;
   bool benchmarkAll = false;
+  bool matchBenchmarks = false;
   bool analyzeFileContents = false;
-  uint64_t extremeSize = 8;
+  bool noDelays = false;
 
 #ifdef _WIN32
   size_t cpuCoreIndex = 0;
@@ -102,6 +356,12 @@ int main(int argc, char **pArgv)
         argIndex += 2;
         argsRemaining -= 2;
       }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentMatch, sizeof(ArgumentMatch)) == 0)
+      {
+        matchBenchmarks = true;
+        argIndex++;
+        argsRemaining--;
+      }
       else if (argsRemaining >= 2 && strncmp(pArgv[argIndex], ArgumentSubSections, sizeof(ArgumentSubSections)) == 0)
       {
         subSections = atoi(pArgv[argIndex + 1]);
@@ -119,10 +379,15 @@ int main(int argc, char **pArgv)
       {
         runs = atoi(pArgv[argIndex + 1]);
 
-        if (runs <= 0)
+        if (runs < 0)
         {
           puts("Invalid Parameter.");
           return 1;
+        }
+        else if (runs == 0)
+        {
+          runs = 1;
+          noDelays = true;
         }
 
         argIndex += 2;
@@ -143,51 +408,111 @@ int main(int argc, char **pArgv)
       }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentNormal, sizeof(ArgumentNormal)) == 0)
       {
-        normalMode = true;
+        _Args.hasMode = true;
+        _Args.isModeLowEntropy = true;
+
         argIndex += 1;
         argsRemaining -= 1;
       }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentSingle, sizeof(ArgumentSingle)) == 0)
       {
-        singleSymbol = true;
+        if (_Args.hasSingleMode)
+        {
+          puts("Single mode has already been specified.");
+          return 1;
+        }
+
+        _Args.hasSingleMode = true;
+        _Args.isSingleMode = true;
+
+        argIndex += 1;
+        argsRemaining -= 1;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentMulti, sizeof(ArgumentMulti)) == 0)
+      {
+        if (_Args.hasSingleMode)
+        {
+          puts("Single mode has already been specified.");
+          return 1;
+        }
+
+        _Args.hasSingleMode = true;
+        _Args.isSingleMode = false;
+
+        argIndex += 1;
+        argsRemaining -= 1;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentShort, sizeof(ArgumentShort)) == 0)
+      {
+        if (_Args.hasShortMode)
+        {
+          puts("Short mode has already been specified.");
+          return 1;
+        }
+
+        _Args.hasShortMode = true;
+        _Args.isShortMode = true;
+
+        argIndex += 1;
+        argsRemaining -= 1;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentNotShort, sizeof(ArgumentNotShort)) == 0)
+      {
+        if (_Args.hasShortMode)
+        {
+          puts("Short mode has already been specified.");
+          return 1;
+        }
+
+        _Args.hasShortMode = true;
+        _Args.isShortMode = false;
+
         argIndex += 1;
         argsRemaining -= 1;
       }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentUltra, sizeof(ArgumentUltra)) == 0)
       {
-        ultraMode = true;
+        _Args.hasMode = true;
+        _Args.isModeLowEntropy = true;
+        _Args.hasShortMode = true;
+        _Args.isShortMode = true;
+
         argIndex += 1;
         argsRemaining -= 1;
       }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentExtreme, sizeof(ArgumentExtreme)) == 0)
       {
-        extremeMode = true;
+        _Args.hasMode = true;
+        _Args.isModeExtreme = true;
+
         argIndex += 1;
         argsRemaining -= 1;
       }
       else if (argsRemaining >= 2 && strncmp(pArgv[argIndex], ArgumentExtremeSize, sizeof(ArgumentExtremeSize)) == 0)
       {
-        if (!extremeMode && !mmtfMode && !extremeMmtfMode)
+        if (_Args.hasBitCount)
         {
-          printf("Invalid Parameter. Expected '%s', '%s' or '%s' with '%s'.", ArgumentExtreme, ArgumentMMTF, ArgumentExtremeMMTF, ArgumentExtremeSize);
+          puts("Bit count has already been specified.");
           return 1;
         }
+
+        _Args.hasBitCount = true;
         
         switch (pArgv[argIndex + 1][0])
         {
         case '8':
-          extremeSize = 8;
+          _Args.bitCount = 8;
           break;
 
         case '1':
           switch (pArgv[argIndex + 1][1])
           {
           case '6':
-            extremeSize = 16;
+            _Args.bitCount = 16;
             break;
 
           case '2':
-            extremeSize = 128;
+            _Args.bitCount = 128;
             break;
 
           default:
@@ -200,11 +525,11 @@ int main(int argc, char **pArgv)
           switch (pArgv[argIndex + 1][1])
           {
           case '4':
-            extremeSize = 24;
+            _Args.bitCount = 24;
             break;
 
           case '5':
-            extremeSize = 256;
+            _Args.bitCount = 256;
             break;
 
           default:
@@ -214,15 +539,15 @@ int main(int argc, char **pArgv)
           break;
 
         case '3':
-          extremeSize = 32;
+          _Args.bitCount = 32;
           break;
 
         case '4':
-          extremeSize = 48;
+          _Args.bitCount = 48;
           break;
 
         case '6':
-          extremeSize = 64;
+          _Args.bitCount = 64;
           break;
 
         default:
@@ -233,23 +558,119 @@ int main(int argc, char **pArgv)
         argIndex += 2;
         argsRemaining -= 2;
       }
+      else if (argsRemaining >= 2 && strncmp(pArgv[argIndex], ArgumentExtremeLutSize, sizeof(ArgumentExtremeLutSize)) == 0)
+      {
+        if (_Args.hasLutSize)
+        {
+          puts("Lut size has already been specified.");
+          return 1;
+        }
+
+        _Args.hasLutSize = true;
+        
+        switch (pArgv[argIndex + 1][0])
+        {
+        case '0':
+          _Args.lutSize = 0;
+          break;
+          
+        case '1':
+          _Args.lutSize = 1;
+          break;
+          
+        case '3':
+          _Args.lutSize = 3;
+          break;
+          
+        case '7':
+          _Args.lutSize = 7;
+          break;
+
+        default:
+          puts("Invalid Parameter.");
+          return 1;
+        }
+
+        argIndex += 2;
+        argsRemaining -= 2;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentExtremeByteGran, sizeof(ArgumentExtremeByteGran)) == 0)
+      {
+        if (_Args.hasAlignment)
+        {
+          puts("Alignment has already been specified.");
+          return 1;
+        }
+
+        _Args.hasAlignment = true;
+        _Args.isAlignmentByte = true;
+
+        argIndex += 1;
+        argsRemaining -= 1;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentExtremeSymbolGran, sizeof(ArgumentExtremeSymbolGran)) == 0)
+      {
+        if (_Args.hasAlignment)
+        {
+          puts("Alignment has already been specified.");
+          return 1;
+        }
+
+        _Args.hasAlignment = true;
+        _Args.isAlignmentByte = false;
+
+        argIndex += 1;
+        argsRemaining -= 1;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentExtremePacked, sizeof(ArgumentExtremePacked)) == 0)
+      {
+        if (_Args.hasPackedMode)
+        {
+          puts("Packed mode has already been specified.");
+          return 1;
+        }
+
+        _Args.hasPackedMode = true;
+        _Args.isPacked = true;
+
+        argIndex += 1;
+        argsRemaining -= 1;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentExtremeNotPacked, sizeof(ArgumentExtremeNotPacked)) == 0)
+      {
+        if (_Args.hasPackedMode)
+        {
+          puts("Packed mode has already been specified.");
+          return 1;
+        }
+
+        _Args.hasPackedMode = true;
+        _Args.isPacked = false;
+
+        argIndex += 1;
+        argsRemaining -= 1;
+      }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentMMTF, sizeof(ArgumentMMTF)) == 0)
       {
-        mmtfMode = true;
-        extremeSize = 128;
+        _Args.hasMode = true;
+        _Args.isModeMMTF = true;
+
         argIndex += 1;
         argsRemaining -= 1;
       }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentSH, sizeof(ArgumentSH)) == 0)
       {
-        shMode = true;
+        _Args.hasMode = true;
+        _Args.isModeSH = true;
+
         argIndex += 1;
         argsRemaining -= 1;
       }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentExtremeMMTF, sizeof(ArgumentExtremeMMTF)) == 0)
       {
-        extremeMmtfMode = true;
-        extremeSize = 128;
+        _Args.hasMode = true;
+        _Args.isModeRleMMTF = true;
+
         argIndex += 1;
         argsRemaining -= 1;
       }
@@ -269,7 +690,7 @@ int main(int argc, char **pArgv)
 #endif
       else
       {
-        puts("Invalid Parameter.");
+        printf("Invalid Parameter '%s'.", pArgv[argIndex]);
         return 1;
       }
     }
@@ -284,49 +705,43 @@ int main(int argc, char **pArgv)
 
   // Validate Parameters.
   {
-    if (singleSymbol && subSections != 0)
+    if ((_Args.hasSingleMode && _Args.isSingleMode) && subSections != 0)
     {
       puts("Single Symbol Encoding is only available without sub sections.");
       return 1;
     }
 
-    if (ultraMode && subSections != 0)
+    if ((_Args.hasMode && _Args.isModeLowEntropy && _Args.hasShortMode && _Args.isShortMode) && subSections != 0)
     {
       puts("Ultra Mode Encoding is only available without sub sections.");
       return 1;
     }
 
-    if (extremeMode && subSections != 0)
+    if ((_Args.hasMode && _Args.isModeExtreme) && subSections != 0)
     {
       puts("Extreme Mode Encoding is only available without sub sections.");
       return 1;
     }
 
-    if (normalMode + ultraMode + extremeMode + mmtfMode + extremeMmtfMode + shMode > 1)
-    {
-      puts("Normal, Extreme, Ultra and MMTF cannot be used at the same time.");
-      return 1;
-    }
-
-    if (extremeMode && singleSymbol && extremeSize != 8)
+    if ((_Args.hasMode && _Args.isModeExtreme) && (_Args.hasSingleMode && _Args.isSingleMode) && (_Args.hasBitCount && _Args.bitCount != 8))
     {
       puts("Single Symbol in Extreme Mode is only supported for symbol size 8.");
       return 1;
     }
 
-    if (extremeMode && extremeSize == 256)
+    if ((_Args.hasMode && _Args.isModeExtreme) && (_Args.hasBitCount && _Args.bitCount == 256))
     {
       puts("Extreme Mode doesn't support symbol size 256.");
       return 1;
     }
 
-    if ((mmtfMode || extremeMmtfMode) && extremeSize != 128 && extremeSize != 256)
+    if ((_Args.hasMode && (_Args.isModeMMTF || _Args.isModeRleMMTF)) && (_Args.hasBitCount && _Args.bitCount != 256 && _Args.bitCount != 128))
     {
       puts("MMTF Modes only supports mtf width of 128 or 256.");
       return 1;
     }
 
-    benchmarkAll = !normalMode && !ultraMode && !extremeMode && !mmtfMode && !extremeMmtfMode && !shMode;
+    benchmarkAll = !_Args.hasMode || matchBenchmarks;
   }
 
   size_t fileSize = 0;
@@ -354,20 +769,20 @@ int main(int argc, char **pArgv)
 
   fseek(pFile, 0, SEEK_SET);
 
-  compressedBufferSize = rle8_compress_bounds((uint32_t)fileSize);
+  compressedBufferSize = rle_compress_bounds((uint32_t)fileSize);
 
+  compressedBufferSize = max(compressedBufferSize, rle_mmtf_bounds((uint32_t)fileSize));
   compressedBufferSize = max(compressedBufferSize, rle8_sh_bounds((uint32_t)fileSize));
-  compressedBufferSize = max(compressedBufferSize, rle8_sh_bounds((uint32_t)fileSize));
-  compressedBufferSize = max(compressedBufferSize, rle8_extreme_compress_bounds((uint32_t)fileSize));
-  compressedBufferSize = max(compressedBufferSize, rle8_extreme_mmtf128_compress_bounds((uint32_t)fileSize));
-  compressedBufferSize = max(compressedBufferSize, rle8_extreme_mmtf256_compress_bounds((uint32_t)fileSize));
-  compressedBufferSize = max(compressedBufferSize, rle8_sh_bounds((uint32_t)fileSize));
+  compressedBufferSize = max(compressedBufferSize, rle8_mmtf128_compress_bounds((uint32_t)fileSize));
+  compressedBufferSize = max(compressedBufferSize, rle8_mmtf256_compress_bounds((uint32_t)fileSize));
+  compressedBufferSize = max(compressedBufferSize, rle8_low_entropy_compress_bounds((uint32_t)fileSize));
+  compressedBufferSize = max(compressedBufferSize, rle8_low_entropy_short_compress_bounds((uint32_t)fileSize));
   
   if (subSections != 0)
     compressedBufferSize = max(compressedBufferSize, rle8m_compress_bounds((uint32_t)subSections, (uint32_t)fileSize));
 
   pUncompressedData = (uint8_t *)ALIGNED_ALLOC(32, fileSize);
-  pDecompressedData = (uint8_t *)ALIGNED_ALLOC(32, fileSize + rle8_extreme_decompress_additional_size());
+  pDecompressedData = (uint8_t *)ALIGNED_ALLOC(32, fileSize + rle_decompress_additional_size());
   pCompressedData = (uint8_t *)ALIGNED_ALLOC(32, compressedBufferSize);
 
   if (!pUncompressedData || !pDecompressedData || !pCompressedData)
@@ -389,64 +804,22 @@ int main(int argc, char **pArgv)
 
   //////////////////////////////////////////////////////////////////////////
 
-  if (benchmarkAll)
+  if (benchmarkAll || matchBenchmarks)
   {
-    enum
-    {
-      Extreme8,
-      Extreme8Single,
-      Extreme16,
-      Extreme24,
-      Extreme32,
-      Extreme48,
-      Extreme64,
-      Extreme128,
-      Rle8SH,
-      Extreme8MultiMTF128,
-      MultiMTF128,
-      MultiMTF256,
-      Normal,
-      NormalSingle,
-      Ultra,
-      UltraSingle,
-
-      MemCopy,
-
-      CodecCount
-    } currentCodec = 0;
-
-    const char *codecNames[] = 
-    {
-      "Extreme 8 Bit        ",
-      "Extreme 8 Bit Single ",
-      "Extreme 16 Bit       ",
-      "Extreme 24 Bit       ",
-      "Extreme 32 Bit       ",
-      "Extreme 48 Bit       ",
-      "Extreme 64 Bit       ",
-      "Extreme 128 Bit      ",
-      "RLE 8 SH             ",
-      "Extreme 8 MMTF 128   ",
-      "Multi MTF 128 Bit    ",
-      "Multi MTF 256 Bit    ",
-      "Normal (old)         ",
-      "Normal Single (old)  ",
-      "Ultra (old)          ",
-      "Ultra Single (old)   ",
-      "memcpy               ",
-    };
-
-    _STATIC_ASSERT(ARRAYSIZE(codecNames) == CodecCount);
+    codec_t currentCodec = 0;
 
     uint32_t fileSize32 = (uint32_t)fileSize;
 
     printf("\nBenchmarking File '%s' (%" PRIu64 " Bytes)\n\n"
-      "Codec                  Ratio      Encoder Throughput (Maximum)    Decoder Throughput (Maximum)    R*H/log2(|S|)\n"
-      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n", pArgv[1], fileSize);
+      "Codec                           Ratio      Encoder Throughput (Maximum)    Decoder Throughput (Maximum)    R*H/log2(|S|)\n"
+      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n", pArgv[1], fileSize);
 
     for (; currentCodec < CodecCount; currentCodec++)
     {
-      if (currentCodec > 0)
+      if (matchBenchmarks && !CodecMatchesArgs(currentCodec))
+        continue;
+
+      if (!noDelays && currentCodec > 0)
         SleepNs(500 * 1000 * 1000);
 
       printf("%s|          | (dry run)", codecNames[currentCodec]);
@@ -455,6 +828,9 @@ int main(int argc, char **pArgv)
       uint64_t fastestCompresionTime = UINT64_MAX;
       int64_t compressionRuns = -1;
       uint32_t compressedSize = 0;
+
+      if (noDelays)
+        compressionRuns = 0; // Skip dry run.
 
       const uint64_t compressStartTicks = GetCurrentTimeTicks();
       uint64_t lastSleepTicks = compressStartTicks;
@@ -466,39 +842,387 @@ int main(int argc, char **pArgv)
         switch (currentCodec)
         {
         case Extreme8:
-          compressedSize = rle8_extreme_multi_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          compressedSize = rle8_multi_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
     
         case Extreme8Single:
-          compressedSize = rle8_extreme_single_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          compressedSize = rle8_single_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
     
-        case Extreme16:
-          compressedSize = rle16_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+        case Extreme16Sym:
+          compressedSize = rle16_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
     
-        case Extreme24:
-          compressedSize = rle24_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+        case Extreme24Sym:
+          compressedSize = rle24_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
     
-        case Extreme32:
-          compressedSize = rle32_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+        case Extreme32Sym:
+          compressedSize = rle32_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
     
-        case Extreme48:
-          compressedSize = rle48_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+        case Extreme48Sym:
+          compressedSize = rle48_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
     
-        case Extreme64:
-          compressedSize = rle64_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+        case Extreme64Sym:
+          compressedSize = rle64_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
     
-        case Extreme128:
-          compressedSize = rle128_extreme_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+        case Extreme128Sym:
+          compressedSize = rle128_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16SymPacked:
+          compressedSize = rle16_sym_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24SymPacked:
+          compressedSize = rle24_sym_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32SymPacked:
+          compressedSize = rle32_sym_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48SymPacked:
+          compressedSize = rle48_sym_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64SymPacked:
+          compressedSize = rle64_sym_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme128SymPacked:
+          compressedSize = rle128_sym_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme16Byte:
+          compressedSize = rle16_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme24Byte:
+          compressedSize = rle24_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme32Byte:
+          compressedSize = rle32_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme48Byte:
+          compressedSize = rle48_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme64Byte:
+          compressedSize = rle64_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme128Byte:
+          compressedSize = rle128_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme8Packed:
+          compressedSize = rle8_packed_multi_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme8PackedSingle:
+          compressedSize = rle8_packed_single_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme16BytePacked:
+          compressedSize = rle16_byte_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme24BytePacked:
+          compressedSize = rle24_byte_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme32BytePacked:
+          compressedSize = rle32_byte_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme48BytePacked:
+          compressedSize = rle48_byte_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme64BytePacked:
+          compressedSize = rle64_byte_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+    
+        case Extreme128BytePacked:
+          compressedSize = rle128_byte_packed_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8Short:
+          compressedSize = rle8_multi_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8SingleShort:
+          compressedSize = rle8_single_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8_1SLShort:
+          compressedSize = rle8_1symlut_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8_3SL:
+          compressedSize = rle8_3symlut_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8_3SLShort:
+          compressedSize = rle8_3symlut_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8_7SL:
+          compressedSize = rle8_7symlut_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8_7SLShort:
+          compressedSize = rle8_7symlut_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16SymShort:
+          compressedSize = rle16_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Sym_1SLShort:
+          compressedSize = rle16_1symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Sym_3SL:
+          compressedSize = rle16_3symlut_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Sym_3SLShort:
+          compressedSize = rle16_3symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Sym_7SL:
+          compressedSize = rle16_7symlut_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Sym_7SLShort:
+          compressedSize = rle16_7symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16ByteShort:
+          compressedSize = rle16_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Byte_1SLShort:
+          compressedSize = rle16_1symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Byte_3SL:
+          compressedSize = rle16_3symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Byte_3SLShort:
+          compressedSize = rle16_3symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Byte_7SL:
+          compressedSize = rle16_7symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Byte_7SLShort:
+          compressedSize = rle16_7symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32SymShort:
+          compressedSize = rle32_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Sym_1SLShort:
+          compressedSize = rle32_1symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Sym_3SL:
+          compressedSize = rle32_3symlut_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Sym_3SLShort:
+          compressedSize = rle32_3symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Sym_7SL:
+          compressedSize = rle32_7symlut_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Sym_7SLShort:
+          compressedSize = rle32_7symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32ByteShort:
+          compressedSize = rle32_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte_1SLShort:
+          compressedSize = rle32_1symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte_3SL:
+          compressedSize = rle32_3symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte_3SLShort:
+          compressedSize = rle32_3symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte_7SL:
+          compressedSize = rle32_7symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte_7SLShort:
+          compressedSize = rle32_7symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64SymShort:
+          compressedSize = rle64_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Sym_1SLShort:
+          compressedSize = rle64_1symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Sym_3SL:
+          compressedSize = rle64_3symlut_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Sym_3SLShort:
+          compressedSize = rle64_3symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Sym_7SL:
+          compressedSize = rle64_7symlut_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Sym_7SLShort:
+          compressedSize = rle64_7symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64ByteShort:
+          compressedSize = rle64_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte_1SLShort:
+          compressedSize = rle64_1symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte_3SL:
+          compressedSize = rle64_3symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte_3SLShort:
+          compressedSize = rle64_3symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte_7SL:
+          compressedSize = rle64_7symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte_7SLShort:
+          compressedSize = rle64_7symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24SymShort:
+          compressedSize = rle24_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Sym_1SLShort:
+          compressedSize = rle24_1symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Sym_3SL:
+          compressedSize = rle24_3symlut_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Sym_3SLShort:
+          compressedSize = rle24_3symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Sym_7SL:
+          compressedSize = rle24_7symlut_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Sym_7SLShort:
+          compressedSize = rle24_7symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24ByteShort:
+          compressedSize = rle24_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Byte_1SLShort:
+          compressedSize = rle24_1symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Byte_3SL:
+          compressedSize = rle24_3symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Byte_3SLShort:
+          compressedSize = rle24_3symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Byte_7SL:
+          compressedSize = rle24_7symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Byte_7SLShort:
+          compressedSize = rle24_7symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48SymShort:
+          compressedSize = rle48_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Sym_1SLShort:
+          compressedSize = rle48_1symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Sym_3SL:
+          compressedSize = rle48_3symlut_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Sym_3SLShort:
+          compressedSize = rle48_3symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Sym_7SL:
+          compressedSize = rle48_7symlut_sym_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Sym_7SLShort:
+          compressedSize = rle48_7symlut_sym_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48ByteShort:
+          compressedSize = rle48_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Byte_1SLShort:
+          compressedSize = rle48_1symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Byte_3SL:
+          compressedSize = rle48_3symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Byte_3SLShort:
+          compressedSize = rle48_3symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Byte_7SL:
+          compressedSize = rle48_7symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Byte_7SLShort:
+          compressedSize = rle48_7symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme8MultiMTF128:
-          compressedSize = rle8_extreme_mmtf128_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          compressedSize = rle8_mmtf128_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case MultiMTF128:
@@ -513,20 +1237,20 @@ int main(int argc, char **pArgv)
           compressedSize = rle8_sh_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
-        case Normal:
-          compressedSize = rle8_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+        case LowEntropy:
+          compressedSize = rle8_low_entropy_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
-        case NormalSingle:
-          compressedSize = rle8_compress_only_max_frequency(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+        case LowEntropySingle:
+          compressedSize = rle8_low_entropy_compress_only_max_frequency(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
-        case Ultra:
-          compressedSize = rle8_ultra_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+        case LowEntropyShort:
+          compressedSize = rle8_low_entropy_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
-        case UltraSingle:
-          compressedSize = rle8_ultra_compress_only_max_frequency(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+        case LowEntropyShortSingle:
+          compressedSize = rle8_low_entropy_short_compress_only_max_frequency(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         default:
@@ -552,12 +1276,15 @@ int main(int argc, char **pArgv)
         if (compressionRuns > 0)
           printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
 
-        const uint64_t sinceSleepNs = TicksToNs(GetCurrentTimeTicks() - lastSleepTicks);
-
-        if (sinceSleepNs > 500 * 1000 * 1000) // Prevent thermal saturation.
+        if (!noDelays)
         {
-          SleepNs(min(sinceSleepNs / 4, 2 * 1000 * 1000 * 1000));
-          lastSleepTicks = GetCurrentTimeTicks();
+          const uint64_t sinceSleepNs = TicksToNs(GetCurrentTimeTicks() - lastSleepTicks);
+
+          if (sinceSleepNs > 500 * 1000 * 1000) // Prevent thermal saturation.
+          {
+            SleepNs(min(sinceSleepNs / 4, 2 * 1000 * 1000 * 1000));
+            lastSleepTicks = GetCurrentTimeTicks();
+          }
         }
       }
 
@@ -572,9 +1299,13 @@ int main(int argc, char **pArgv)
       uint64_t fastestDecompresionTime = UINT64_MAX;
       uint32_t decompressedSize = 0;
 
+      if (noDelays)
+        decompressionRuns = 0; // Skip dry run.
+
       printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | (dry run)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
 
-      SleepNs(500 * 1000 * 1000);
+      if (!noDelays)
+        SleepNs(500 * 1000 * 1000);
 
       const uint64_t decompressStartTicks = GetCurrentTimeTicks();
 
@@ -586,35 +1317,380 @@ int main(int argc, char **pArgv)
         {
         case Extreme8:
         case Extreme8Single:
-          decompressedSize = rle8_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          decompressedSize = rle8_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
      
-        case Extreme16:
-          decompressedSize = rle16_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+        case Extreme16Sym:
+          decompressedSize = rle16_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
      
-        case Extreme24:
-          decompressedSize = rle24_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+        case Extreme24Sym:
+          decompressedSize = rle24_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
      
-        case Extreme32:
-          decompressedSize = rle32_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+        case Extreme32Sym:
+          decompressedSize = rle32_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
      
-        case Extreme48:
-          decompressedSize = rle48_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+        case Extreme48Sym:
+          decompressedSize = rle48_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
      
-        case Extreme64:
-          decompressedSize = rle64_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+        case Extreme64Sym:
+          decompressedSize = rle64_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
      
-        case Extreme128:
-          decompressedSize = rle128_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+        case Extreme128Sym:
+          decompressedSize = rle128_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16SymPacked:
+          decompressedSize = rle16_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24SymPacked:
+          decompressedSize = rle24_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32SymPacked:
+          decompressedSize = rle32_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48SymPacked:
+          decompressedSize = rle48_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64SymPacked:
+          decompressedSize = rle64_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme128SymPacked:
+          decompressedSize = rle128_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Byte:
+          decompressedSize = rle16_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Byte:
+          decompressedSize = rle24_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte:
+          decompressedSize = rle32_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Byte:
+          decompressedSize = rle48_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte:
+          decompressedSize = rle64_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme128Byte:
+          decompressedSize = rle128_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8Packed:
+        case Extreme8PackedSingle:
+          decompressedSize = rle8_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16BytePacked:
+          decompressedSize = rle16_byte_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24BytePacked:
+          decompressedSize = rle24_byte_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32BytePacked:
+          decompressedSize = rle32_byte_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48BytePacked:
+          decompressedSize = rle48_byte_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64BytePacked:
+          decompressedSize = rle64_byte_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme128BytePacked:
+          decompressedSize = rle128_byte_packed_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8Short:
+          decompressedSize = rle8_multi_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8SingleShort:
+          decompressedSize = rle8_single_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8_1SLShort:
+          decompressedSize = rle8_1symlut_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8_3SL:
+          decompressedSize = rle8_3symlut_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8_3SLShort:
+          decompressedSize = rle8_3symlut_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8_7SL:
+          decompressedSize = rle8_7symlut_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme8_7SLShort:
+          decompressedSize = rle8_7symlut_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16SymShort:
+          decompressedSize = rle16_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Sym_1SLShort:
+          decompressedSize = rle16_1symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Sym_3SL:
+          decompressedSize = rle16_3symlut_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Sym_3SLShort:
+          decompressedSize = rle16_3symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Sym_7SL:
+          decompressedSize = rle16_7symlut_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Sym_7SLShort:
+          decompressedSize = rle16_7symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16ByteShort:
+          decompressedSize = rle16_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Byte_1SLShort:
+          decompressedSize = rle16_1symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Byte_3SL:
+          decompressedSize = rle16_3symlut_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Byte_3SLShort:
+          decompressedSize = rle16_3symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Byte_7SL:
+          decompressedSize = rle16_7symlut_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Byte_7SLShort:
+          decompressedSize = rle16_7symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32SymShort:
+          decompressedSize = rle32_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Sym_1SLShort:
+          decompressedSize = rle32_1symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Sym_3SL:
+          decompressedSize = rle32_3symlut_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Sym_3SLShort:
+          decompressedSize = rle32_3symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Sym_7SL:
+          decompressedSize = rle32_7symlut_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Sym_7SLShort:
+          decompressedSize = rle32_7symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32ByteShort:
+          decompressedSize = rle32_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte_1SLShort:
+          decompressedSize = rle32_1symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte_3SL:
+          decompressedSize = rle32_3symlut_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte_3SLShort:
+          decompressedSize = rle32_3symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte_7SL:
+          decompressedSize = rle32_7symlut_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte_7SLShort:
+          decompressedSize = rle32_7symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64SymShort:
+          decompressedSize = rle64_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Sym_1SLShort:
+          decompressedSize = rle64_1symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Sym_3SL:
+          decompressedSize = rle64_3symlut_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Sym_3SLShort:
+          decompressedSize = rle64_3symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Sym_7SL:
+          decompressedSize = rle64_7symlut_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Sym_7SLShort:
+          decompressedSize = rle64_7symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64ByteShort:
+          decompressedSize = rle64_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte_1SLShort:
+          decompressedSize = rle64_1symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte_3SL:
+          decompressedSize = rle64_3symlut_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte_3SLShort:
+          decompressedSize = rle64_3symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte_7SL:
+          decompressedSize = rle64_7symlut_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte_7SLShort:
+          decompressedSize = rle64_7symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24SymShort:
+          decompressedSize = rle24_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Sym_1SLShort:
+          decompressedSize = rle24_1symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Sym_3SL:
+          decompressedSize = rle24_3symlut_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Sym_3SLShort:
+          decompressedSize = rle24_3symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Sym_7SL:
+          decompressedSize = rle24_7symlut_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Sym_7SLShort:
+          decompressedSize = rle24_7symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24ByteShort:
+          decompressedSize = rle24_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Byte_1SLShort:
+          decompressedSize = rle24_1symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Byte_3SL:
+          decompressedSize = rle24_3symlut_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Byte_3SLShort:
+          decompressedSize = rle24_3symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Byte_7SL:
+          decompressedSize = rle24_7symlut_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Byte_7SLShort:
+          decompressedSize = rle24_7symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48SymShort:
+          decompressedSize = rle48_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Sym_1SLShort:
+          decompressedSize = rle48_1symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Sym_3SL:
+          decompressedSize = rle48_3symlut_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Sym_3SLShort:
+          decompressedSize = rle48_3symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Sym_7SL:
+          decompressedSize = rle48_7symlut_sym_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Sym_7SLShort:
+          decompressedSize = rle48_7symlut_sym_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48ByteShort:
+          decompressedSize = rle48_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Byte_1SLShort:
+          decompressedSize = rle48_1symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Byte_3SL:
+          decompressedSize = rle48_3symlut_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Byte_3SLShort:
+          decompressedSize = rle48_3symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Byte_7SL:
+          decompressedSize = rle48_7symlut_byte_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case Extreme48Byte_7SLShort:
+          decompressedSize = rle48_7symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Extreme8MultiMTF128:
-          decompressedSize = rle8_extreme_mmtf128_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          decompressedSize = rle8_mmtf128_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case MultiMTF128:
@@ -629,14 +1705,14 @@ int main(int argc, char **pArgv)
           decompressedSize = rle8_sh_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
-        case Normal:
-        case NormalSingle:
-          decompressedSize = rle8_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+        case LowEntropy:
+        case LowEntropySingle:
+          decompressedSize = rle8_low_entropy_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
-        case Ultra:
-        case UltraSingle:
-          decompressedSize = rle8_ultra_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+        case LowEntropyShort:
+        case LowEntropyShortSingle:
+          decompressedSize = rle8_low_entropy_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         default:
@@ -662,12 +1738,15 @@ int main(int argc, char **pArgv)
         if (decompressionRuns > 0)
           printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | %7.1f MiB/s (%7.1f MiB/s)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0), (fileSize * (double)decompressionRuns / (double)(1024 * 1024)) / (decompressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestDecompresionTime / 1000000000.0));
 
-        const uint64_t sinceSleepNs = TicksToNs(GetCurrentTimeTicks() - lastSleepTicks);
-
-        if (sinceSleepNs > 500 * 1000 * 1000) // Prevent thermal saturation.
+        if (!noDelays)
         {
-          SleepNs(min(sinceSleepNs / 4, 2 * 1000 * 1000 * 1000));
-          lastSleepTicks = GetCurrentTimeTicks();
+          const uint64_t sinceSleepNs = TicksToNs(GetCurrentTimeTicks() - lastSleepTicks);
+
+          if (sinceSleepNs > 500 * 1000 * 1000) // Prevent thermal saturation.
+          {
+            SleepNs(min(sinceSleepNs / 4, 2 * 1000 * 1000 * 1000));
+            lastSleepTicks = GetCurrentTimeTicks();
+          }
         }
       }
 
@@ -690,28 +1769,44 @@ int main(int argc, char **pArgv)
     // Print Codec Description.
     if (!benchmarkAll)
     {
-      printf("Mode: rle8 ");
+      if (!_Args.hasBitCount)
+      {
+        _Args.hasBitCount = true;
 
-      if (normalMode)
+        if (_Args.hasMode && _Args.isModeMMTF)
+          _Args.bitCount = 128;
+        else
+          _Args.bitCount = 8;
+      }
+
+      printf("Mode: hypersonic rle kit ");
+
+      if (_Args.hasMode && _Args.isModeLowEntropy)
         fputs("Normal ", stdout);
-      else if (extremeMode)
+      else if (_Args.hasMode && _Args.isModeExtreme)
         fputs("Extreme ", stdout);
-      else if (mmtfMode)
+      else if (_Args.hasMode && _Args.isModeMMTF)
         fputs("MMTF ", stdout);
-      else if (extremeMmtfMode)
+      else if (_Args.hasMode && _Args.isModeMMTF)
         fputs("Exreme MMTF ", stdout);
-      else if (shMode)
+      else if (_Args.hasMode && _Args.isModeSH)
         fputs("SH ", stdout);
       else
         fputs("Ultra ", stdout);
 
-      if ((!extremeMode || extremeSize == 8) && singleSymbol)
+      if ((!(_Args.hasMode && _Args.isModeExtreme) || (_Args.hasBitCount && _Args.bitCount == 8) && (_Args.hasSingleMode && _Args.isSingleMode)))
         fputs("Single-Symbol-Mode ", stdout);
 
-      if (extremeMode)
-        printf("with %" PRIu64 " Bit Symbols ", extremeSize);
-      else if (mmtfMode || extremeMmtfMode)
-        printf("with %" PRIu64 " Bit width ", extremeSize);
+      if ((_Args.hasMode && _Args.isModeExtreme) && (_Args.hasPackedMode && _Args.isPacked))
+        fputs("Packed ", stdout);
+
+      if ((_Args.hasMode && _Args.isModeExtreme) && (_Args.hasAlignment && _Args.isAlignmentByte) && (_Args.hasBitCount && _Args.bitCount != 8))
+        fputs("Unbound ", stdout);
+
+      if ((_Args.hasMode && _Args.isModeExtreme))
+        printf("with %" PRIu64 " Bit Symbols ", _Args.bitCount);
+      else if (_Args.hasMode && (_Args.isModeMMTF || _Args.isModeRleMMTF))
+        printf("with %" PRIu64 " Bit width ", _Args.bitCount);
 
       printf("(%" PRIi32 " Run%s)\n\n", runs, runs > 1 ? "s" : "");
     }
@@ -730,64 +1825,173 @@ int main(int argc, char **pArgv)
 
       if (subSections == 0)
       {
-        if (normalMode)
+        if (_Args.hasMode && _Args.isModeLowEntropy)
         {
-          if (singleSymbol)
-            compressedSize = rle8_compress_only_max_frequency(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+          if ((_Args.hasSingleMode && _Args.isSingleMode))
+            compressedSize = rle8_low_entropy_compress_only_max_frequency(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
           else
-            compressedSize = rle8_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+            compressedSize = rle8_low_entropy_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
         }
-        else if (ultraMode)
+        else if ((_Args.hasMode && _Args.isModeLowEntropy && _Args.hasShortMode && _Args.isShortMode))
         {
-          if (singleSymbol)
-            compressedSize = rle8_ultra_compress_only_max_frequency(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+          if ((_Args.hasSingleMode && _Args.isSingleMode))
+            compressedSize = rle8_low_entropy_short_compress_only_max_frequency(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
           else
-            compressedSize = rle8_ultra_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+            compressedSize = rle8_low_entropy_short_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
         }
-        else if (extremeMode)
+        else if ((_Args.hasMode && _Args.isModeExtreme))
         {
-          if (singleSymbol)
+          if (!(_Args.hasAlignment && _Args.isAlignmentByte))
           {
-            compressedSize = rle8_extreme_single_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+            if (_Args.hasPackedMode && _Args.isPacked)
+            {
+              switch (_Args.bitCount)
+              {
+              default:
+              case 8:
+                if ((_Args.hasSingleMode && _Args.isSingleMode))
+                  compressedSize = rle8_packed_single_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                else
+                  compressedSize = rle8_packed_multi_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 16:
+                compressedSize = rle16_sym_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 24:
+                compressedSize = rle24_sym_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 32:
+                compressedSize = rle32_sym_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 48:
+                compressedSize = rle48_sym_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 64:
+                compressedSize = rle64_sym_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 128:
+                compressedSize = rle128_sym_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+              }
+            }
+            else
+            {
+              switch (_Args.bitCount)
+              {
+              case 8:
+              default:
+                if ((_Args.hasSingleMode && _Args.isSingleMode))
+                  compressedSize = rle8_single_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                else
+                  compressedSize = rle8_multi_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 16:
+                compressedSize = rle16_sym_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 24:
+                compressedSize = rle24_sym_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 32:
+                compressedSize = rle32_sym_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 48:
+                compressedSize = rle48_sym_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 64:
+                compressedSize = rle64_sym_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 128:
+                compressedSize = rle128_sym_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+              }
+            }
           }
           else
           {
-            switch (extremeSize)
+            if (_Args.hasPackedMode && _Args.isPacked)
             {
-            case 8:
-            default:
-              compressedSize = rle8_extreme_multi_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-              break;
+              switch (_Args.bitCount)
+              {
+              default:
+              case 8:
+                if ((_Args.hasSingleMode && _Args.isSingleMode))
+                  compressedSize = rle8_packed_single_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                else
+                  compressedSize = rle8_packed_multi_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
 
-            case 16:
-              compressedSize = rle16_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-              break;
+              case 16:
+                compressedSize = rle16_byte_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
 
-            case 24:
-              compressedSize = rle24_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-              break;
+              case 24:
+                compressedSize = rle24_byte_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
 
-            case 32:
-              compressedSize = rle32_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-              break;
+              case 32:
+                compressedSize = rle32_byte_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
 
-            case 48:
-              compressedSize = rle48_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-              break;
+              case 48:
+                compressedSize = rle48_byte_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
 
-            case 64:
-              compressedSize = rle64_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-              break;
+              case 64:
+                compressedSize = rle64_byte_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
 
-            case 128:
-              compressedSize = rle128_extreme_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
-              break;
+              case 128:
+                compressedSize = rle128_byte_packed_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+              }
+            }
+            else
+            {
+              switch (_Args.bitCount)
+              {
+              default:
+              case 16:
+                compressedSize = rle16_byte_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 24:
+                compressedSize = rle24_byte_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 32:
+                compressedSize = rle32_byte_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 48:
+                compressedSize = rle48_byte_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 64:
+                compressedSize = rle64_byte_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+
+              case 128:
+                compressedSize = rle128_byte_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+                break;
+              }
             }
           }
         }
-        else if (mmtfMode)
+        else if (_Args.hasMode && _Args.isModeMMTF)
         {
-          switch (extremeSize)
+          switch (_Args.bitCount)
           {
           case 128:
             compressedSize = rle_mmtf128_encode(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
@@ -798,20 +2002,20 @@ int main(int argc, char **pArgv)
             break;
           }
         }
-        else if (extremeMmtfMode)
+        else if (_Args.hasMode && _Args.isModeRleMMTF)
         {
-          switch (extremeSize)
+          switch (_Args.bitCount)
           {
           case 128:
-            compressedSize = rle8_extreme_mmtf128_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+            compressedSize = rle8_mmtf128_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
             break;
 
           //case 256:
-          //  compressedSize = rle8_extreme_mmtf256_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+          //  compressedSize = rle8_mmtf256_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
           //  break;
           }
         }
-        else if (shMode)
+        else if (_Args.hasMode && _Args.isModeSH)
         {
           compressedSize = rle8_sh_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
         }
@@ -879,51 +2083,158 @@ int main(int argc, char **pArgv)
 
       if (subSections == 0)
       {
-        if (normalMode)
+        if (_Args.hasMode && _Args.isModeLowEntropy)
         {
-          decompressedSize = rle8_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+          decompressedSize = rle8_low_entropy_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
         }
-        else if (ultraMode)
+        else if ((_Args.hasMode && _Args.isModeLowEntropy && _Args.hasShortMode && _Args.isShortMode))
         {
-          decompressedSize = rle8_ultra_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+          decompressedSize = rle8_low_entropy_short_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
         }
-        else if (extremeMode)
+        else if (_Args.hasMode && _Args.isModeExtreme)
         {
-          switch (extremeSize)
+          if (!(_Args.hasAlignment && _Args.isAlignmentByte))
           {
-          case 8:
-          default:
-            decompressedSize = rle8_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
-            break;
+            if (_Args.hasPackedMode && _Args.isPacked)
+            {
+              switch (_Args.bitCount)
+              {
+              default:
+              case 8:
+                decompressedSize = rle8_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
 
-          case 16:
-            decompressedSize = rle16_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
-            break;
+              case 16:
+                decompressedSize = rle16_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
 
-          case 24:
-            decompressedSize = rle24_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
-            break;
+              case 24:
+                decompressedSize = rle24_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
 
-          case 32:
-            decompressedSize = rle32_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
-            break;
+              case 32:
+                decompressedSize = rle32_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
 
-          case 48:
-            decompressedSize = rle48_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
-            break;
+              case 48:
+                decompressedSize = rle48_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
 
-          case 64:
-            decompressedSize = rle64_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
-            break;
+              case 64:
+                decompressedSize = rle64_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
 
-          case 128:
-            decompressedSize = rle128_extreme_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
-            break;
+              case 128:
+                decompressedSize = rle128_sym_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+              }
+            }
+            else
+            {
+              switch (_Args.bitCount)
+              {
+              case 8:
+              default:
+                decompressedSize = rle8_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
+              case 16:
+                decompressedSize = rle16_sym_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
+              case 24:
+                decompressedSize = rle24_sym_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
+              case 32:
+                decompressedSize = rle32_sym_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
+              case 48:
+                decompressedSize = rle48_sym_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
+              case 64:
+                decompressedSize = rle64_sym_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
+              case 128:
+                decompressedSize = rle128_sym_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+              }
+            }
+          }
+          else
+          {
+            if (_Args.hasPackedMode && _Args.isPacked)
+            {
+              switch (_Args.bitCount)
+              {
+              default:
+              case 8:
+                decompressedSize = rle8_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
+              case 16:
+                decompressedSize = rle16_byte_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
+              case 24:
+                decompressedSize = rle24_byte_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
+              case 32:
+                decompressedSize = rle32_byte_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
+              case 48:
+                decompressedSize = rle48_byte_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
+              case 64:
+                decompressedSize = rle64_byte_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
+              case 128:
+                decompressedSize = rle128_byte_packed_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+              }
+            }
+            else
+            {
+              switch (_Args.bitCount)
+              {
+              default:
+              case 16:
+                decompressedSize = rle16_byte_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
+              case 24:
+                decompressedSize = rle24_byte_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
+              case 32:
+                decompressedSize = rle32_byte_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
+              case 48:
+                decompressedSize = rle48_byte_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
+              case 64:
+                decompressedSize = rle64_byte_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+
+              case 128:
+                decompressedSize = rle128_byte_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+                break;
+              }
+            }
           }
         }
-        else if (mmtfMode)
+        else if (_Args.hasMode && _Args.isModeMMTF)
         {
-          switch (extremeSize)
+          switch (_Args.bitCount)
           {
           case 128:
             decompressedSize = rle_mmtf128_decode(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
@@ -934,20 +2245,20 @@ int main(int argc, char **pArgv)
             break;
           }
         }
-        else if (extremeMmtfMode)
+        else if (_Args.hasMode && _Args.isModeRleMMTF)
         {
-          switch (extremeSize)
+          switch (_Args.bitCount)
           {
           case 128:
-            decompressedSize = rle8_extreme_mmtf128_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+            decompressedSize = rle8_mmtf128_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
             break;
 
           //case 256:
-          //  decompressedSize = rle8_extreme_mmtf256_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+          //  decompressedSize = rle8_mmtf256_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
           //  break;
           }
         }
-        else if (shMode)
+        else if (_Args.hasMode && _Args.isModeSH)
         {
           decompressedSize = rle8_sh_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
         }
@@ -986,7 +2297,7 @@ int main(int argc, char **pArgv)
     }
 
 #ifdef BUILD_WITH_OPENCL
-    if (normalMode && subSections > 0)
+    if (_Args.hasMode && _Args.isModeLowEntropy && subSections > 0)
     {
       memset(pDecompressedData, 0, fileSize);
 
@@ -1193,6 +2504,7 @@ double GetInformationRatio(const uint8_t *pData, const size_t length)
 void AnalyzeData(const uint8_t *pData, const size_t size)
 {
   size_t hist[256];
+  size_t rle8hist[256];
 
   typedef struct
   {
@@ -1204,15 +2516,24 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
     size_t alignedRleLengthExact[64];
     size_t alignedEmptyLengthByBits[64];
     size_t alignedEmptyLengthExact[64];
-    uint8_t lastSymbol[16];
-    uint8_t alignedLastSymbol[16];
-    size_t recurringRleSymbolCount, totalRleCount, totalRleLength, totalEmptyLength, currentLength, currentNonLength;
-    size_t alignedRecurringRleSymbolCount, alignedTotalRleCount, alignedTotalRleLength, alignedTotalEmptyLength, alignedCurrentLength, alignedCurrentNonLength;
+    uint8_t lastSymbol[16][16];
+    size_t recurringLastSymbol[16];
+    uint8_t alignedLastSymbol[16][16];
+    size_t alignedRecurringLastSymbol[16];
+    size_t totalRleCount, totalRleLength, totalEmptyLength, currentLength, currentNonLength, lastLength, lastNonLength;
+    int64_t lastNonLengthDiff;
+    size_t alignedTotalRleCount, alignedTotalRleLength, alignedTotalEmptyLength, alignedCurrentLength, alignedCurrentNonLength, alignedLastLength, alignedLastNonLength;
+    int64_t alignedLastNonLengthDiff;
+    size_t copyBitsVsRleLengthBits[16 * 16];
+    size_t alignedCopyBitsVsRleLengthBits[16 * 16];
+    size_t copyDiffVsCountDiff[32 * 32];
+    size_t alignedCopyDiffVsCountDiff[32 * 32];
   } rle_data_t;
   
-  rle_data_t byRLE[16];
+  static rle_data_t byRLE[16];
 
   memset(hist, 0, sizeof(hist));
+  memset(rle8hist, 0, sizeof(rle8hist));
   memset(byRLE, 0, sizeof(byRLE));
 
   printf("\rAnalyzing Data...");
@@ -1237,10 +2558,25 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
       {
         if (pRLE->currentLength == 0)
         {
-          if (memcmp(pRLE->lastSymbol, pData + i, j) == 0)
-            pRLE->recurringRleSymbolCount++;
-          else
-            memcpy(pRLE->lastSymbol, pData + i, j);
+          size_t recurringIndex = 0;
+
+          for (; recurringIndex < 16; recurringIndex++)
+          {
+            if (memcmp(pRLE->lastSymbol[recurringIndex], pData + i, j) == 0)
+            {
+              pRLE->recurringLastSymbol[recurringIndex]++;
+              break;
+            }
+          }
+
+          if (recurringIndex != 0)
+            for (size_t k = min(recurringIndex, 16 - 1); k >= 1; k--)
+              memcpy(pRLE->lastSymbol[k], pRLE->lastSymbol[k - 1], j);
+
+          memcpy(pRLE->lastSymbol[0], pData + i, j);
+
+          if (j == 1)
+            rle8hist[pData[i]]++;
 
           if (pRLE->currentNonLength)
           {
@@ -1258,6 +2594,8 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
 
             pRLE->totalEmptyLength += pRLE->currentNonLength;
 
+            pRLE->lastNonLengthDiff = pRLE->currentNonLength - pRLE->lastLength;
+            pRLE->lastNonLength = pRLE->currentNonLength;
             pRLE->currentNonLength = 0;
           }
 
@@ -1286,6 +2624,22 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
 
           pRLE->totalRleLength += pRLE->currentLength;
           pRLE->totalRleCount++;
+
+#ifdef _MSC_VER
+          unsigned long lastNonLengthBits;
+          _BitScanReverse64(&lastNonLengthBits, pRLE->lastNonLength);
+#else
+          const uint32_t lastNonLengthBits = 63 - __builtin_clz(pRLE->lastNonLength);
+#endif
+
+          pRLE->copyBitsVsRleLengthBits[(max(0, min(lastNonLengthBits - 1, 15))) * 16 + (max(0, min(index - 1, 15)))]++;
+
+          const int64_t copyLengthDiff = pRLE->lastNonLengthDiff;
+          const int64_t lengthDiff = pRLE->currentLength - pRLE->lastLength;
+
+          pRLE->copyDiffVsCountDiff[(max(0, min(31, copyLengthDiff + 15))) * 32 + (max(0, min(31, lengthDiff + 15)))]++;
+
+          pRLE->lastLength = pRLE->currentLength;
           pRLE->currentLength = 0;
         }
 
@@ -1298,10 +2652,22 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
         {
           if (pRLE->alignedCurrentLength == 0)
           {
-            if (memcmp(pRLE->alignedLastSymbol, pData + i, j) == 0)
-              pRLE->alignedRecurringRleSymbolCount++;
-            else
-              memcpy(pRLE->alignedLastSymbol, pData + i, j);
+            size_t recurringIndex = 0;
+
+            for (; recurringIndex < 16; recurringIndex++)
+            {
+              if (memcmp(pRLE->alignedLastSymbol[recurringIndex], pData + i, j) == 0)
+              {
+                pRLE->alignedRecurringLastSymbol[recurringIndex]++;
+                break;
+              }
+            }
+
+            if (recurringIndex != 0)
+              for (size_t k = min(recurringIndex, 16 - 1); k >= 1; k--)
+                memcpy(pRLE->alignedLastSymbol[k], pRLE->alignedLastSymbol[k - 1], j);
+
+            memcpy(pRLE->alignedLastSymbol[0], pData + i, j);
 
             if (pRLE->alignedCurrentNonLength)
             {
@@ -1319,6 +2685,8 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
 
               pRLE->alignedTotalEmptyLength += pRLE->alignedCurrentNonLength;
 
+              pRLE->alignedLastNonLengthDiff = pRLE->alignedCurrentNonLength - pRLE->alignedLastLength;
+              pRLE->alignedLastNonLength = pRLE->alignedCurrentNonLength;
               pRLE->alignedCurrentNonLength = 0;
             }
 
@@ -1347,6 +2715,22 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
 
             pRLE->alignedTotalRleLength += pRLE->alignedCurrentLength;
             pRLE->alignedTotalRleCount++;
+
+#ifdef _MSC_VER
+            unsigned long lastNonLengthBits;
+            _BitScanReverse64(&lastNonLengthBits, pRLE->alignedLastNonLength);
+#else
+            const uint32_t lastNonLengthBits = 63 - __builtin_clz(pRLE->alignedLastNonLength);
+#endif
+
+            pRLE->alignedCopyBitsVsRleLengthBits[(max(0, min(lastNonLengthBits - 1, 15))) * 16 + (max(0, min(index - 1, 15)))]++;
+
+            const int64_t copyLengthDiff = pRLE->alignedLastNonLengthDiff;
+            const int64_t lengthDiff = pRLE->alignedCurrentLength - pRLE->alignedLastLength;
+
+            pRLE->alignedCopyDiffVsCountDiff[(max(0, min(31, copyLengthDiff + 15))) * 32 + (max(0, min(31, lengthDiff + 15)))]++;
+
+            pRLE->alignedLastLength = pRLE->alignedCurrentLength;
             pRLE->alignedCurrentLength = 0;
           }
 
@@ -1438,8 +2822,8 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
     }
 
     printf("RLE Length %2" PRIu64 "\n=============\n", i + 1);
-    printf("Non-Aligned: Repeating: %10" PRIu64 " (%15" PRIu64 " Bytes, %5.2f %%, %15" PRIu64 " Bytes Distinct), Recurring Symbol: %10" PRIu64 " (%5.2f %%)\n", pRLE->totalRleCount, pRLE->totalRleLength, pRLE->totalRleLength * 100.0 / size, pRLE->totalEmptyLength, pRLE->recurringRleSymbolCount, pRLE->recurringRleSymbolCount * 100.0 / (double)pRLE->totalRleCount);
-    printf("Aligned:     Repeating: %10" PRIu64 " (%15" PRIu64 " Bytes, %5.2f %%, %15" PRIu64 " Bytes Distinct), Recurring Symbol: %10" PRIu64 " (%5.2f %%)\n", pRLE->alignedTotalRleCount, pRLE->alignedTotalRleLength, pRLE->alignedTotalRleLength * 100.0 / size, pRLE->alignedTotalEmptyLength, pRLE->alignedRecurringRleSymbolCount, pRLE->alignedRecurringRleSymbolCount * 100.0 / (double)pRLE->alignedTotalRleCount);
+    printf("Non-Aligned: Repeating: %10" PRIu64 " (%15" PRIu64 " Bytes, %5.2f %%, %15" PRIu64 " Bytes Distinct)\n", pRLE->totalRleCount, pRLE->totalRleLength, pRLE->totalRleLength * 100.0 / size, pRLE->totalEmptyLength);
+    printf("Aligned:     Repeating: %10" PRIu64 " (%15" PRIu64 " Bytes, %5.2f %%, %15" PRIu64 " Bytes Distinct)\n", pRLE->alignedTotalRleCount, pRLE->alignedTotalRleLength, pRLE->alignedTotalRleLength * 100.0 / size, pRLE->alignedTotalEmptyLength);
     puts("");
     
     printf("AprxLen | Repeating    | Distinct     || ExactLen  | Repeating    | Distinct     || AprxCnt | AlgnRepeat   | AlgnDistinct || Exact Count | AlgnRepeat   | AlgnDistinct\n");
@@ -1448,7 +2832,100 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
     for (size_t j = 0; j < 64; j++)
       printf("%2" PRIu64 " Bit: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Bytes: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Bit: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Symbols: | %12" PRIu64 " | %12" PRIu64 "\n", j + 1, pRLE->rleLengthByBits[j], pRLE->emptyLengthByBits[j], j + 1, pRLE->rleLengthExact[j], pRLE->emptyLengthExact[j], j + 1, pRLE->alignedRleLengthByBits[j], pRLE->alignedEmptyLengthByBits[j], j + 1, pRLE->alignedRleLengthExact[j], pRLE->alignedEmptyLengthExact[j]);
     
-    puts("\n");
+    puts("");
+
+    printf("#  | References   (Of Total ) | Aligned Ref. (Of Total )\n");
+    printf("--------------------------------------------------------\n");
+
+    for (size_t j = 0; j < 16; j++)
+      printf("%2" PRIu64 " | %12" PRIu64 " (%7.3f %%) | %12" PRIu64 " (%7.3f %%)\n", j + 1, pRLE->recurringLastSymbol[j], pRLE->recurringLastSymbol[j] / (double)pRLE->totalRleCount * 100.0, pRLE->alignedRecurringLastSymbol[j], pRLE->alignedRecurringLastSymbol[j] / (double)pRLE->alignedTotalRleCount * 100.0);
+
+    puts("");
+    
+    printf("   | Non-Aligned Copy Length vs RLE Length Bits                                      | Aligned Copy Length vs RLE Length Bits\n");
+    printf("%%  | 1    2    3    4    5    6    7    8    9    10   11   12   13   14   15   >    | 1    2    3    4    5    6    7    8    9    10   11   12   13   14   15   > \n");
+    printf("---------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+
+    for (size_t j = 0; j < 16; j++)
+    {
+      if (j < 15)
+        printf("%2" PRIu8 " | ", (uint8_t)(j + 1));
+      else
+        fputs(">  | ", stdout);
+
+      for (size_t k = 0; k < 16; k++)
+        printf("%4.1f ", pRLE->copyBitsVsRleLengthBits[j * 16 + k] / (double)pRLE->totalRleCount * 100.0);
+
+      fputs("| ", stdout);
+
+      for (size_t k = 0; k < 16; k++)
+        printf("%4.1f ", pRLE->alignedCopyBitsVsRleLengthBits[j * 16 + k] / (double)pRLE->alignedTotalRleCount * 100.0);
+
+      puts("");
+    }
+
+    puts("");
+
+    printf("Non-Aligned Copy Length vs RLE Length:\n");
+    printf("%%   | <    -14  -13  -12  -11  -10   -9   -8   -7   -6   -5   -4   -3   -2   -1    0    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   < \n");
+    printf("---------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+
+    for (size_t j = 0; j < 32; j++)
+    {
+      if (j == 0)
+        fputs(" <  | ", stdout);
+      else if (j == 31)
+        fputs(" >  | ", stdout);
+      else
+        printf("%3" PRIi8 " | ", (int8_t)j - 15);
+
+      for (size_t k = 0; k < 32; k++)
+        printf("%4.1f ", pRLE->copyDiffVsCountDiff[j * 32 + k] / (double)pRLE->totalRleCount * 100.0);
+
+      puts("");
+    }
+
+    puts("");
+
+    printf("Aligned Copy Length vs RLE Length:\n");
+    printf("%%   | <    -14  -13  -12  -11  -10   -9   -8   -7   -6   -5   -4   -3   -2   -1    0    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   < \n");
+    printf("---------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+
+    for (size_t j = 0; j < 32; j++)
+    {
+      if (j == 0)
+        fputs(" <  | ", stdout);
+      else if (j == 31)
+        fputs(" >  | ", stdout);
+      else
+        printf("%3" PRIi8 " | ", (int8_t)j - 15);
+
+      for (size_t k = 0; k < 32; k++)
+        printf("%4.1f ", pRLE->alignedCopyDiffVsCountDiff[j * 32 + k] / (double)pRLE->totalRleCount * 100.0);
+
+      puts("");
+    }
+
+    puts("");
+
+    if (i == 0)
+    {
+      puts("RLE-Symbol Histogram:");
+      puts("% | 0     | 1     | 2     | 3     | 4     | 5     | 6     | 7     | 8     | 9     | A     | B     | C     | D     | E     | F     |");
+      puts("-----------------------------------------------------------------------------------------------------------------------------------");
+
+      for (uint8_t j = 0; j <= 0xF; j++)
+      {
+        printf("%" PRIX8 " | ", j);
+
+        for (uint8_t k = 0; k <= 0xF; k++)
+          printf("%5.2f | ", rle8hist[(k << 4) | j] * 100.0 / (double)pRLE->totalRleCount);
+
+        puts("");
+      }
+
+      puts("\n");
+    }
   }
 
   puts("Histogram:");
@@ -1466,4 +2943,478 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
   }
 
   puts("\n\n");
+}
+
+bool CodecMatchesArgs(const codec_t codec)
+{
+  if (_Args.hasMode)
+  {
+    if (_Args.isModeExtreme && (codec > Extreme128BytePacked || codec < Extreme8))
+      return false;
+
+    if (_Args.isModeLowEntropy && (codec < LowEntropy || codec > LowEntropyShortSingle))
+      return false;
+
+    if (_Args.isModeMMTF && codec != MultiMTF128 && codec != MultiMTF256)
+      return false;
+
+    if (_Args.isModeSH && codec != Rle8SH)
+      return false;
+
+    if (_Args.isModeRleMMTF && codec != Extreme8MultiMTF128)
+      return false;
+  }
+
+  if (_Args.hasAlignment)
+  {
+    switch (codec)
+    {
+      case Extreme16Sym:
+      case Extreme16SymShort:
+      case Extreme16SymPacked:
+      case Extreme16Sym_1SLShort:
+      case Extreme16Sym_3SL:
+      case Extreme16Sym_3SLShort:
+      case Extreme16Sym_7SL:
+      case Extreme16Sym_7SLShort:
+      case Extreme24Sym:
+      case Extreme24SymShort:
+      case Extreme24SymPacked:
+      case Extreme24Sym_1SLShort:
+      case Extreme24Sym_3SL:
+      case Extreme24Sym_3SLShort:
+      case Extreme24Sym_7SL:
+      case Extreme24Sym_7SLShort:
+      case Extreme32Sym:
+      case Extreme32SymShort:
+      case Extreme32SymPacked:
+      case Extreme32Sym_1SLShort:
+      case Extreme32Sym_3SL:
+      case Extreme32Sym_3SLShort:
+      case Extreme32Sym_7SL:
+      case Extreme32Sym_7SLShort:
+      case Extreme48Sym:
+      case Extreme48SymShort:
+      case Extreme48SymPacked:
+      case Extreme48Sym_1SLShort:
+      case Extreme48Sym_3SL:
+      case Extreme48Sym_3SLShort:
+      case Extreme48Sym_7SL:
+      case Extreme48Sym_7SLShort:
+      case Extreme64Sym:
+      case Extreme64SymShort:
+      case Extreme64SymPacked:
+      case Extreme64Sym_1SLShort:
+      case Extreme64Sym_3SL:
+      case Extreme64Sym_3SLShort:
+      case Extreme64Sym_7SL:
+      case Extreme64Sym_7SLShort:
+      case Extreme128Sym:
+      case Extreme128SymPacked:
+        if (_Args.isAlignmentByte)
+          return false;
+        break;
+
+      case Extreme16Byte:
+      case Extreme16ByteShort:
+      case Extreme16BytePacked:
+      case Extreme16Byte_1SLShort:
+      case Extreme16Byte_3SL:
+      case Extreme16Byte_3SLShort:
+      case Extreme16Byte_7SL:
+      case Extreme16Byte_7SLShort:
+      case Extreme24Byte:
+      case Extreme24ByteShort:
+      case Extreme24BytePacked:
+      case Extreme24Byte_1SLShort:
+      case Extreme24Byte_3SL:
+      case Extreme24Byte_3SLShort:
+      case Extreme24Byte_7SL:
+      case Extreme24Byte_7SLShort:
+      case Extreme32Byte:
+      case Extreme32ByteShort:
+      case Extreme32BytePacked:
+      case Extreme32Byte_1SLShort:
+      case Extreme32Byte_3SL:
+      case Extreme32Byte_3SLShort:
+      case Extreme32Byte_7SL:
+      case Extreme32Byte_7SLShort:
+      case Extreme48Byte:
+      case Extreme48ByteShort:
+      case Extreme48BytePacked:
+      case Extreme48Byte_1SLShort:
+      case Extreme48Byte_3SL:
+      case Extreme48Byte_3SLShort:
+      case Extreme48Byte_7SL:
+      case Extreme48Byte_7SLShort:
+      case Extreme64Byte:
+      case Extreme64ByteShort:
+      case Extreme64BytePacked:
+      case Extreme64Byte_1SLShort:
+      case Extreme64Byte_3SL:
+      case Extreme64Byte_3SLShort:
+      case Extreme64Byte_7SL:
+      case Extreme64Byte_7SLShort:
+      case Extreme128Byte:
+      case Extreme128BytePacked:
+        if (!_Args.isAlignmentByte)
+          return false;
+        break;
+
+      default:
+        return false;
+    }
+  }
+
+  if (_Args.hasSingleMode)
+  {
+    switch (codec)
+    {
+    case Extreme8Single:
+    case Extreme8SingleShort:
+    case Extreme8PackedSingle:
+    case LowEntropySingle:
+    case LowEntropyShortSingle:
+      if (!_Args.isSingleMode)
+        return false;
+      break;
+
+    case Rle8SH:
+    case Extreme8MultiMTF128:
+    case MultiMTF128:
+    case MultiMTF256:
+      return false; // the entire concept of single/multi makes no sense here.
+
+    default:
+      if (_Args.isSingleMode)
+        return false;
+      break;
+    }
+  }
+
+  if (_Args.hasPackedMode)
+  {
+    switch (codec)
+    {
+    case Extreme8Packed:
+    case Extreme8PackedSingle:
+    case Extreme16SymPacked:
+    case Extreme16BytePacked:
+    case Extreme24SymPacked:
+    case Extreme24BytePacked:
+    case Extreme32SymPacked:
+    case Extreme32BytePacked:
+    case Extreme48SymPacked:
+    case Extreme48BytePacked:
+    case Extreme64SymPacked:
+    case Extreme64BytePacked:
+    case Extreme128SymPacked:
+    case Extreme128BytePacked:
+      if (!_Args.isPacked)
+        return false;
+      break;
+
+    default:
+      if (_Args.isPacked)
+        return false;
+      break;
+    }
+  }
+
+  if (_Args.hasShortMode)
+  {
+    switch (codec)
+    {
+    case Extreme8Short:
+    case Extreme8_1SLShort:
+    case Extreme8_3SLShort:
+    case Extreme8_7SLShort:
+    case Extreme8SingleShort:
+    case Extreme16SymShort:
+    case Extreme16Sym_1SLShort:
+    case Extreme16Sym_3SLShort:
+    case Extreme16Sym_7SLShort:
+    case Extreme16ByteShort:
+    case Extreme16Byte_1SLShort:
+    case Extreme16Byte_3SLShort:
+    case Extreme16Byte_7SLShort:
+    case Extreme24SymShort:
+    case Extreme24Sym_1SLShort:
+    case Extreme24Sym_3SLShort:
+    case Extreme24Sym_7SLShort:
+    case Extreme24ByteShort:
+    case Extreme24Byte_1SLShort:
+    case Extreme24Byte_3SLShort:
+    case Extreme24Byte_7SLShort:
+    case Extreme32SymShort:
+    case Extreme32Sym_1SLShort:
+    case Extreme32Sym_3SLShort:
+    case Extreme32Sym_7SLShort:
+    case Extreme32ByteShort:
+    case Extreme32Byte_1SLShort:
+    case Extreme32Byte_3SLShort:
+    case Extreme32Byte_7SLShort:
+    case Extreme48SymShort:
+    case Extreme48Sym_1SLShort:
+    case Extreme48Sym_3SLShort:
+    case Extreme48Sym_7SLShort:
+    case Extreme48ByteShort:
+    case Extreme48Byte_1SLShort:
+    case Extreme48Byte_3SLShort:
+    case Extreme48Byte_7SLShort:
+    case Extreme64SymShort:
+    case Extreme64Sym_1SLShort:
+    case Extreme64Sym_3SLShort:
+    case Extreme64Sym_7SLShort:
+    case Extreme64ByteShort:
+    case Extreme64Byte_1SLShort:
+    case Extreme64Byte_3SLShort:
+    case Extreme64Byte_7SLShort:
+    case LowEntropyShort:
+    case LowEntropyShortSingle:
+      if (!_Args.isShortMode)
+        return false;
+      break;
+
+    default:
+      if (_Args.isShortMode)
+        return false;
+      break;
+    }
+  }
+
+  if (_Args.hasLutSize)
+  {
+    switch (codec)
+    {
+    case Extreme8Packed:
+    case Extreme8_1SLShort:
+    case Extreme16SymPacked:
+    case Extreme16Sym_1SLShort:
+    case Extreme16BytePacked:
+    case Extreme16Byte_1SLShort:
+    case Extreme24SymPacked:
+    case Extreme24Sym_1SLShort:
+    case Extreme24BytePacked:
+    case Extreme24Byte_1SLShort:
+    case Extreme32SymPacked:
+    case Extreme32Sym_1SLShort:
+    case Extreme32BytePacked:
+    case Extreme32Byte_1SLShort:
+    case Extreme48SymPacked:
+    case Extreme48Sym_1SLShort:
+    case Extreme48BytePacked:
+    case Extreme48Byte_1SLShort:
+    case Extreme64SymPacked:
+    case Extreme64Sym_1SLShort:
+    case Extreme64BytePacked:
+    case Extreme64Byte_1SLShort:
+      if (_Args.lutSize != 1)
+        return false;
+      break;
+
+    case Extreme8_3SL:
+    case Extreme8_3SLShort:
+    case Extreme16Sym_3SL:
+    case Extreme16Sym_3SLShort:
+    case Extreme16Byte_3SL:
+    case Extreme16Byte_3SLShort:
+    case Extreme24Sym_3SL:
+    case Extreme24Sym_3SLShort:
+    case Extreme24Byte_3SL:
+    case Extreme24Byte_3SLShort:
+    case Extreme32Sym_3SL:
+    case Extreme32Sym_3SLShort:
+    case Extreme32Byte_3SL:
+    case Extreme32Byte_3SLShort:
+    case Extreme48Sym_3SL:
+    case Extreme48Sym_3SLShort:
+    case Extreme48Byte_3SL:
+    case Extreme48Byte_3SLShort:
+    case Extreme64Sym_3SL:
+    case Extreme64Sym_3SLShort:
+    case Extreme64Byte_3SL:
+    case Extreme64Byte_3SLShort:
+      if (_Args.lutSize != 3)
+        return false;
+      break;
+    
+    case Extreme8_7SL:
+    case Extreme8_7SLShort:
+    case Extreme16Sym_7SL:
+    case Extreme16Sym_7SLShort:
+    case Extreme16Byte_7SL:
+    case Extreme16Byte_7SLShort:
+    case Extreme24Sym_7SL:
+    case Extreme24Sym_7SLShort:
+    case Extreme24Byte_7SL:
+    case Extreme24Byte_7SLShort:
+    case Extreme32Sym_7SL:
+    case Extreme32Sym_7SLShort:
+    case Extreme32Byte_7SL:
+    case Extreme32Byte_7SLShort:
+    case Extreme48Sym_7SL:
+    case Extreme48Sym_7SLShort:
+    case Extreme48Byte_7SL:
+    case Extreme48Byte_7SLShort:
+    case Extreme64Sym_7SL:
+    case Extreme64Sym_7SLShort:
+    case Extreme64Byte_7SL:
+    case Extreme64Byte_7SLShort:
+      if (_Args.lutSize != 7)
+        return false;
+      break;
+
+    default:
+      if (_Args.lutSize != 0)
+        return false;
+      break;
+    }
+  }
+
+  if (_Args.hasBitCount)
+  {
+    switch (codec)
+    {
+    case Extreme8:
+    case Extreme8Short:
+    case Extreme8Packed:
+    case Extreme8_1SLShort:
+    case Extreme8_3SL:
+    case Extreme8_3SLShort:
+    case Extreme8_7SL:
+    case Extreme8_7SLShort:
+    case Extreme8Single:
+    case Extreme8SingleShort:
+    case Extreme8PackedSingle:
+    case Rle8SH:
+    case LowEntropy:
+    case LowEntropySingle:
+    case LowEntropyShort:
+    case LowEntropyShortSingle:
+      if (_Args.bitCount != 8)
+        return false;
+      break;
+
+    case Extreme16Sym:
+    case Extreme16SymShort:
+    case Extreme16SymPacked:
+    case Extreme16Sym_1SLShort:
+    case Extreme16Sym_3SL:
+    case Extreme16Sym_3SLShort:
+    case Extreme16Sym_7SL:
+    case Extreme16Sym_7SLShort:
+    case Extreme16Byte:
+    case Extreme16ByteShort:
+    case Extreme16BytePacked:
+    case Extreme16Byte_1SLShort:
+    case Extreme16Byte_3SL:
+    case Extreme16Byte_3SLShort:
+    case Extreme16Byte_7SL:
+    case Extreme16Byte_7SLShort:
+      if (_Args.bitCount != 16)
+        return false;
+      break;
+
+    case Extreme24Sym:
+    case Extreme24SymShort:
+    case Extreme24SymPacked:
+    case Extreme24Sym_1SLShort:
+    case Extreme24Sym_3SL:
+    case Extreme24Sym_3SLShort:
+    case Extreme24Sym_7SL:
+    case Extreme24Sym_7SLShort:
+    case Extreme24Byte:
+    case Extreme24ByteShort:
+    case Extreme24BytePacked:
+    case Extreme24Byte_1SLShort:
+    case Extreme24Byte_3SL:
+    case Extreme24Byte_3SLShort:
+    case Extreme24Byte_7SL:
+    case Extreme24Byte_7SLShort:
+      if (_Args.bitCount != 24)
+        return false;
+      break;
+
+    case Extreme32Sym:
+    case Extreme32SymShort:
+    case Extreme32SymPacked:
+    case Extreme32Sym_1SLShort:
+    case Extreme32Sym_3SL:
+    case Extreme32Sym_3SLShort:
+    case Extreme32Sym_7SL:
+    case Extreme32Sym_7SLShort:
+    case Extreme32Byte:
+    case Extreme32ByteShort:
+    case Extreme32BytePacked:
+    case Extreme32Byte_1SLShort:
+    case Extreme32Byte_3SL:
+    case Extreme32Byte_3SLShort:
+    case Extreme32Byte_7SL:
+    case Extreme32Byte_7SLShort:
+      if (_Args.bitCount != 32)
+        return false;
+      break;
+
+    case Extreme48Sym:
+    case Extreme48SymShort:
+    case Extreme48SymPacked:
+    case Extreme48Sym_1SLShort:
+    case Extreme48Sym_3SL:
+    case Extreme48Sym_3SLShort:
+    case Extreme48Sym_7SL:
+    case Extreme48Sym_7SLShort:
+    case Extreme48Byte:
+    case Extreme48ByteShort:
+    case Extreme48BytePacked:
+    case Extreme48Byte_1SLShort:
+    case Extreme48Byte_3SL:
+    case Extreme48Byte_3SLShort:
+    case Extreme48Byte_7SL:
+    case Extreme48Byte_7SLShort:
+      if (_Args.bitCount != 48)
+        return false;
+      break;
+
+    case Extreme64Sym:
+    case Extreme64SymShort:
+    case Extreme64SymPacked:
+    case Extreme64Sym_1SLShort:
+    case Extreme64Sym_3SL:
+    case Extreme64Sym_3SLShort:
+    case Extreme64Sym_7SL:
+    case Extreme64Sym_7SLShort:
+    case Extreme64Byte:
+    case Extreme64ByteShort:
+    case Extreme64BytePacked:
+    case Extreme64Byte_1SLShort:
+    case Extreme64Byte_3SL:
+    case Extreme64Byte_3SLShort:
+    case Extreme64Byte_7SL:
+    case Extreme64Byte_7SLShort:
+      if (_Args.bitCount != 64)
+        return false;
+      break;
+
+    case Extreme128Sym:
+    case Extreme128SymPacked:
+    case Extreme128Byte:
+    case Extreme128BytePacked:
+    case Extreme8MultiMTF128:
+    case MultiMTF128:
+      if (_Args.bitCount != 128)
+        return false;
+      break;
+
+    case MultiMTF256:
+      if (_Args.bitCount != 256)
+        return false;
+      break;
+
+    default:
+      return false;
+    }
+  }
+  
+  return true;
 }

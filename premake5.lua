@@ -1,4 +1,4 @@
-solution "rle8"
+solution "hsrlekit"
   
   editorintegration "On"
   platforms { "x64" }

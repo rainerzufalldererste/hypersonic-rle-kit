@@ -1,6 +1,6 @@
 #ifdef BUILD_WITH_OPENCL
 
-#include "rle8.h"
+#include "rle.h"
 #include "rle8_ocl_kernel.h"
 
 #ifdef _MSC_VER
@@ -284,9 +284,9 @@ uint32_t rle8m_opencl_decompress(IN const uint8_t *pIn, const uint32_t inSize, O
   const size_t subSectionIndex = index;
   index += (subSections - 1) * sizeof(uint32_t);
 
-  rle8_decompress_info_t decompressInfo;
+  rle8_low_entropy_decompress_info_t decompressInfo;
 
-  index += rle8_read_decompress_info(&pIn[index], inSize, &decompressInfo);
+  index += rle8_low_entropy_read_decompress_info(&pIn[index], inSize, &decompressInfo);
 
   const uint32_t subSectionSize = (uint32_t)(expectedOutSize / subSections);
 

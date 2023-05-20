@@ -1,0 +1,26 @@
+name: GCC
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Update Submodules
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: git submodule update --init --recursive
+
+    - name: Create Solution Files
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: premake/premake5 gmake2
+      
+    - name: Build
+      run: config=release_x64 make

@@ -1,4 +1,4 @@
-#include "rle8.h"
+#include "rle.h"
 
 #ifdef _MSC_VER
 #include <intrin.h>
@@ -8,24 +8,24 @@
 
 #define ULTRA_MAX_BLOCK_LENGTH 32
 
-bool rle8_ultra_get_compress_info(IN const uint8_t *pIn, const uint32_t inSize, OUT rle8_compress_info_t *pCompressInfo);
-bool rle8_ultra_get_compress_info_only_max_frequency(IN const uint8_t *pIn, const uint32_t inSize, OUT rle8_compress_info_t *pCompressInfo);
+bool rle8_low_entropy_short_get_compress_info(IN const uint8_t *pIn, const uint32_t inSize, OUT rle8_low_entropy_compress_info_t *pCompressInfo);
+bool rle8_low_entropy_short_get_compress_info_only_max_frequency(IN const uint8_t *pIn, const uint32_t inSize, OUT rle8_low_entropy_compress_info_t *pCompressInfo);
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t rle8_ultra_compress_bounds(const uint32_t inSize)
+uint32_t rle8_low_entropy_short_compress_bounds(const uint32_t inSize)
 {
   return inSize + (256 / 8) + 1 + 256 + sizeof(uint32_t) * 2;
 }
 
-uint32_t rle8_ultra_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
+uint32_t rle8_low_entropy_short_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
-  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_compress_bounds(inSize))
+  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_low_entropy_compress_bounds(inSize))
     return 0;
 
-  rle8_compress_info_t compressInfo;
+  rle8_low_entropy_compress_info_t compressInfo;
 
-  if (!rle8_ultra_get_compress_info(pIn, inSize, &compressInfo))
+  if (!rle8_low_entropy_short_get_compress_info(pIn, inSize, &compressInfo))
     return 0;
 
   size_t index = sizeof(uint32_t); // to make room for the uint32_t length as the first value.
@@ -35,7 +35,7 @@ uint32_t rle8_ultra_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT u
     *((uint32_t *)&pOut[index]) = inSize;
     index += sizeof(uint32_t);
 
-    const uint32_t size = rle8_write_compress_info(&compressInfo, &pOut[index], outSize);
+    const uint32_t size = rle8_low_entropy_write_compress_info(&compressInfo, &pOut[index], outSize);
 
     if (size == 0)
       return 0;
@@ -45,7 +45,7 @@ uint32_t rle8_ultra_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT u
 
   // Compress.
   {
-    const uint32_t size = rle8_ultra_compress_with_info(pIn, inSize, &compressInfo, &pOut[index], outSize - (uint32_t)index);
+    const uint32_t size = rle8_low_entropy_short_compress_with_info(pIn, inSize, &compressInfo, &pOut[index], outSize - (uint32_t)index);
 
     if (size == 0)
       return 0;
@@ -59,14 +59,14 @@ uint32_t rle8_ultra_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT u
   return (uint32_t)index;
 }
 
-uint32_t rle8_ultra_compress_only_max_frequency(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
+uint32_t rle8_low_entropy_short_compress_only_max_frequency(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
-  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_compress_bounds(inSize))
+  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle8_low_entropy_compress_bounds(inSize))
     return 0;
 
-  rle8_compress_info_t compressInfo;
+  rle8_low_entropy_compress_info_t compressInfo;
 
-  if (!rle8_ultra_get_compress_info_only_max_frequency(pIn, inSize, &compressInfo))
+  if (!rle8_low_entropy_short_get_compress_info_only_max_frequency(pIn, inSize, &compressInfo))
     return 0;
 
   size_t index = sizeof(uint32_t); // to make room for the uint32_t length as the first value.
@@ -76,7 +76,7 @@ uint32_t rle8_ultra_compress_only_max_frequency(IN const uint8_t *pIn, const uin
     *((uint32_t *)&pOut[index]) = inSize;
     index += sizeof(uint32_t);
 
-    const uint32_t size = rle8_write_compress_info(&compressInfo, &pOut[index], outSize);
+    const uint32_t size = rle8_low_entropy_write_compress_info(&compressInfo, &pOut[index], outSize);
 
     if (size == 0)
       return 0;
@@ -86,7 +86,7 @@ uint32_t rle8_ultra_compress_only_max_frequency(IN const uint8_t *pIn, const uin
 
   // Compress.
   {
-    const uint32_t size = rle8_ultra_compress_with_info(pIn, inSize, &compressInfo, &pOut[index], outSize - (uint32_t)index);
+    const uint32_t size = rle8_low_entropy_short_compress_with_info(pIn, inSize, &compressInfo, &pOut[index], outSize - (uint32_t)index);
 
     if (size == 0)
       return 0;
@@ -100,7 +100,7 @@ uint32_t rle8_ultra_compress_only_max_frequency(IN const uint8_t *pIn, const uin
   return (uint32_t)index;
 }
 
-uint32_t rle8_ultra_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
+uint32_t rle8_low_entropy_short_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
   if (pIn == NULL || pOut == NULL || inSize == 0 || outSize == 0)
     return 0;
@@ -113,19 +113,19 @@ uint32_t rle8_ultra_decompress(IN const uint8_t *pIn, const uint32_t inSize, OUT
 
   size_t index = 2 * sizeof(uint32_t);
 
-  rle8_decompress_info_t decompressInfo;
+  rle8_low_entropy_decompress_info_t decompressInfo;
 
-  index += rle8_read_decompress_info(&pIn[index], inSize, &decompressInfo);
+  index += rle8_low_entropy_read_decompress_info(&pIn[index], inSize, &decompressInfo);
 
   const uint8_t *pEnd = pIn + expectedInSize;
   pIn += index;
 
-  return rle8_ultra_decompress_with_info(pIn, pEnd, &decompressInfo, pOut, (uint32_t)expectedOutSize);
+  return rle8_low_entropy_short_decompress_with_info(pIn, pEnd, &decompressInfo, pOut, (uint32_t)expectedOutSize);
 }
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t rle8_ultra_compress_with_info(IN const uint8_t *pIn, const uint32_t inSize, IN const rle8_compress_info_t *pCompressInfo, OUT uint8_t *pOut, const uint32_t outSize)
+uint32_t rle8_low_entropy_short_compress_with_info(IN const uint8_t *pIn, const uint32_t inSize, IN const rle8_low_entropy_compress_info_t *pCompressInfo, OUT uint8_t *pOut, const uint32_t outSize)
 {
   if (pIn == NULL || inSize == 0 || pCompressInfo == NULL || pOut == NULL || outSize < inSize)
     return 0;
@@ -198,7 +198,7 @@ uint32_t rle8_ultra_compress_with_info(IN const uint8_t *pIn, const uint32_t inS
 
 //////////////////////////////////////////////////////////////////////////
 
-const uint8_t * rle8_ultra_decompress_single_sse(IN const uint8_t *pIn, IN const uint8_t *pPreEnd, OUT uint8_t *pOut, const bool rle[256], const uint8_t symbolToCount[256], OUT uint8_t **ppOut)
+const uint8_t * rle8_low_entropy_short_decompress_single_sse(IN const uint8_t *pIn, IN const uint8_t *pPreEnd, OUT uint8_t *pOut, const bool rle[256], const uint8_t symbolToCount[256], OUT uint8_t **ppOut)
 {
   typedef __m128i simd_t;
 #define SIMD_SIZE 16
@@ -259,7 +259,7 @@ const uint8_t * rle8_ultra_decompress_single_sse(IN const uint8_t *pIn, IN const
 #ifndef _MSC_VER
 __attribute__((target("avx2")))
 #endif
-const uint8_t * rle8_ultra_decompress_single_avx2(IN const uint8_t *pIn, IN const uint8_t *pPreEnd, OUT uint8_t *pOut, const bool rle[256], const uint8_t symbolToCount[256], OUT uint8_t **ppOut)
+const uint8_t * rle8_low_entropy_short_decompress_single_avx2(IN const uint8_t *pIn, IN const uint8_t *pPreEnd, OUT uint8_t *pOut, const bool rle[256], const uint8_t symbolToCount[256], OUT uint8_t **ppOut)
 {
   typedef __m256i simd_t;
 #define SIMD_SIZE 32
@@ -316,7 +316,7 @@ const uint8_t * rle8_ultra_decompress_single_avx2(IN const uint8_t *pIn, IN cons
 #undef SIMD_SIZE
 }
 
-const uint8_t * rle8_ultra_decompress_multi_sse(IN const uint8_t *pIn, IN const uint8_t *pPreEnd, OUT uint8_t *pOut, const bool rle[256], const uint8_t symbolToCount[256], OUT uint8_t **ppOut)
+const uint8_t * rle8_low_entropy_short_decompress_multi_sse(IN const uint8_t *pIn, IN const uint8_t *pPreEnd, OUT uint8_t *pOut, const bool rle[256], const uint8_t symbolToCount[256], OUT uint8_t **ppOut)
 {
   while (pIn < pPreEnd)
   {
@@ -371,7 +371,7 @@ __attribute__((target("avx")))
 #else
 __declspec(noinline)
 #endif
-const uint8_t * rle8_ultra_decompress_multi_avx(IN const uint8_t *pIn, IN const uint8_t *pPreEnd, OUT uint8_t *pOut, const bool rle[256], const uint8_t symbolToCount[256], OUT uint8_t **ppOut)
+const uint8_t * rle8_low_entropy_short_decompress_multi_avx(IN const uint8_t *pIn, IN const uint8_t *pPreEnd, OUT uint8_t *pOut, const bool rle[256], const uint8_t symbolToCount[256], OUT uint8_t **ppOut)
 {
   while (pIn < pPreEnd)
   {
@@ -437,7 +437,7 @@ void _DetectCPUFeatures();
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t rle8_ultra_decompress_with_info(IN const uint8_t *pIn, IN const uint8_t *pEnd, IN const rle8_decompress_info_t *pDecompressInfo, OUT uint8_t *pOut, const uint32_t expectedOutSize)
+uint32_t rle8_low_entropy_short_decompress_with_info(IN const uint8_t *pIn, IN const uint8_t *pEnd, IN const rle8_low_entropy_decompress_info_t *pDecompressInfo, OUT uint8_t *pOut, const uint32_t expectedOutSize)
 {
   bool rle[256];
   uint8_t symbolToCount[256];
@@ -462,18 +462,18 @@ uint32_t rle8_ultra_decompress_with_info(IN const uint8_t *pIn, IN const uint8_t
     _DetectCPUFeatures();
 
     if (avx2Supported)
-      pIn = rle8_ultra_decompress_single_avx2(pIn, pPreEnd, pOut, rle, symbolToCount, &pOut);
+      pIn = rle8_low_entropy_short_decompress_single_avx2(pIn, pPreEnd, pOut, rle, symbolToCount, &pOut);
     else
-      pIn = rle8_ultra_decompress_single_sse(pIn, pPreEnd, pOut, rle, symbolToCount, &pOut);
+      pIn = rle8_low_entropy_short_decompress_single_sse(pIn, pPreEnd, pOut, rle, symbolToCount, &pOut);
   }
   else
   {
     _DetectCPUFeatures();
 
     if (avxSupported)
-      pIn = rle8_ultra_decompress_multi_avx(pIn, pPreEnd, pOut, rle, symbolToCount, &pOut);
+      pIn = rle8_low_entropy_short_decompress_multi_avx(pIn, pPreEnd, pOut, rle, symbolToCount, &pOut);
     else
-      pIn = rle8_ultra_decompress_multi_sse(pIn, pPreEnd, pOut, rle, symbolToCount, &pOut);
+      pIn = rle8_low_entropy_short_decompress_multi_sse(pIn, pPreEnd, pOut, rle, symbolToCount, &pOut);
   }
 
   while (pIn < pEnd)
@@ -533,7 +533,7 @@ uint32_t rle8_ultra_decompress_with_info(IN const uint8_t *pIn, IN const uint8_t
 
 //////////////////////////////////////////////////////////////////////////
 
-bool rle8_ultra_get_compress_info(IN const uint8_t *pIn, const uint32_t inSize, OUT rle8_compress_info_t *pCompressInfo)
+bool rle8_low_entropy_short_get_compress_info(IN const uint8_t *pIn, const uint32_t inSize, OUT rle8_low_entropy_compress_info_t *pCompressInfo)
 {
   if (pIn == NULL || inSize == 0 || pCompressInfo == NULL)
     return false;
@@ -619,7 +619,7 @@ bool rle8_ultra_get_compress_info(IN const uint8_t *pIn, const uint32_t inSize, 
   return true;
 }
 
-bool rle8_ultra_get_compress_info_only_max_frequency(IN const uint8_t *pIn, const uint32_t inSize, OUT rle8_compress_info_t *pCompressInfo)
+bool rle8_low_entropy_short_get_compress_info_only_max_frequency(IN const uint8_t *pIn, const uint32_t inSize, OUT rle8_low_entropy_compress_info_t *pCompressInfo)
 {
   if (pIn == NULL || inSize == 0 || pCompressInfo == NULL)
     return false;
