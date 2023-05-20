@@ -303,7 +303,7 @@ int main(int argc, char **pArgv)
     printf("Usage: hsrlekit <InputFileName>\n\n");
     printf("\t[%s <Run Count>]\n\n\t[%s <Minimum Benchmark Time in Seconds>]\n\n", ArgumentRuns, ArgumentMinimumTime);
     printf("\t[%s (restrict to a subset of codecs to benchmark)]\n", ArgumentMatch);
-    printf("\t\tif '%s': [%s / %s / %s / %s]\n", ArgumentMatch, ArgumentExtreme, ArgumentExtremeMMTF, ArgumentMMTF, ArgumentNormal);
+    printf("\t\tif '%s': [%s / %s / %s / %s / %s]\n", ArgumentMatch, ArgumentExtreme, ArgumentExtremeMMTF, ArgumentMMTF, ArgumentNormal, ArgumentSH);
     printf("\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentExtremePacked, ArgumentExtremeNotPacked);
     printf("\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentExtremeByteGran, ArgumentExtremeSymbolGran);
     printf("\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentMulti, ArgumentSingle);
@@ -741,7 +741,7 @@ int main(int argc, char **pArgv)
       return 1;
     }
 
-    benchmarkAll = _Args.hasMode && !matchBenchmarks;
+    benchmarkAll = !_Args.hasMode || matchBenchmarks;
   }
 
   size_t fileSize = 0;
@@ -2961,7 +2961,7 @@ bool CodecMatchesArgs(const codec_t codec)
     if (_Args.isModeSH && codec != Rle8SH)
       return false;
 
-    if (_Args.isModeMMTF && codec != Extreme8MultiMTF128)
+    if (_Args.isModeRleMMTF && codec != Extreme8MultiMTF128)
       return false;
   }
 
@@ -3121,7 +3121,7 @@ bool CodecMatchesArgs(const codec_t codec)
     }
   }
 
-  if (_Args.isShortMode)
+  if (_Args.hasShortMode)
   {
     switch (codec)
     {

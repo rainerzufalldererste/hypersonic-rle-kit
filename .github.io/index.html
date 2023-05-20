@@ -10,12 +10,12 @@
   <body>
     <div class="main">
       <div class="header">
-        <h1>hypersonic rle kit</h1>
+        <img src="logo.png" alt="hypersonic rle kit logo"/>
         <h2>the fastest decoding run-length-encoding for x64</h2>
       </div>
       <div class="text">
         <ul>
-            <li>A selection of various RLE and related codecs optimized for all kinds of different inputs and scenarios</li>
+            <li>A selection of 100+ RLE and related codecs optimized for all kinds of different inputs and scenarios</li>
             <li>Single Core Decompression Speeds > 33 GiB/s have been observed.</li>
             <li>Written in C.</li>
             <li>SIMD Variants for AVX-512F, AVX2, AVX, SSE4.1, SSSE3, SSE2 and SSE variants are available for various decoders and encoders. Automatically picked at runtime based on the extensions available on the current platform.</li>
@@ -158,11 +158,11 @@ window.addEventListener("scroll", reveal);
           function calc_pareto_line(obj) {
             let points = [];
             let n = {};
-            n[obj.xStat] = 0;
-            n[obj.yStat] = 0;
+            n.decode = 0;
+            n.ratio = 0;
 
             for (let p in obj.points) {
-                if (obj.points[p][obj.xStat] > n[obj.xStat])
+                if (obj.points[p].decode > n.decode)
                     n = obj.points[p];
             }
 
@@ -176,18 +176,53 @@ window.addEventListener("scroll", reveal);
 
                 let last = n;
                 n = {};
-                n[obj.xStat] = 0;
-                n[obj.yStat] = 0;
+                n.decode = 0;
+                n.ratio = 0;
 
                 for (let p in obj.points) {
-                    if (obj.points[p][obj.xStat] > n[obj.xStat] && obj.points[p][obj.yStat] < last[obj.yStat] && obj.points[p][obj.xStat] < last[obj.xStat]) {
+                    if (obj.points[p].decode > n.decode && obj.points[p].ratio < last.ratio && obj.points[p].decode < last.decode) {
                         n = obj.points[p];
                         found = true
                     }
                 }
             } while (found);
 
-            obj.lines[obj.lines.length] = { points: points, color: "#AAFF2233", pareto: true };
+            obj.lines[obj.lines.length] = { points: points, color: "#AAFF2244", pareto: true };
+          }
+
+          function calc_pareto_line2(obj) {
+            let points = [];
+            let n = {};
+            n.encode = 0;
+            n.ratio = 0;
+
+            for (let p in obj.points) {
+                if (obj.points[p].encode > n.encode)
+                    n = obj.points[p];
+            }
+
+            let found = false;
+
+            do {
+                points[points.length] = n;
+                n.isPareto2 = true;
+
+                found = false;
+
+                let last = n;
+                n = {};
+                n.encode = 0;
+                n.ratio = 0;
+
+                for (let p in obj.points) {
+                    if (obj.points[p].encode > n.encode && obj.points[p].ratio < last.ratio && obj.points[p].encode < last.encode) {
+                        n = obj.points[p];
+                        found = true
+                    }
+                }
+            } while (found);
+
+            obj.lines[obj.lines.length] = { points: points, color: "#DDEE2208", pareto: true };
           }
 
           function draw_obj(ctx, obj) {
@@ -294,7 +329,7 @@ window.addEventListener("scroll", reveal);
                 var closest = 99999.9;
 
                 for (let p in obj.points) {
-                    var d = dist(obj.points[p][obj.xStat], obj.points[p][obj.yStat]);
+                    var d = dist(obj.points[p][obj.xStat], obj.points[p].ratio);
 
                     if (d < closest) {
                       closest = d;
@@ -497,6 +532,7 @@ window.addEventListener("scroll", reveal);
             add_line(obj, ["srle 0", "srle 8", "srle 16", "srle 32", "srle 64"], "#55555588");
 
             calc_pareto_line(obj);
+            calc_pareto_line2(obj);
 
             window.addEventListener("resize", () => { draw_obj(document.getElementById("video_frame").getContext("2d"), document.getElementById("video_frame")); });
             window.addEventListener("load", () => { draw_obj(document.getElementById("video_frame").getContext("2d"), document.getElementById("video_frame")); });
@@ -658,6 +694,7 @@ window.addEventListener("scroll", reveal);
             add_line(obj, ["srle 0", "srle 8", "srle 16", "srle 32", "srle 64"], "#55555588");
 
             calc_pareto_line(obj);
+            calc_pareto_line2(obj);
 
             window.addEventListener("resize", () => { draw_obj(document.getElementById("1034").getContext("2d"), document.getElementById("1034")); });
             window.addEventListener("load", () => { draw_obj(document.getElementById("1034").getContext("2d"), document.getElementById("1034")); });
@@ -820,6 +857,7 @@ window.addEventListener("scroll", reveal);
             add_line(obj, ["srle 0", "srle 8", "srle 16", "srle 32", "srle 64"], "#55555588");
 
             calc_pareto_line(obj);
+            calc_pareto_line2(obj);
 
             window.addEventListener("resize", () => { draw_obj(document.getElementById("enwiki").getContext("2d"), document.getElementById("enwiki")); });
             window.addEventListener("load", () => { draw_obj(document.getElementById("enwiki").getContext("2d"), document.getElementById("enwiki")); });
@@ -893,6 +931,7 @@ window.addEventListener("scroll", reveal);
             add_line(obj, ["24 Bit 7LUT Short (Symbol)", "48 Bit 7LUT Short (Symbol)"], getColor());
 
             calc_pareto_line(obj);
+            calc_pareto_line2(obj);
 
             window.addEventListener("resize", () => { draw_obj(document.getElementById("pixelart").getContext("2d"), document.getElementById("pixelart")); });
             window.addEventListener("load", () => { draw_obj(document.getElementById("pixelart").getContext("2d"), document.getElementById("pixelart")); });

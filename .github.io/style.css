@@ -70,3 +70,17 @@ div.tooltip_visible {
 #tooltip_pareto.non_pareto {
     opacity: 0;
 }
+
+h1 {
+    color: #b3db8c;
+}
+
+h2 {
+  color: #86ce91;
+}
+
+.header img {
+  width: 533pt;
+  display: block;
+  margin: 50pt auto;
+}
