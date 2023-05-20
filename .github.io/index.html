@@ -67,7 +67,7 @@ window.addEventListener("scroll", reveal);
 
           function getColor() {
             lastColorIndex++;
-            return "hsl(" + ((lastColorIndex - 1) / 20 * 320 + 250.0) + "deg, 60%, 70%, 0.1)"
+            return "hsl(" + ((lastColorIndex - 1) / 20 * 320 + 250.0) + "deg, 60%, 70%, 0.4)"
           }
 
           function init_obj(obj) {
@@ -92,11 +92,15 @@ window.addEventListener("scroll", reveal);
 
           function add_line(obj, labels, color) {
             let points = [];
+            let foreign = false;
 
-            for (let i = 0; i < labels.length; i++)
+            for (let i = 0; i < labels.length; i++) {
                 points[points.length] = obj.points[labels[i]];
+                points[points.length - 1].name = labels[i];
+                foreign |= (points[points.length - 1].foreign == true);
+            }
 
-            obj.lines[obj.lines.length] = { points: points, color: color };
+            obj.lines[obj.lines.length] = { points: points, color: color, foreign: foreign };
           }
 
           function transformX(obj, x, rangeX, offsetX) {
@@ -205,9 +209,23 @@ window.addEventListener("scroll", reveal);
             for (let y = obj.minY; y <= obj.maxY; y += stepY) {
                 if (y > obj.minY) draw_label(ctx, obj, obj.minX, y, y + "%", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
             }
-
+            
             for (i in obj.lines)
+              if (obj.lines[i].pareto == true || obj.lines[i].foreign == true)
                 draw_line(ctx, obj, obj.lines[i], rangeX, rangeY, topX, topY, 4);
+
+            function contains(arr, i) {
+              for (l in arr)
+                if (arr[l].name == i)
+                  return true;
+              
+              return false;
+            }
+
+            if (obj.bestP != null)
+              for (i in obj.lines)
+                if (obj.lines[i].pareto != true && obj.lines[i].foreign != true && contains(obj.lines[i].points, obj.bestP))
+                    draw_line(ctx, obj, obj.lines[i], rangeX, rangeY, topX, topY, 4);
 
             for (i in obj.points)
                 draw_point(ctx, obj, obj.points[i], rangeX, rangeY, topX, topY);
@@ -265,6 +283,7 @@ window.addEventListener("scroll", reveal);
                   tooltip.style.left = "0px";
                   tooltip.style.top = "0px";
                   tooltip.className = "tooltip_hidden";
+                  bestP = null;
                 } else {
                   var tooltip = document.getElementById("tooltip");
                   tooltip.style.left = (mouseX + 20 * window.devicePixelRatio) + "px";
@@ -275,6 +294,12 @@ window.addEventListener("scroll", reveal);
                   document.getElementById("tooltip_sub2").innerText = "encoder throughput: " + obj.points[bestP].enc + " MiB/s";
                   document.getElementById("tooltip_sub3").innerText = "compression ratio: " + obj.points[bestP].y + " %";
                   document.getElementById("tooltip_pareto").className = obj.points[bestP].isPareto == true ? "pareto" : "non_pareto";
+                }
+
+                if (obj.bestP != bestP)
+                {
+                  obj.bestP = bestP;
+                  draw_obj(obj.getContext("2d"), obj);
                 }
             }
           }
