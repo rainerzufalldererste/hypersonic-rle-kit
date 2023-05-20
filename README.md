@@ -1,4 +1,4 @@
-  <a href="https://github.com/rainerzufalldererste/rle8"><img src="https://raw.githubusercontent.com/rainerzufalldererste/rle8/master/docs/logo.png" alt="hypersonic rle kit logo" style="width: 533pt; max-width: 100%"></a>
+  <a href="https://github.com/rainerzufalldererste/hypersonic-rle-kit"><img src="https://raw.githubusercontent.com/rainerzufalldererste/hypersonic-rle-kit/master/docs/logo.png" alt="hypersonic rle kit logo" style="width: 533pt; max-width: 100%"></a>
   <br>
 
 ### What is it?
@@ -10,7 +10,7 @@
 - `OpenCL` variant available for some of the decoders.
 
 ### Benchmark
- See [Full Benchmark with Graphs](https://raw.githubusercontent.com/rainerzufalldererste/rle8/master/docs/index.html), the tables below only contain a tiny selection of the 100+ codecs.
+ See [Full Benchmark with Graphs](https://raw.githubusercontent.com/rainerzufalldererste/hypersonic-rle-kit/master/docs/index.html), the tables below only contain a tiny selection of the 100+ codecs.
  
  - Single-Threaded
  - Running on an `AMD Ryzen 9 7950X`, `32 GB DDR5-6000 CL30` on Windows 11.
@@ -209,8 +209,8 @@ The 24 Bit and 48 Bit Variants allow for run length encoding of common data layo
 
 ### Setup
 ``` bash
-git clone https://github.com/rainerzufalldererste/rle8.git
-cd rle8
+git clone https://github.com/rainerzufalldererste/hypersonic-rle-kit.git
+cd hypersonic-rle-kit
 git submodule update --init --recursive
 ```
 #### On Windows
