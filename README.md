@@ -1,4 +1,4 @@
-  <a href="https://github.com/rainerzufalldererste/hypersonic-rle-kit"><img src="https://raw.githubusercontent.com/rainerzufalldererste/hypersonic-rle-kit/master/docs/logo.png" alt="hypersonic rle kit logo" style="width: 533pt; max-width: 100%"></a>
+  <a href="https://github.com/rainerzufalldererste/hypersonic-rle-kit"><img src="https://raw.githubusercontent.com/rainerzufalldererste/hypersonic-rle-kit/master/docs/logo.png" alt="hypersonic rle kit logo" style="width: 533pt; max-width: 100%; margin: 50pt auto;"></a>
   <br>
 
 ### What is it?
@@ -10,7 +10,7 @@
 - `OpenCL` variant available for some of the decoders.
 
 ### Benchmark
- See [Full Benchmark with Graphs](https://raw.githubusercontent.com/rainerzufalldererste/hypersonic-rle-kit/master/docs/index.html), the tables below only contain a tiny selection of the 100+ codecs.
+ <p style="">See [Full Benchmark with Graphs](https://rainerzufalldererste.github.io/hypersonic-rle-kit/), the tables below only contain a tiny selection of the 100+ codecs.</p>
  
  - Single-Threaded
  - Running on an `AMD Ryzen 9 7950X`, `32 GB DDR5-6000 CL30` on Windows 11.
