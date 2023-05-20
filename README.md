@@ -1,4 +1,4 @@
-  <a href="https://github.com/rainerzufalldererste/rle8"><img src="https://raw.githubusercontent.com/rainerzufalldererste/rle8/master/.github.io/logo.png" alt="hypersonic rle kit logo" style="width: 533pt; max-width: 100%"></a>
+  <a href="https://github.com/rainerzufalldererste/rle8"><img src="https://raw.githubusercontent.com/rainerzufalldererste/rle8/master/docs/logo.png" alt="hypersonic rle kit logo" style="width: 533pt; max-width: 100%"></a>
   <br>
 
 ### What is it?
@@ -10,7 +10,7 @@
 - `OpenCL` variant available for some of the decoders.
 
 ### Benchmark
- See [Full Benchmark with Graphs](https://raw.githubusercontent.com/rainerzufalldererste/rle8/master/.github.io/index.html), the tables below only contain a tiny selection of the 100+ codecs.
+ See [Full Benchmark with Graphs](https://raw.githubusercontent.com/rainerzufalldererste/rle8/master/docs/index.html), the tables below only contain a tiny selection of the 100+ codecs.
  
  - Single-Threaded
  - Running on an `AMD Ryzen 9 7950X`, `32 GB DDR5-6000 CL30` on Windows 11.
