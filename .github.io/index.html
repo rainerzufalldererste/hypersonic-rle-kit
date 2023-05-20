@@ -71,23 +71,29 @@ window.addEventListener("scroll", reveal);
           }
 
           function init_obj(obj) {
-            obj.minX = 0;
-            obj.maxX = 0;
-            obj.minY = 100;
-            obj.maxY = 0;
+            obj.minDecode = 0;
+            obj.maxDecode = 0;
+            obj.minRatio = 100;
+            obj.maxRatio = 0;
+            obj.minEncode = 0;
+            obj.maxEncode = 0;
             obj.points = [];
             obj.lines = [];
+            obj.xStat = "decode";
+            obj.yStat = "ratio";
 
             lastColorIndex = 0;
           }
 
-          function add_point(obj, x, y, enc, label, isForeign = false) {
-            if (x > obj.maxX) obj.maxX = x;
-            if (y > obj.maxY) obj.maxY = y;
-            if (x < obj.minX) obj.minX = x;
-            if (y < obj.minY) obj.minY = y;
+          function add_point(obj, decode, ratio, encode, label, isForeign = false) {
+            if (decode > obj.maxDecode) obj.maxDecode = decode;
+            if (ratio > obj.maxRatio) obj.maxRatio = ratio;
+            if (encode > obj.maxEncode) obj.maxEncode = encode;
+            if (decode < obj.minDecode) obj.minDecode = decode;
+            if (ratio < obj.minRatio) obj.minRatio = ratio;
+            if (encode < obj.minEncode) obj.minEncode = encode;
 
-            obj.points[label] = { x: x, y: y, enc: enc, foreign: !!isForeign };
+            obj.points[label] = { decode: decode, ratio: ratio, encode: encode, foreign: !!isForeign };
           }
 
           function add_line(obj, labels, color) {
@@ -104,18 +110,32 @@ window.addEventListener("scroll", reveal);
           }
 
           function transformX(obj, x, rangeX, offsetX) {
-            return offsetX + (x - obj.minX) / rangeX;
+            return offsetX + (x - obj.minDecode) / rangeX;
           }
 
           function transformY(obj, y, rangeY, offsetY) {
-            return offsetY + (y - obj.minY) / rangeY;
+            return offsetY + (y - obj.minRatio) / rangeY;
           }
 
           function draw_point(ctx, obj, p, rangeX, rangeY, offsetX, offsetY) {
-            point(ctx, transformX(obj, p.x, rangeX, offsetX), transformY(obj, p.y, rangeY, offsetY), (p.isPareto == true ? 10 : 6) * window.devicePixelRatio, p.foreign ? "#333" : "#FFF", p.foreign ? "#777" : "#DDD", 2 * window.devicePixelRatio);
+            point(ctx, transformX(obj, p[obj.xStat], rangeX, offsetX), transformY(obj, p[obj.yStat], rangeY, offsetY), (p.isPareto == true ? 10 : 6) * window.devicePixelRatio, p.foreign ? "#333" : "#FFF", p.foreign ? "#777" : "#DDD", 2 * window.devicePixelRatio);
           }
 
           function draw_line(ctx, obj, l, rangeX, rangeY, offsetX, offsetY, lineWidth) {
+            let points = l.points;
+
+            ctx.beginPath();
+            ctx.moveTo(transformX(obj, points[0][obj.xStat], rangeX, offsetX), transformY(obj, points[0][obj.yStat], rangeY, offsetY));
+            
+            for (let i = 1; i < points.length; i++)
+                ctx.lineTo(transformX(obj, points[i][obj.xStat], rangeX, offsetX), transformY(obj, points[i][obj.yStat], rangeY, offsetY));
+
+            ctx.strokeStyle = l.color;
+            ctx.lineWidth = lineWidth * window.devicePixelRatio * (l.pareto == true ? 4 : 1);
+            ctx.stroke();
+          }
+
+          function draw_line_xy(ctx, obj, l, rangeX, rangeY, offsetX, offsetY, lineWidth) {
             let points = l.points;
 
             ctx.beginPath();
@@ -137,10 +157,12 @@ window.addEventListener("scroll", reveal);
 
           function calc_pareto_line(obj) {
             let points = [];
-            let n = { x: 0, y: 0 };
+            let n = {};
+            n[obj.xStat] = 0;
+            n[obj.yStat] = 0;
 
             for (let p in obj.points) {
-                if (obj.points[p].x > n.x)
+                if (obj.points[p][obj.xStat] > n[obj.xStat])
                     n = obj.points[p];
             }
 
@@ -153,10 +175,12 @@ window.addEventListener("scroll", reveal);
                 found = false;
 
                 let last = n;
-                n = { x: 0, y: 0 };
+                n = {};
+                n[obj.xStat] = 0;
+                n[obj.yStat] = 0;
 
                 for (let p in obj.points) {
-                    if (obj.points[p].x > n.x && obj.points[p].y < last.y && obj.points[p].x < last.x) {
+                    if (obj.points[p][obj.xStat] > n[obj.xStat] && obj.points[p][obj.yStat] < last[obj.yStat] && obj.points[p][obj.xStat] < last[obj.xStat]) {
                         n = obj.points[p];
                         found = true
                     }
@@ -179,35 +203,35 @@ window.addEventListener("scroll", reveal);
             let topX = 50;
             let topY = 10;
 
-            obj.minY = Math.floor(obj.minY / 10) * 10;
+            obj.minRatio = Math.floor(obj.minRatio / 10) * 10;
             
-            let nativeYRange = obj.maxY - obj.minY;
+            let nativeYRange = obj.maxRatio - obj.minRatio;
             let stepY = Math.max(1, Math.floor(nativeYRange / 6));
             
-            let nativeXRange = obj.maxX - obj.minX;
+            let nativeXRange = obj.maxDecode - obj.minDecode;
             let stepX = Math.max(1, Math.floor(nativeXRange / 9 / 500) * 500);
 
-            let rangeX = (obj.maxX - obj.minX) / (obj.width - borderX);
-            let rangeY = (obj.maxY - obj.minY) / (obj.height - borderY);
+            let rangeX = (obj.maxDecode - obj.minDecode) / (obj.width - borderX);
+            let rangeY = (obj.maxRatio - obj.minRatio) / (obj.height - borderY);
             
             // X Axis.
-            for (let x = obj.minX; x <= obj.maxX; x += stepX) {
-                draw_line(ctx, obj, { points: [{ y: obj.minY, x: x }, { y: obj.maxY, x: x }], color: x == obj.minX ? "#555" : "#333" }, rangeX, rangeY, topX, topY, x == obj.minX ? 4 : 2);
+            for (let x = obj.minDecode; x <= obj.maxDecode; x += stepX) {
+              draw_line_xy(ctx, obj, { points: [{ y: obj.minRatio, x: x }, { y: obj.maxRatio, x: x }], color: x == obj.minDecode ? "#555" : "#333" }, rangeX, rangeY, topX, topY, x == obj.minDecode ? 4 : 2);
             }
 
             // Y Axis.
-            for (let y = obj.minY; y <= obj.maxY; y += stepY) {
-                draw_line(ctx, obj, { points: [{ x: obj.minX, y: y }, { x: obj.maxX, y: y }], color: y == obj.minY ? "#555" : "#333" }, rangeX, rangeY, topX, topY, y == obj.minY ? 4 : 2);
+            for (let y = obj.minRatio; y <= obj.maxRatio; y += stepY) {
+              draw_line_xy(ctx, obj, { points: [{ x: obj.minDecode, y: y }, { x: obj.maxDecode, y: y }], color: y == obj.minRatio ? "#555" : "#333" }, rangeX, rangeY, topX, topY, y == obj.minRatio ? 4 : 2);
             }
             
             // X Axis.
-            for (let x = obj.minX; x <= obj.maxX; x += stepX) {
-                if (x > obj.minX) draw_label(ctx, obj, x, obj.minY, x + " MiB/s", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
+            for (let x = obj.minDecode; x <= obj.maxDecode; x += stepX) {
+                if (x > obj.minDecode) draw_label(ctx, obj, x, obj.minRatio, x + " MiB/s", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
             }
 
             // Y Axis.
-            for (let y = obj.minY; y <= obj.maxY; y += stepY) {
-                if (y > obj.minY) draw_label(ctx, obj, obj.minX, y, y + "%", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
+            for (let y = obj.minRatio; y <= obj.maxRatio; y += stepY) {
+                if (y > obj.minRatio) draw_label(ctx, obj, obj.minDecode, y, y + "%", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
             }
             
             for (i in obj.lines)
@@ -256,8 +280,8 @@ window.addEventListener("scroll", reveal);
                 var topX = 50;
                 var topY = -15;
 
-                var rangeX = (obj.maxX - obj.minX) / (obj.width - borderX);
-                var rangeY = (obj.maxY - obj.minY) / (obj.height - borderY);
+                var rangeX = (obj.maxDecode - obj.minDecode) / (obj.width - borderX);
+                var rangeY = (obj.maxRatio - obj.minRatio) / (obj.height - borderY);
 
                 function dist(x, y) {
                     let dx = transformX(obj, x, rangeX, topX) - internalX;
@@ -270,7 +294,7 @@ window.addEventListener("scroll", reveal);
                 var closest = 99999.9;
 
                 for (let p in obj.points) {
-                    var d = dist(obj.points[p].x, obj.points[p].y);
+                    var d = dist(obj.points[p][obj.xStat], obj.points[p][obj.yStat]);
 
                     if (d < closest) {
                       closest = d;
@@ -290,9 +314,9 @@ window.addEventListener("scroll", reveal);
                   tooltip.style.top = mouseY + "px";
                   tooltip.className = "tooltip_visible";
                   document.getElementById("tooltip_text").innerText = bestP + (obj.points[bestP].foreign ? " (foreign codec)" : "");
-                  document.getElementById("tooltip_sub1").innerText = "decoder throughput: " + obj.points[bestP].x + " MiB/s";
-                  document.getElementById("tooltip_sub2").innerText = "encoder throughput: " + obj.points[bestP].enc + " MiB/s";
-                  document.getElementById("tooltip_sub3").innerText = "compression ratio: " + obj.points[bestP].y + " %";
+                  document.getElementById("tooltip_sub1").innerText = "decoder throughput: " + obj.points[bestP].decode + " MiB/s";
+                  document.getElementById("tooltip_sub2").innerText = "encoder throughput: " + obj.points[bestP].encode + " MiB/s";
+                  document.getElementById("tooltip_sub3").innerText = "compression ratio: " + obj.points[bestP].ratio + " %";
                   document.getElementById("tooltip_pareto").className = obj.points[bestP].isPareto == true ? "pareto" : "non_pareto";
                 }
 
