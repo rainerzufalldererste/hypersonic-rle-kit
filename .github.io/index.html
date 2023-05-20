@@ -15,11 +15,11 @@
       </div>
       <div class="text">
         <ul>
+            <li>A selection of various RLE and related codecs optimized for all kinds of different inputs and scenarios</li>
             <li>Single Core Decompression Speeds > 33 GiB/s have been observed.</li>
-            <li>Many different variants optimized for various scenarios.</li>
             <li>Written in C.</li>
-            <li>SIMD Variants for AVX-512F, AVX2, AVX, SSE4.1, SSSE3 and SSE2 are available for the decoder. Automatically picked by the en- & decoder based on the extensions available on the current platform.</li>
-            <li>Specialized versions for various different scenarios. (Single RLE Symbol, Short Strings of RLE Symbol, 8 Bit, 16 Bit, 24 Bit, 32 Bit, 48 Bit, 64 Bit, 128 Bit)</li>
+            <li>SIMD Variants for AVX-512F, AVX2, AVX, SSE4.1, SSSE3, SSE2 and SSE variants are available for various decoders and encoders. Automatically picked at runtime based on the extensions available on the current platform.</li>
+            <li>Specialized versions for various different scenarios. (Single RLE Symbol, Short Strings of RLE Symbol, 8 Bit, 16 Bit, 24 Bit, 32 Bit, 48 Bit, 64 Bit, 128 Bit, High probability of reoccuring symbols etc.)</li>
             <li>OpenCL variant available for some of the decoders.</li>
         </ul>
       </div>
@@ -209,7 +209,7 @@ window.addEventListener("scroll", reveal);
             let stepY = Math.max(1, Math.floor(nativeYRange / 6));
             
             let nativeXRange = obj.maxDecode - obj.minDecode;
-            let stepX = Math.max(1, Math.floor(nativeXRange / 9 / 500) * 500);
+            let stepX = (Math.max(1, Math.floor(nativeXRange / 9 / 500)) * 500);
 
             let rangeX = (obj.maxDecode - obj.minDecode) / (obj.width - borderX);
             let rangeY = (obj.maxRatio - obj.minRatio) / (obj.height - borderY);
@@ -666,6 +666,7 @@ window.addEventListener("scroll", reveal);
       </div>
       <div class="graph_container">
         <h3>enwiki.btw (wikipedia extract encoded using libdivsufsort)</h3>
+        <p>Single Symbol codecs have been removed since the dataset isn't suitable.</p>
         <canvas id="enwiki" class="chart"></canvas>
         <script>
             var obj = document.getElementById("enwiki");
@@ -823,6 +824,79 @@ window.addEventListener("scroll", reveal);
             window.addEventListener("resize", () => { draw_obj(document.getElementById("enwiki").getContext("2d"), document.getElementById("enwiki")); });
             window.addEventListener("load", () => { draw_obj(document.getElementById("enwiki").getContext("2d"), document.getElementById("enwiki")); });
             obj.addEventListener("mousemove", (e) => { handle_mouseover(e, document.getElementById("enwiki")); });
+        </script>
+      </div>
+      <div class="graph_container">
+        <h3>tj5oyhhuehv11.bmp (high-resolution pixelart bitmap image)</h3>
+        <p>Non 24/48 Bit codecs have been removed since the compression ratio is negligible or uncompetitive everywhere else.<br/>Decompression Speed doesn't start at zero, because otherwise the graph wouldn't be particularly useful.</p>
+        <canvas id="pixelart" class="chart"></canvas>
+        <script>
+            var obj = document.getElementById("pixelart");
+            var ctx = obj.getContext("2d");
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            init_obj(obj);
+
+            obj.minDecode = 31000.0; // otherwise the scaling is utter garbage.
+
+            add_point(obj, 33067.5,  1.84,  5852.0, "24 Bit (Symbol)");
+            add_point(obj, 32713.6,  2.08,  5336.3, "24 Bit Short (Symbol)");
+            add_point(obj, 32955.6,  2.00,  5487.5, "24 Bit Packed (Symbol)");
+            add_point(obj, 32751.7,  2.08,  4886.8, "24 Bit 1LUT Short (Symbol)");
+            add_point(obj, 33073.5,  1.31,  5335.0, "24 Bit 3LUT (Symbol)");
+            add_point(obj, 32890.5,  1.53,  5194.7, "24 Bit 3LUT Short (Symbol)");
+            add_point(obj, 32846.9,  1.20,  4670.1, "24 Bit 7LUT (Symbol)");
+            add_point(obj, 31750.2,  1.41,  5222.2, "24 Bit 7LUT Short (Symbol)");
+
+            add_point(obj, 33113.4,  2.13,  6052.7, "24 Bit (Byte)");
+            add_point(obj, 32825.6,  2.17,  5632.3, "24 Bit Short (Byte)");
+            add_point(obj, 32812.0,  2.32,  5603.5, "24 Bit Packed (Byte)");
+            add_point(obj, 32835.9,  2.17,  5697.6, "24 Bit 1LUT Short (Byte)");
+            add_point(obj, 33010.6,  1.49,  5614.2, "24 Bit 3LUT (Byte)");
+            add_point(obj, 32713.6,  1.63,  4870.9, "24 Bit 3LUT Short (Byte)");
+            add_point(obj, 32629.3,  1.37,  5493.1, "24 Bit 7LUT (Byte)");
+            add_point(obj, 31915.9,  1.52,  5489.0, "24 Bit 7LUT Short (Byte)");
+
+            add_point(obj, 32870.0,  2.78,  9145.2, "48 Bit (Symbol)");
+            add_point(obj, 32833.3,  2.79,  9738.3, "48 Bit Short (Symbol)");
+            add_point(obj, 32913.6,  2.87, 10349.4, "48 Bit Packed (Symbol)");
+            add_point(obj, 32750.9,  3.09,  9293.6, "48 Bit 1LUT Short (Symbol)");
+            add_point(obj, 32843.5,  1.71,  9184.1, "48 Bit 3LUT (Symbol)");
+            add_point(obj, 32717.0,  1.99,  9188.6, "48 Bit 3LUT Short (Symbol)");
+            add_point(obj, 32619.2,  1.49,  8992.3, "48 Bit 7LUT (Symbol)");
+            add_point(obj, 31846.0,  1.77,  8628.7, "48 Bit 7LUT Short (Symbol)");
+            
+            add_point(obj, 32911.9,  3.16,  9317.6, "48 Bit (Byte)");
+            add_point(obj, 32689.1,  3.20,  9709.3, "48 Bit Short (Byte)");
+            add_point(obj, 32548.7,  3.35, 10199.2, "48 Bit Packed (Byte)");
+            add_point(obj, 32603.2,  3.20,  9691.9, "48 Bit 1LUT Short (Byte)");
+            add_point(obj, 32861.4,  1.98,  9629.9, "48 Bit 3LUT (Byte)");
+            add_point(obj, 32717.9,  2.13,  9244.4, "48 Bit 3LUT Short (Byte)");
+            add_point(obj, 32615.9,  1.76,  9347.5, "48 Bit 7LUT (Byte)");
+            add_point(obj, 31847.6,  1.90,  9069.5, "48 Bit 7LUT Short (Byte)");
+
+            add_line(obj, ["24 Bit (Symbol)", "48 Bit (Symbol)"], getColor());
+            add_line(obj, ["24 Bit (Byte)", "48 Bit (Byte)"], getColor());
+            add_line(obj, ["24 Bit Packed (Symbol)", "48 Bit Packed (Symbol)"], getColor());
+            add_line(obj, ["24 Bit Packed (Byte)", "48 Bit Packed (Byte)"], getColor());
+            add_line(obj, ["24 Bit Short (Byte)", "48 Bit Short (Byte)"], getColor());
+            add_line(obj, ["24 Bit Short (Symbol)", "48 Bit Short (Symbol)"], getColor());
+            add_line(obj, ["24 Bit 1LUT Short (Byte)", "48 Bit 1LUT Short (Byte)"], getColor());
+            add_line(obj, ["24 Bit 1LUT Short (Symbol)", "48 Bit 1LUT Short (Symbol)"], getColor());
+            add_line(obj, ["24 Bit 3LUT (Byte)", "48 Bit 3LUT (Byte)"], getColor());
+            add_line(obj, ["24 Bit 3LUT (Symbol)", "48 Bit 3LUT (Symbol)"], getColor());
+            add_line(obj, ["24 Bit 3LUT Short (Byte)", "48 Bit 3LUT Short (Byte)"], getColor());
+            add_line(obj, ["24 Bit 3LUT Short (Symbol)", "48 Bit 3LUT Short (Symbol)"], getColor());
+            add_line(obj, ["24 Bit 7LUT (Byte)", "48 Bit 7LUT (Byte)"], getColor());
+            add_line(obj, ["24 Bit 7LUT (Symbol)", "48 Bit 7LUT (Symbol)"], getColor());
+            add_line(obj, ["24 Bit 7LUT Short (Byte)", "48 Bit 7LUT Short (Byte)"], getColor());
+            add_line(obj, ["24 Bit 7LUT Short (Symbol)", "48 Bit 7LUT Short (Symbol)"], getColor());
+
+            calc_pareto_line(obj);
+
+            window.addEventListener("resize", () => { draw_obj(document.getElementById("pixelart").getContext("2d"), document.getElementById("pixelart")); });
+            window.addEventListener("load", () => { draw_obj(document.getElementById("pixelart").getContext("2d"), document.getElementById("pixelart")); });
+            obj.addEventListener("mousemove", (e) => { handle_mouseover(e, document.getElementById("pixelart")); });
         </script>
       </div>
     </div>
