@@ -395,15 +395,15 @@ uint32_t rle48_7symlut_byte_decompress(IN const uint8_t *pIn, const uint32_t inS
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t rle_mmtf_bounds(const uint32_t inSize);
+uint32_t mmtf_bounds(const uint32_t inSize);
 
 // If SSE2 is not available, both of these functions will fail and return 0.
-uint32_t rle_mmtf128_encode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle_mmtf128_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t mmtf128_encode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t mmtf128_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
 // If SSE2 is not available, both of these functions will fail and return 0.
-uint32_t rle_mmtf256_encode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
-uint32_t rle_mmtf256_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t mmtf256_encode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t mmtf256_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
 
 //////////////////////////////////////////////////////////////////////////
 

@@ -9,30 +9,30 @@
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t rle_mmtf128_encode_aligned_sse41(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
-uint32_t rle_mmtf128_encode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
+uint32_t mmtf128_encode_aligned_sse41(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
+uint32_t mmtf128_encode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
 
-uint32_t rle_mmtf128_decode_aligned_sse41(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
-uint32_t rle_mmtf128_decode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
+uint32_t mmtf128_decode_aligned_sse41(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
+uint32_t mmtf128_decode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
 
-uint32_t rle_mmtf256_encode_aligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
-uint32_t rle_mmtf256_encode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
-uint32_t rle_mmtf256_encode_unaligned_sse2(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
+uint32_t mmtf256_encode_aligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
+uint32_t mmtf256_encode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
+uint32_t mmtf256_encode_unaligned_sse2(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
 
-uint32_t rle_mmtf256_decode_aligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
-uint32_t rle_mmtf256_decode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
-uint32_t rle_mmtf256_decode_unaligned_sse2(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
+uint32_t mmtf256_decode_aligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
+uint32_t mmtf256_decode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
+uint32_t mmtf256_decode_unaligned_sse2(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut);
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t rle_mmtf_bounds(const uint32_t inSize)
+uint32_t mmtf_bounds(const uint32_t inSize)
 {
   return inSize;
 }
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t rle_mmtf128_encode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
+uint32_t mmtf128_encode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
   if (inSize > outSize)
     return 0;
@@ -43,12 +43,12 @@ uint32_t rle_mmtf128_encode(IN const uint8_t *pIn, const uint32_t inSize, OUT ui
     return 0;
 
   if (((uint64_t)pIn & 15) == 0 && ((uint64_t)pOut & 31) == 0 && sse41Supported)
-    return rle_mmtf128_encode_aligned_sse41(pIn, inSize, pOut);
+    return mmtf128_encode_aligned_sse41(pIn, inSize, pOut);
   else
-    return rle_mmtf128_encode_unaligned(pIn, inSize, pOut);
+    return mmtf128_encode_unaligned(pIn, inSize, pOut);
 }
 
-uint32_t rle_mmtf128_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
+uint32_t mmtf128_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
   if (inSize > outSize)
     return 0;
@@ -59,14 +59,14 @@ uint32_t rle_mmtf128_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT ui
     return 0;
 
   if (((uint64_t)pIn & 15) == 0 && ((uint64_t)pOut & 31) == 0 && sse41Supported)
-    return rle_mmtf128_decode_aligned_sse41(pIn, inSize, pOut);
+    return mmtf128_decode_aligned_sse41(pIn, inSize, pOut);
   else
-    return rle_mmtf128_decode_unaligned(pIn, inSize, pOut);
+    return mmtf128_decode_unaligned(pIn, inSize, pOut);
 }
 
 //////////////////////////////////////////////////////////////////////////
 
-uint32_t rle_mmtf256_encode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
+uint32_t mmtf256_encode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
   if (inSize > outSize)
     return 0;
@@ -77,15 +77,15 @@ uint32_t rle_mmtf256_encode(IN const uint8_t *pIn, const uint32_t inSize, OUT ui
     return 0;
 
   if (!avx2Supported)
-    return rle_mmtf256_encode_unaligned_sse2(pIn, inSize, pOut);
+    return mmtf256_encode_unaligned_sse2(pIn, inSize, pOut);
 
   if (((uint64_t)pIn & 31) == 0 && ((uint64_t)pOut & 31) == 0)
-    return rle_mmtf256_encode_aligned(pIn, inSize, pOut);
+    return mmtf256_encode_aligned(pIn, inSize, pOut);
   else
-    return rle_mmtf256_encode_unaligned(pIn, inSize, pOut);
+    return mmtf256_encode_unaligned(pIn, inSize, pOut);
 }
 
-uint32_t rle_mmtf256_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
+uint32_t mmtf256_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
   if (inSize > outSize)
     return 0;
@@ -96,12 +96,12 @@ uint32_t rle_mmtf256_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT ui
     return 0;
 
   if (!avx2Supported)
-    return rle_mmtf256_decode_unaligned_sse2(pIn, inSize, pOut);
+    return mmtf256_decode_unaligned_sse2(pIn, inSize, pOut);
 
   if (((uint64_t)pIn & 31) == 0 && ((uint64_t)pOut & 31) == 0)
-    return rle_mmtf256_decode_aligned(pIn, inSize, pOut);
+    return mmtf256_decode_aligned(pIn, inSize, pOut);
   else
-    return rle_mmtf256_decode_unaligned(pIn, inSize, pOut);
+    return mmtf256_decode_unaligned(pIn, inSize, pOut);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -109,7 +109,7 @@ uint32_t rle_mmtf256_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT ui
 #ifndef _MSC_VER
 __attribute__((target("sse4.1")))
 #endif
-uint32_t rle_mmtf128_encode_aligned_sse41(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
+uint32_t mmtf128_encode_aligned_sse41(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
 {
   ALIGN(16) uint8_t history[sizeof(__m128i) * 256];
 
@@ -177,7 +177,7 @@ uint32_t rle_mmtf128_encode_aligned_sse41(IN const uint8_t *pIn, const uint32_t 
   return inSize;
 }
 
-uint32_t rle_mmtf128_encode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
+uint32_t mmtf128_encode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
 {
   ALIGN(16) uint8_t history[sizeof(__m128i) * 256];
 
@@ -250,7 +250,7 @@ uint32_t rle_mmtf128_encode_unaligned(IN const uint8_t *pIn, const uint32_t inSi
 #ifndef _MSC_VER
 __attribute__((target("sse4.1")))
 #endif
-uint32_t rle_mmtf128_decode_aligned_sse41(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
+uint32_t mmtf128_decode_aligned_sse41(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
 {
   ALIGN(16) uint8_t history[sizeof(__m128i) * 256];
 
@@ -312,7 +312,7 @@ uint32_t rle_mmtf128_decode_aligned_sse41(IN const uint8_t *pIn, const uint32_t 
   return inSize;
 }
 
-uint32_t rle_mmtf128_decode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
+uint32_t mmtf128_decode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
 {
   ALIGN(16) uint8_t history[sizeof(__m128i) * 256];
 
@@ -379,7 +379,7 @@ uint32_t rle_mmtf128_decode_unaligned(IN const uint8_t *pIn, const uint32_t inSi
 #ifndef _MSC_VER
 __attribute__((target("avx2")))
 #endif
-uint32_t rle_mmtf256_encode_aligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
+uint32_t mmtf256_encode_aligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
 {
   ALIGN(32) uint8_t history[sizeof(__m256i) * 256];
 
@@ -450,7 +450,7 @@ uint32_t rle_mmtf256_encode_aligned(IN const uint8_t *pIn, const uint32_t inSize
 #ifndef _MSC_VER
 __attribute__((target("avx2")))
 #endif
-uint32_t rle_mmtf256_encode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
+uint32_t mmtf256_encode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
 {
   ALIGN(32) uint8_t history[sizeof(__m256i) * 256];
 
@@ -518,7 +518,7 @@ uint32_t rle_mmtf256_encode_unaligned(IN const uint8_t *pIn, const uint32_t inSi
   return inSize;
 }
 
-uint32_t rle_mmtf256_encode_unaligned_sse2(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
+uint32_t mmtf256_encode_unaligned_sse2(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
 {
   ALIGN(16) uint8_t history[sizeof(__m128i) * 2 * 256];
 
@@ -610,7 +610,7 @@ uint32_t rle_mmtf256_encode_unaligned_sse2(IN const uint8_t *pIn, const uint32_t
 #ifndef _MSC_VER
 __attribute__((target("avx2")))
 #endif
-uint32_t rle_mmtf256_decode_aligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
+uint32_t mmtf256_decode_aligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
 {
   ALIGN(32) uint8_t history[sizeof(__m256i) * 256];
 
@@ -675,7 +675,7 @@ uint32_t rle_mmtf256_decode_aligned(IN const uint8_t *pIn, const uint32_t inSize
 #ifndef _MSC_VER
 __attribute__((target("avx2")))
 #endif
-uint32_t rle_mmtf256_decode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
+uint32_t mmtf256_decode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
 {
   ALIGN(32) uint8_t history[sizeof(__m256i) * 256];
 
@@ -737,7 +737,7 @@ uint32_t rle_mmtf256_decode_unaligned(IN const uint8_t *pIn, const uint32_t inSi
   return inSize;
 }
 
-uint32_t rle_mmtf256_decode_unaligned_sse2(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
+uint32_t mmtf256_decode_unaligned_sse2(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut)
 {
   ALIGN(16) uint8_t history[sizeof(__m128i) * 2 * 256];
 

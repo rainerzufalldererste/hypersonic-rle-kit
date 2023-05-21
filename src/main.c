@@ -771,7 +771,7 @@ int main(int argc, char **pArgv)
 
   compressedBufferSize = rle_compress_bounds((uint32_t)fileSize);
 
-  compressedBufferSize = max(compressedBufferSize, rle_mmtf_bounds((uint32_t)fileSize));
+  compressedBufferSize = max(compressedBufferSize, mmtf_bounds((uint32_t)fileSize));
   compressedBufferSize = max(compressedBufferSize, rle8_sh_bounds((uint32_t)fileSize));
   compressedBufferSize = max(compressedBufferSize, rle8_mmtf128_compress_bounds((uint32_t)fileSize));
   compressedBufferSize = max(compressedBufferSize, rle8_mmtf256_compress_bounds((uint32_t)fileSize));
@@ -1226,11 +1226,11 @@ int main(int argc, char **pArgv)
           break;
 
         case MultiMTF128:
-          compressedSize = rle_mmtf128_encode(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          compressedSize = mmtf128_encode(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case MultiMTF256:
-          compressedSize = rle_mmtf256_encode(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          compressedSize = mmtf256_encode(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Rle8SH:
@@ -1694,11 +1694,11 @@ int main(int argc, char **pArgv)
           break;
 
         case MultiMTF128:
-          decompressedSize = rle_mmtf128_decode(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          decompressedSize = mmtf128_decode(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case MultiMTF256:
-          decompressedSize = rle_mmtf256_decode(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          decompressedSize = mmtf256_decode(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Rle8SH:
@@ -1994,11 +1994,11 @@ int main(int argc, char **pArgv)
           switch (_Args.bitCount)
           {
           case 128:
-            compressedSize = rle_mmtf128_encode(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+            compressedSize = mmtf128_encode(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
             break;
 
           case 256:
-            compressedSize = rle_mmtf256_encode(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+            compressedSize = mmtf256_encode(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
             break;
           }
         }
@@ -2237,11 +2237,11 @@ int main(int argc, char **pArgv)
           switch (_Args.bitCount)
           {
           case 128:
-            decompressedSize = rle_mmtf128_decode(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+            decompressedSize = mmtf128_decode(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
             break;
 
           case 256:
-            decompressedSize = rle_mmtf256_decode(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+            decompressedSize = mmtf256_decode(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
             break;
           }
         }
