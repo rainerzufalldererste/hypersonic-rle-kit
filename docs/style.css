@@ -86,3 +86,37 @@ h2 {
   display: block;
   margin: 50pt auto;
 }
+
+.graph_container h3 {
+    display: inline;
+}
+
+.graph_metricX, .graph_metricY {
+    background: #2d2d2d;
+    padding: 2pt 5pt;
+    border: solid 2pt #777;
+    border-radius: 5pt;
+    display: inline-block;
+    float: right;
+    margin: 2pt;
+    color: #959595;
+    cursor: pointer;
+    user-select: none;
+}
+
+.graph_metricX.l, .graph_metricY.l {
+    margin-right: -1pt;
+    border-bottom-right-radius: 0;
+    border-top-right-radius: 0;
+}
+
+.graph_metricX.r, .graph_metricY.r {
+    margin-left: -1pt;
+    border-bottom-left-radius: 0;
+    border-top-left-radius: 0;
+}
+
+.graph_metricX.active, .graph_metricY.active {
+    background: linear-gradient(0, #39513d, #5e8a65);
+    color: #fff;
+}

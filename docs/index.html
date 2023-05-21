@@ -133,11 +133,11 @@ window.addEventListener("scroll", reveal);
           }
 
           function transformX(obj, x, rangeX, offsetX) {
-            return offsetX + (x - obj.minDecode) / rangeX;
+            return offsetX + (x - obj.minX) / rangeX;
           }
 
           function transformY(obj, y, rangeY, offsetY) {
-            return offsetY + (y - obj.minRatio) / rangeY;
+            return offsetY + (y - obj.minY) / rangeY;
           }
 
           function draw_point(ctx, obj, p, rangeX, rangeY, offsetX, offsetY) {
@@ -148,9 +148,12 @@ window.addEventListener("scroll", reveal);
             let points = l.points;
 
             ctx.beginPath();
-            ctx.moveTo(transformX(obj, points[0][obj.xStat], rangeX, offsetX), transformY(obj, points[0][obj.yStat], rangeY, offsetY));
+
+            if (obj.yStat != 'entropy' || points[0].entropy != null)
+              ctx.moveTo(transformX(obj, points[0][obj.xStat], rangeX, offsetX), transformY(obj, points[0][obj.yStat], rangeY, offsetY));
             
             for (let i = 1; i < points.length; i++)
+              if (obj.yStat != 'entropy' || points[i].entropy != null)
                 ctx.lineTo(transformX(obj, points[i][obj.xStat], rangeX, offsetX), transformY(obj, points[i][obj.yStat], rangeY, offsetY));
 
             ctx.strokeStyle = l.color;
@@ -210,7 +213,7 @@ window.addEventListener("scroll", reveal);
                 }
             } while (found);
 
-            obj.lines[obj.lines.length] = { points: points, color: "#AAFF2244", pareto: true };
+            obj.lines[obj.lines.length] = { points: points, color: "#AAFF2244", pareto: true, pareto_dvr: true };
           }
 
           function calc_pareto_line2(obj) {
@@ -245,7 +248,7 @@ window.addEventListener("scroll", reveal);
                 }
             } while (found);
 
-            obj.lines[obj.lines.length] = { points: points, color: "#DDEE2208", pareto: true };
+            obj.lines[obj.lines.length] = { points: points, color: "#DDEE2208", pareto: true, pareto_evr: true };
           }
 
           function calc_pareto_line3(obj) {
@@ -280,7 +283,7 @@ window.addEventListener("scroll", reveal);
                 }
             } while (found);
 
-            obj.lines[obj.lines.length] = { points: points, color: "#44AAFF08", pareto: true };
+            obj.lines[obj.lines.length] = { points: points, color: "#44AAFF08", pareto: true, pareto_dve: true };
           }
 
           function calc_pareto_line4(obj) {
@@ -315,7 +318,7 @@ window.addEventListener("scroll", reveal);
                 }
             } while (found);
 
-            obj.lines[obj.lines.length] = { points: points, color: "#44FFAA08", pareto: true };
+            obj.lines[obj.lines.length] = { points: points, color: "#44FFAA08", pareto: true, pareto_eve: true };
           }
 
           function draw_obj(ctx, obj) {
@@ -331,35 +334,49 @@ window.addEventListener("scroll", reveal);
             let topX = 50;
             let topY = 10;
 
-            obj.minRatio = Math.floor(obj.minRatio / 10) * 10;
+            if (obj.xStat == "decode") {
+              obj.minX = obj.minDecode;
+              obj.maxX = obj.maxDecode;
+            } else {
+              obj.minX = obj.minEncode;
+              obj.maxX = obj.maxEncode;
+            }
+
+            if (obj.yStat == "ratio") {
+              obj.minY = Math.floor(obj.minRatio / 10) * 10;
+              obj.maxY = obj.maxRatio;
+            } else {
+              obj.minY = Math.floor(obj.minEntropy / 2) * 2;
+              obj.maxY = obj.maxEntropy;
+            }
             
-            let nativeYRange = obj.maxRatio - obj.minRatio;
+            let nativeYRange = obj.maxY - obj.minY;
             let stepY = Math.max(1, Math.floor(nativeYRange / 6));
             
-            let nativeXRange = obj.maxDecode - obj.minDecode;
+            let nativeXRange = obj.maxX - obj.minX;
             let stepX = (Math.max(1, Math.floor(nativeXRange / 9 / 500)) * 500);
 
-            let rangeX = (obj.maxDecode - obj.minDecode) / (obj.width - borderX);
-            let rangeY = (obj.maxRatio - obj.minRatio) / (obj.height - borderY);
+            let rangeX = (obj.maxX - obj.minX) / (obj.width - borderX);
+            let rangeY = (obj.maxY - obj.minY) / (obj.height - borderY);
             
             // X Axis.
-            for (let x = obj.minDecode; x <= obj.maxDecode; x += stepX) {
-              draw_line_xy(ctx, obj, { points: [{ y: obj.minRatio, x: x }, { y: obj.maxRatio, x: x }], color: x == obj.minDecode ? "#555" : "#333" }, rangeX, rangeY, topX, topY, x == obj.minDecode ? 4 : 2);
+            for (let x = obj.minX; x <= obj.maxX; x += stepX) {
+              draw_line_xy(ctx, obj, { points: [{ y: obj.minY, x: x }, { y: obj.maxY, x: x }], color: x == obj.minX ? "#555" : "#333" }, rangeX, rangeY, topX, topY, x == obj.minX ? 4 : 2);
             }
 
             // Y Axis.
-            for (let y = obj.minRatio; y <= obj.maxRatio; y += stepY) {
-              draw_line_xy(ctx, obj, { points: [{ x: obj.minDecode, y: y }, { x: obj.maxDecode, y: y }], color: y == obj.minRatio ? "#555" : "#333" }, rangeX, rangeY, topX, topY, y == obj.minRatio ? 4 : 2);
+            for (let y = obj.minY; y <= obj.maxY; y += stepY) {
+              draw_line_xy(ctx, obj, { points: [{ x: obj.minX, y: y }, { x: obj.maxX, y: y }], color: y == obj.minY ? "#555" : "#333" }, rangeX, rangeY, topX, topY, y == obj.minY ? 4 : 2);
             }
             
             // X Axis.
-            for (let x = obj.minDecode; x <= obj.maxDecode; x += stepX) {
-                if (x > obj.minDecode) draw_label(ctx, obj, x, obj.minRatio, x + " MiB/s", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
+            for (let x = obj.minX; x <= obj.maxX; x += stepX) {
+                if (x > obj.minX) draw_label(ctx, obj, x, obj.minY, x + " MiB/s", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
             }
 
             // Y Axis.
-            for (let y = obj.minRatio; y <= obj.maxRatio; y += stepY) {
-                if (y > obj.minRatio) draw_label(ctx, obj, obj.minDecode, y, y + "%", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
+            for (let y = obj.minY; y <= obj.maxY; y += stepY) {
+                if (y > obj.minY) draw_label(ctx, obj, obj.minX, y, y + "%", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
             }
             
             for (i in obj.lines)
@@ -380,6 +397,7 @@ window.addEventListener("scroll", reveal);
                     draw_line(ctx, obj, obj.lines[i], rangeX, rangeY, topX, topY, 4);
 
             for (i in obj.points)
+              if (obj.yStat != 'entropy' || obj.points[i].entropy != null)
                 draw_point(ctx, obj, obj.points[i], rangeX, rangeY, topX, topY);
           }
 
@@ -408,8 +426,8 @@ window.addEventListener("scroll", reveal);
                 var topX = 50;
                 var topY = -15;
 
-                var rangeX = (obj.maxDecode - obj.minDecode) / (obj.width - borderX);
-                var rangeY = (obj.maxRatio - obj.minRatio) / (obj.height - borderY);
+                var rangeX = (obj.maxX - obj.minX) / (obj.width - borderX);
+                var rangeY = (obj.maxY - obj.minY) / (obj.height - borderY);
 
                 function dist(x, y) {
                     let dx = transformX(obj, x, rangeX, topX) - internalX;
@@ -459,11 +477,51 @@ window.addEventListener("scroll", reveal);
                 }
             }
           }
+
+          function setXMetric(metric) {
+            var charts = document.getElementsByClassName("chart");
+
+            for (let i = 0; i < charts.length; i++) {
+              charts[i].xStat = metric;
+              draw_obj(charts[i].getContext("2d"), charts[i]);
+            }
+
+            var active_buttons = document.getElementsByClassName(metric == "decode" ? "graph_metricX l" : "graph_metricX r");
+            var inactive_buttons = document.getElementsByClassName(metric == "decode" ? "graph_metricX r" : "graph_metricX l");
+
+            for (let i = 0; i < active_buttons.length; i++)
+              active_buttons[i].className  = active_buttons[i].className.replace(" active", "") + " active";
+
+            for (let i = 0; i < inactive_buttons.length; i++)
+              inactive_buttons[i].className = inactive_buttons[i].className.replace(" active", "");
+          }
+
+          function setYMetric(metric) {
+            var charts = document.getElementsByClassName("chart");
+
+            for (let i = 0; i < charts.length; i++) {
+              charts[i].yStat = metric;
+              draw_obj(charts[i].getContext("2d"), charts[i]);
+            }
+
+            var active_buttons = document.getElementsByClassName(metric == "ratio" ? "graph_metricY l" : "graph_metricY r");
+            var inactive_buttons = document.getElementsByClassName(metric == "ratio" ? "graph_metricY r" : "graph_metricY l");
+
+            for (let i = 0; i < active_buttons.length; i++)
+              active_buttons[i].className = active_buttons[i].className.replace(" active", "") + " active";
+
+            for (let i = 0; i < inactive_buttons.length; i++)
+              inactive_buttons[i].className = inactive_buttons[i].className.replace(" active", "");
+          }
       </script>
       <hr/>
       <h2>benchmarks</h2>
       <div class="graph_container">
         <h3>video_frame.raw (heavily quantized video frame dcts)</h3>
+        <a class="graph_metricY r" onclick="javascript:setYMetric('entropy')">entropy</a>
+        <a class="graph_metricY l active" onclick="javascript:setYMetric('ratio')">ratio</a>
+        <a class="graph_metricX r" onclick="javascript:setXMetric('encode')">encode</a>
+        <a class="graph_metricX l active" onclick="javascript:setXMetric('decode')">decode</a>
         <canvas id="video_frame" class="chart"></canvas>
         <script>
             var obj = document.getElementById("video_frame");
@@ -638,6 +696,10 @@ window.addEventListener("scroll", reveal);
       </div>
       <div class="graph_container">
         <h3>1034.db (checkers program &quot;end game table base&quot;)</h3>
+        <a class="graph_metricY r" onclick="javascript:setYMetric('entropy')">entropy</a>
+        <a class="graph_metricY l active" onclick="javascript:setYMetric('ratio')">ratio</a>
+        <a class="graph_metricX r" onclick="javascript:setXMetric('encode')">encode</a>
+        <a class="graph_metricX l active" onclick="javascript:setXMetric('decode')">decode</a>
         <canvas id="1034" class="chart"></canvas>
         <script>
             var obj = document.getElementById("1034");
@@ -809,6 +871,10 @@ window.addEventListener("scroll", reveal);
       </div>
       <div class="graph_container">
         <h3>enwiki.btw (wikipedia extract encoded using libdivsufsort)</h3>
+        <a class="graph_metricY r" onclick="javascript:setYMetric('entropy')">entropy</a>
+        <a class="graph_metricY l active" onclick="javascript:setYMetric('ratio')">ratio</a>
+        <a class="graph_metricX r" onclick="javascript:setXMetric('encode')">encode</a>
+        <a class="graph_metricX l active" onclick="javascript:setXMetric('decode')">decode</a>
         <p>Single Symbol codecs have been removed since the dataset isn't suitable.</p>
         <canvas id="enwiki" class="chart"></canvas>
         <script>
@@ -982,6 +1048,10 @@ window.addEventListener("scroll", reveal);
       </div>
       <div class="graph_container">
         <h3>tj5oyhhuehv11.bmp (high-resolution pixelart bitmap image)</h3>
+        <a class="graph_metricY r" onclick="javascript:setYMetric('entropy')">entropy</a>
+        <a class="graph_metricY l active" onclick="javascript:setYMetric('ratio')">ratio</a>
+        <a class="graph_metricX r" onclick="javascript:setXMetric('encode')">encode</a>
+        <a class="graph_metricX l active" onclick="javascript:setXMetric('decode')">decode</a>
         <p>Non 24/48 Bit codecs have been removed since the compression ratio is negligible or uncompetitive everywhere else.<br/>Decompression Speed doesn't start at zero, because otherwise the graph wouldn't be particularly useful.</p>
         <canvas id="pixelart" class="chart"></canvas>
         <script>
