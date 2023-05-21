@@ -407,6 +407,16 @@ uint32_t mmtf256_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_
 
 //////////////////////////////////////////////////////////////////////////
 
+uint32_t bitmmtf_bounds(const uint32_t inSize);
+
+uint32_t bitmmtf8_encode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t bitmmtf8_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+uint32_t bitmmtf16_encode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+uint32_t bitmmtf16_decode(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize);
+
+//////////////////////////////////////////////////////////////////////////
+
 uint32_t rle8_mmtf128_compress_bounds(const uint32_t inSize);
 uint32_t rle8_mmtf256_compress_bounds(const uint32_t inSize);
 

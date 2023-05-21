@@ -81,6 +81,7 @@ h2 {
 
 .header img {
   width: 533pt;
+  max-width: 80%;
   display: block;
   margin: 50pt auto;
 }

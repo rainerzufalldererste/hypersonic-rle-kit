@@ -157,6 +157,8 @@ typedef enum
 
   MultiMTF128,
   MultiMTF256,
+  BitMultiMTF8,
+  BitMultiMTF16,
 
   MemCopy,
 
@@ -268,6 +270,8 @@ static const char *codecNames[] =
   "Low Entropy Short Single      ",
   "Multi MTF 128 Bit (Transform) ",
   "Multi MTF 256 Bit (Transform) ",
+  "Bit MMTF 8 Bit (Transform)    ",
+  "Bit MMTF 16 Bit (Transform)   ",
   "memcpy                        ",
 };
 
@@ -735,9 +739,9 @@ int main(int argc, char **pArgv)
       return 1;
     }
 
-    if ((_Args.hasMode && (_Args.isModeMMTF || _Args.isModeRleMMTF)) && (_Args.hasBitCount && _Args.bitCount != 256 && _Args.bitCount != 128))
+    if ((_Args.hasMode && (_Args.isModeMMTF || _Args.isModeRleMMTF)) && (_Args.hasBitCount && _Args.bitCount != 8 && _Args.bitCount != 16 && _Args.bitCount != 256 && _Args.bitCount != 128))
     {
-      puts("MMTF Modes only supports mtf width of 128 or 256.");
+      puts("MMTF Modes only supports mtf width of 8, 16, 128 or 256.");
       return 1;
     }
 
@@ -1233,6 +1237,14 @@ int main(int argc, char **pArgv)
           compressedSize = mmtf256_encode(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case BitMultiMTF8:
+          compressedSize = bitmmtf8_encode(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case BitMultiMTF16:
+          compressedSize = bitmmtf16_encode(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Rle8SH:
           compressedSize = rle8_sh_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
@@ -1699,6 +1711,14 @@ int main(int argc, char **pArgv)
 
         case MultiMTF256:
           decompressedSize = mmtf256_decode(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case BitMultiMTF8:
+          decompressedSize = bitmmtf8_decode(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case BitMultiMTF16:
+          decompressedSize = bitmmtf16_decode(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Rle8SH:
@@ -2955,7 +2975,7 @@ bool CodecMatchesArgs(const codec_t codec)
     if (_Args.isModeLowEntropy && (codec < LowEntropy || codec > LowEntropyShortSingle))
       return false;
 
-    if (_Args.isModeMMTF && codec != MultiMTF128 && codec != MultiMTF256)
+    if (_Args.isModeMMTF && codec != MultiMTF128 && codec != MultiMTF256 && codec != BitMultiMTF8 && codec != BitMultiMTF16)
       return false;
 
     if (_Args.isModeSH && codec != Rle8SH)
@@ -3292,6 +3312,7 @@ bool CodecMatchesArgs(const codec_t codec)
     case LowEntropySingle:
     case LowEntropyShort:
     case LowEntropyShortSingle:
+    case BitMultiMTF8:
       if (_Args.bitCount != 8)
         return false;
       break;
@@ -3312,6 +3333,7 @@ bool CodecMatchesArgs(const codec_t codec)
     case Extreme16Byte_3SLShort:
     case Extreme16Byte_7SL:
     case Extreme16Byte_7SLShort:
+    case BitMultiMTF16:
       if (_Args.bitCount != 16)
         return false;
       break;

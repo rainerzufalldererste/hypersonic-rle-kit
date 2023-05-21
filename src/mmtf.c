@@ -2,9 +2,9 @@
 #include "rleX_extreme_common.h"
 
 #ifdef _MSC_VER
-#include <intrin.h>
+  #include <intrin.h>
 #else
-#include <x86intrin.h>
+  #include <x86intrin.h>
 #endif
 
 //////////////////////////////////////////////////////////////////////////
