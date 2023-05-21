@@ -55,20 +55,21 @@ div.tooltip_visible {
     opacity: 80%;
 }
 
-#tooltip_pareto {
-    display: inline;
+#tooltip_pareto, #tooltip_pareto2, #tooltip_pareto3, #tooltip_pareto4 {
+    display: inline-block;
     color: #c0ddb2;
     background: #43770e6b;
-    padding: 2pt 5pt;
+    padding: 5pt 5pt;
     border: solid 1pt #6f935e;
     border-radius: 3pt;
     margin: 0;
     margin-left: 4pt;
     font-size: 90%;
+    margin-top: 1pt;
 }
 
-#tooltip_pareto.non_pareto {
-    opacity: 0;
+#tooltip_pareto.non_pareto, #tooltip_pareto2.non_pareto, #tooltip_pareto3.non_pareto, #tooltip_pareto4.non_pareto {
+    display: none;
 }
 
 h1 {
