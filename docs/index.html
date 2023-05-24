@@ -334,18 +334,26 @@ window.addEventListener("scroll", reveal);
             let topX = 50;
             let topY = 10;
 
+            let visible_pareto_line = "";
+
             if (obj.xStat == "decode") {
+              visible_pareto_line = "d";
               obj.minX = obj.minDecode;
               obj.maxX = obj.maxDecode;
             } else {
+              visible_pareto_line = "e";
               obj.minX = obj.minEncode;
               obj.maxX = obj.maxEncode;
             }
 
+            visible_pareto_line += "v";
+
             if (obj.yStat == "ratio") {
+              visible_pareto_line += "r";
               obj.minY = Math.floor(obj.minRatio / 10) * 10;
               obj.maxY = obj.maxRatio;
             } else {
+              visible_pareto_line += "e";
               obj.minY = Math.floor(obj.minEntropy / 2) * 2;
               obj.maxY = obj.maxEntropy;
             }
@@ -379,9 +387,18 @@ window.addEventListener("scroll", reveal);
                 if (y > obj.minY) draw_label(ctx, obj, obj.minX, y, y + "%", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
             }
             
-            for (i in obj.lines)
+            for (i in obj.lines) {
+              if (obj.lines[i].pareto == true) {
+                if (obj.lines[i]["pareto_" + visible_pareto_line] != null) {
+                  obj.lines[i].color = obj.lines[i].color.substring(0, 7) + "44";
+                } else {
+                  obj.lines[i].color = obj.lines[i].color.substring(0, 7) + "08";
+                }
+              }
+
               if (obj.lines[i].pareto == true || obj.lines[i].foreign == true)
                 draw_line(ctx, obj, obj.lines[i], rangeX, rangeY, topX, topY, 4);
+            }
 
             function contains(arr, i) {
               for (l in arr)
@@ -543,18 +560,18 @@ window.addEventListener("scroll", reveal);
             add_point(obj, 14143.6,  17.05,  1393.2,  9.8131039, "8 Bit Single Short");
             add_point(obj, 17669.0,  17.96,  1479.9, 10.3260394, "8 Bit Single Packed");
 
-            add_point(obj, 22374.1,  20.32,  2146.1,  9.5610480, "16 Bit (Symbol)");
+            add_point(obj, 22374.1,  20.32,  5157.0,  9.5610480, "16 Bit (Symbol)");
             add_point(obj, 16970.4,  19.64,  1327.0,  9.7389198, "16 Bit Short (Symbol)");
-            add_point(obj, 20009.2,  18.55,  1844.0,  9.4835334, "16 Bit Packed (Symbol)");
+            add_point(obj, 20009.2,  18.55,  4771.2,  9.4835334, "16 Bit Packed (Symbol)");
             add_point(obj, 13705.5,  18.23,  1212.3,  9.7198969, "16 Bit 1LUT Short (Symbol)");
             add_point(obj, 15025.4,  18.16,   941.9,  9.8172493, "16 Bit 3LUT (Symbol)");
             add_point(obj, 11762.9,  17.98,   909.1,  9.8745047, "16 Bit 3LUT Short (Symbol)");
             add_point(obj, 14159.3,  17.98,   762.8,  9.9684932, "16 Bit 7LUT (Symbol)");
             add_point(obj,  9822.9,  18.05,   730.9, 10.1467590, "16 Bit 7LUT Short (Symbol)");
 
-            add_point(obj, 22416.9,  20.10,  2036.8,  9.6134637, "16 Bit (Byte)");
+            add_point(obj, 22416.9,  20.10,  5338.8,  9.6134637, "16 Bit (Byte)");
             add_point(obj, 15811.8,  19.40,  1352.7,  9.8373196, "16 Bit Short (Byte)");
-            add_point(obj, 19366.7,  18.47,  1915.9,  9.6257626, "16 Bit Packed (Byte)");
+            add_point(obj, 19366.7,  18.47,  4988.3,  9.6257626, "16 Bit Packed (Byte)");
             add_point(obj, 12951.5,  18.06,  1263.7,  9.8978211, "16 Bit 1LUT Short (Byte)");
             add_point(obj, 15577.4,  17.74,   984.7,  9.8162062, "16 Bit 3LUT (Byte)");
             add_point(obj, 11857.4,  17.80,   914.3, 10.0307866, "16 Bit 3LUT Short (Byte)");
@@ -579,18 +596,18 @@ window.addEventListener("scroll", reveal);
             add_point(obj, 17679.4,  18.44,   911.7,  9.5865171, "24 Bit 7LUT (Byte)");
             add_point(obj, 17476.9,  19.00,   853.6,  9.9790042, "24 Bit 7LUT Short (Byte)");
 
-            add_point(obj, 22918.0,  22.01,  2859.5,  9.6710847, "32 Bit (Symbol)");
+            add_point(obj, 22918.0,  22.01,  8561.3,  9.6710847, "32 Bit (Symbol)");
             add_point(obj, 20274.7,  21.83,  1431.8,  9.7044759, "32 Bit Short (Symbol)");
-            add_point(obj, 22783.7,  20.21,  2490.0,  9.3200560, "32 Bit Packed (Symbol)");
+            add_point(obj, 22783.7,  20.21,  8330.3,  9.3200560, "32 Bit Packed (Symbol)");
             add_point(obj, 19574.3,  20.11,  1352.8,  9.4953367, "32 Bit 1LUT Short (Symbol)");
             add_point(obj, 23101.2,  19.87,  1176.8,  9.3414036, "32 Bit 3LUT (Symbol)");
             add_point(obj, 19362.3,  20.01,  1075.7,  9.5752667, "32 Bit 3LUT Short (Symbol)");
             add_point(obj, 22139.9,  19.84,   943.9,  9.4083632, "32 Bit 7LUT (Symbol)");
             add_point(obj, 19252.3,  20.13,   874.6,  9.7046069, "32 Bit 7LUT Short (Symbol)");
 
-            add_point(obj, 23873.2,  21.39,  2802.9,  9.6960716, "32 Bit (Byte)");
+            add_point(obj, 23873.2,  21.39,  8966.7,  9.6960716, "32 Bit (Byte)");
             add_point(obj, 19997.9,  21.31,  1566.7,  9.8354008, "32 Bit Short (Byte)");
-            add_point(obj, 23569.8,  19.82,  2564.4,  9.4626511, "32 Bit Packed (Byte)");
+            add_point(obj, 23569.8,  19.82,  8858.8,  9.4626511, "32 Bit Packed (Byte)");
             add_point(obj, 21489.2,  19.80,  1456.7,  9.7006083, "32 Bit 1LUT Short (Byte)");
             add_point(obj, 23580.3,  19.25,  1289.7,  9.3380330, "32 Bit 3LUT (Byte)");
             add_point(obj, 21495.7,  19.59,  1150.8,  9.7291691, "32 Bit 3LUT Short (Byte)");
@@ -615,18 +632,18 @@ window.addEventListener("scroll", reveal);
             add_point(obj, 25080.3,  20.42,  1067.5,  9.3350657, "48 Bit 7LUT (Byte)");
             add_point(obj, 24312.1,  20.61,   825.2,  9.5069209, "48 Bit 7LUT Short (Byte)");
 
-            add_point(obj, 25516.4,  24.53,  3397.1,  9.6058076, "64 Bit (Symbol)");
+            add_point(obj, 25516.4,  24.53, 12535.7,  9.6058076, "64 Bit (Symbol)");
             add_point(obj, 24813.3,  24.47,  1482.1,  9.6398073, "64 Bit Short (Symbol)");
-            add_point(obj, 26375.4,  22.34,  2965.1,  9.2277167, "64 Bit Packed (Symbol)");
+            add_point(obj, 26375.4,  22.34, 12256.5,  9.2277167, "64 Bit Packed (Symbol)");
             add_point(obj, 25039.3,  22.30,  1355.2,  9.3566827, "64 Bit 1LUT Short (Symbol)");
             add_point(obj, 26928.5,  22.13,  1223.4,  9.2438435, "64 Bit 3LUT (Symbol)");
             add_point(obj, 25477.9,  22.26,  1087.7,  9.4154766, "64 Bit 3LUT Short (Symbol)");
             add_point(obj, 27262.6,  22.16,  1006.5,  9.2940682, "64 Bit 7LUT (Symbol)");
             add_point(obj, 25897.8,  22.32,   906.0,  9.4847261, "64 Bit 7LUT Short (Symbol)");
 
-            add_point(obj, 25360.7,  23.66,  3497.4,  9.6345288, "64 Bit (Byte)");
+            add_point(obj, 25360.7,  23.66, 13064.0,  9.6345288, "64 Bit (Byte)");
             add_point(obj, 25870.8,  23.70,  1592.0,  9.7355325, "64 Bit Short (Byte)");
-            add_point(obj, 26063.4,  21.63,  2822.7,  9.4042460, "64 Bit Packed (Byte)");
+            add_point(obj, 26063.4,  21.63, 12954.1,  9.4042460, "64 Bit Packed (Byte)");
             add_point(obj, 26474.7,  21.54,  1505.6,  9.3940281, "64 Bit 1LUT Short (Byte)");
             add_point(obj, 27864.0,  21.30,  1341.1,  9.2487112, "64 Bit 3LUT (Byte)");
             add_point(obj, 26319.5,  21.44,  1131.6,  9.4236552, "64 Bit 3LUT Short (Byte)");

@@ -3208,6 +3208,7 @@ bool CodecMatchesArgs(const codec_t codec)
     switch (codec)
     {
     case Extreme8Packed:
+    case Extreme8PackedSingle:
     case Extreme8_1SLShort:
     case Extreme16SymPacked:
     case Extreme16Sym_1SLShort:
