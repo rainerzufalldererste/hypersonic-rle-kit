@@ -6,6 +6,11 @@
   #define ENCODE_FUNC_NAME _compress_base
 #endif
 
+#ifndef _MSC_VER
+  #if defined(COMPRESS_IMPL_AVX2)
+__attribute__((target("avx2")))
+  #endif
+#endif
 uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, ENCODE_FUNC_NAME))(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
   if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle_compress_bounds(inSize))
