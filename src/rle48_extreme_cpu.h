@@ -50,12 +50,95 @@ uint32_t CONCAT3(rle48_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_t
   int64_t count = 0;
   symbol_t symbol = (~(*((symbol_t *)(pIn)))) & symbolMask;
 
+#if defined(COMPRESS_IMPL_SSE2)
+  __m128i symbolSimd = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(symbol);
+  const size_t inSizeSimd = inSize - sizeof(__m128i) - (TYPE_SIZE / 8);
+#elif defined(COMPRESS_IMPL_AVX2)
+  __m256i symbolSimd = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(symbol);
+  const size_t inSizeSimd = inSize - sizeof(__m256i) - (TYPE_SIZE / 8);
+#endif
+
+#if defined(IMPL_SSE2)
+  const __m128i pattern00 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1);
+  const __m128i pattern02 = _mm_set_epi8(0, 0, 0, 0, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0);
+  const __m128i pattern04 = _mm_set_epi8(-1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+#elif defined(IMPL_SSSE3)
+  const __m128i shuffle0 = _mm_set_epi8(3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0);
+#elif defined(IMPL_AVX2)
+  const __m256i shuffle0 = _mm256_set_epi8(1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0, 5, 4, 3, 2, 1, 0);
+#endif
+
 #ifdef PACKED
   symbol_t lastSymbol = 0;
 #endif
 
   while (i < inSize)
   {
+#if defined(COMPRESS_IMPL_SSE2) || defined(COMPRESS_IMPL_AVX2)
+    continue_outer_loop:;
+
+#if defined(COMPRESS_IMPL_SSE2)
+    symbolSimd = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(symbol);
+#elif defined(COMPRESS_IMPL_AVX2)
+    symbolSimd = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(symbol);
+#endif
+
+#if defined(IMPL_SSE2)
+    const __m128i shift2 = _mm_or_si128(_mm_srli_si128(symbolSimd, 2), _mm_slli_si128(symbolSimd, 14));
+    const __m128i symbol0 = _mm_or_si128(_mm_and_si128(symbolSimd, pattern00), _mm_and_si128(shift2, pattern02));
+    const __m128i shift4 = _mm_or_si128(_mm_srli_si128(symbolSimd, 4), _mm_slli_si128(symbolSimd, 12));
+
+    symbolSimd = _mm_or_si128(symbol0, _mm_and_si128(shift4, pattern04));
+#elif defined(IMPL_SSSE3)
+    symbolSimd = _mm_shuffle_epi8(symbolSimd, shuffle0);
+#elif defined(IMPL_AVX2)
+    symbolSimd = _mm256_shuffle_epi8(symbolSimd, shuffle0);
+#endif
+
+    while (i < inSizeSimd)
+    {
+#if defined(COMPRESS_IMPL_SSE2)
+      const __m128i current = _mm_loadu_si128((const __m128i *)(pIn + i));
+      const __m128i matchMask = _mm_cmpeq_epi8(current, symbolSimd);
+      uint32_t bitMask = _mm_movemask_epi8(matchMask);
+#elif defined(COMPRESS_IMPL_AVX2)
+      const __m256i current = _mm256_loadu_si256((const __m256i *)(pIn + i));
+      const __m256i matchMask = _mm256_cmpeq_epi8(current, symbolSimd);
+      uint32_t bitMask = _mm256_movemask_epi8(matchMask);
+#endif
+
+      if (bitMask & 1)
+      {
+        if (bitMask != ((uint32_t)(1) << sizeof(current)) - 1)
+        {
+#ifdef _MSC_VER
+          unsigned long bit;
+          _BitScanForward64(&bit, ~bitMask);
+#else
+          const uint64_t bit = __builtin_ctzl(~bitMask);
+#endif
+#ifndef UNBOUND
+          bit -= (bit % (TYPE_SIZE / 8));
+#endif
+
+          i += bit;
+          count += bit;
+
+          goto continue_second_step;
+        }
+        else
+        {
+          i += (sizeof(current) - (sizeof(current) % (TYPE_SIZE / 8)));
+          count += (sizeof(current) - (sizeof(current) % (TYPE_SIZE / 8)));
+        }
+      }
+      else
+      {
+        goto continue_second_step;
+      }
+    }
+#endif
+
     if (count)
     {
       if (i + symbolSize <= inSize)
@@ -86,6 +169,10 @@ uint32_t CONCAT3(rle48_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_t
 #endif
       }
     }
+
+#if defined(COMPRESS_IMPL_SSE2) || defined(COMPRESS_IMPL_AVX2)
+    continue_second_step:;
+#endif
 
     {
       {
@@ -228,6 +315,55 @@ uint32_t CONCAT3(rle48_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_t
           lastRLE = i;
         }
       }
+
+#if defined(COMPRESS_IMPL_SSE2) || defined(COMPRESS_IMPL_AVX2)
+      while (i < inSizeSimd)
+      {
+#if defined(COMPRESS_IMPL_SSE2)
+        const __m128i current = _mm_loadu_si128((const __m128i *)(pIn + i));
+        const __m128i other = _mm_loadu_si128((const __m128i *)(pIn + i + (TYPE_SIZE / 8)));
+        //const __m128i other = _mm_bsrli_si128(current, TYPE_SIZE / 8);
+        const __m128i matchMask = _mm_cmpeq_epi8(current, other);
+        uint32_t bitMask = _mm_movemask_epi8(matchMask);
+#elif defined(COMPRESS_IMPL_AVX2)
+        const __m256i current = _mm256_loadu_si256((const __m256i *)(pIn + i));
+        const __m256i other = _mm256_loadu_si256((const __m256i *)(pIn + i + (TYPE_SIZE / 8)));
+        const __m256i matchMask = _mm256_cmpeq_epi8(current, other);
+        uint32_t bitMask = _mm256_movemask_epi8(matchMask);
+#endif
+
+        //bitMask &= (((uint32_t)1 << (sizeof(current) - (TYPE_SIZE / 8))) - 1);
+
+        // Check if all symbols match:
+#if TYPE_SIZE == 48
+        bitMask &= (bitMask >> 3);
+        bitMask &= ((bitMask >> 1) & (bitMask >> 2));
+#else
+        #fail NOT IMPLEMENTED
+#endif
+
+          if (bitMask == 0)
+          {
+            i += (sizeof(current) - (TYPE_SIZE / 8));
+            //i += (sizeof(current));
+          }
+          else
+          {
+#ifdef _MSC_VER
+            unsigned long bit;
+            _BitScanForward64(&bit, bitMask);
+#else
+            const uint64_t bit = __builtin_ctzl(bitMask);
+#endif
+            symbol = *(symbol_t *)(&pIn[i + bit]) & symbolMask;
+
+            i += bit + symbolSize * 2;
+            count = symbolSize * 2;
+
+            goto continue_outer_loop;
+          }
+      }
+#endif
 
       symbol = (*(symbol_t *)(&pIn[i])) & symbolMask;
 

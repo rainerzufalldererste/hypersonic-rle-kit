@@ -351,6 +351,7 @@ uint32_t CONCAT3(rle24_, CODEC, FUNC_NAME)(IN const uint8_t *pIn, const uint32_t
           }
       }
 #endif
+
       symbol = (*(symbol_t *)(&pIn[i])) & symbolMask;
 
       if (i + symbolSize <= inSize && ((*(symbol_t *)((&pIn[i]) + symbolSize)) & symbolMask) == symbol)
