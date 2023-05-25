@@ -3,8 +3,6 @@
 
 #define TYPE_SIZE 24
 #define SIMD_TYPE_SIZE 32
-#define COMPRESS_IMPL_SSE2
-#define IMPL_SSE2
 
 #include "rle24_extreme_cpu.h"
 
