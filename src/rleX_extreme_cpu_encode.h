@@ -47,9 +47,6 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, ENCODE_FUNC_NAME))(IN const u
   {
 #if defined(COMPRESS_IMPL_SSE2) || defined(COMPRESS_IMPL_AVX2)
     continue_outer_loop:;
-#endif
-
-#if defined(COMPRESS_IMPL_SSE2) || defined(COMPRESS_IMPL_AVX2)
 
 #if defined(COMPRESS_IMPL_SSE2)
     symbolSimd = CONCAT2(_mm_set1_epi, TYPE_SIZE)(symbol);
@@ -368,6 +365,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, ENCODE_FUNC_NAME))(IN const u
           }
       }
 #endif
+
       symbol = *(symbol_t *)(&pIn[i]);
 
       if (i + sizeof(symbol_t) <= inSize && ((symbol_t *)(&pIn[i]))[1] == symbol)

@@ -3230,6 +3230,8 @@ bool CodecMatchesArgs(const codec_t codec)
     case Extreme64Sym_1SLShort:
     case Extreme64BytePacked:
     case Extreme64Byte_1SLShort:
+    case Extreme128SymPacked:
+    case Extreme128BytePacked:
       if (_Args.lutSize != 1)
         return false;
       break;
