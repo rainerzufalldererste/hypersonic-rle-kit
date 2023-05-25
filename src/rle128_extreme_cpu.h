@@ -54,13 +54,14 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 #endif
 
 	const size_t inSizeSimdScan = inSize - sizeof(__m128i) * 2;
+	const size_t inSizeSimd = inSize - sizeof(__m128i);
 
 	while (i < inSize)
 	{
 	continue_outer_loop:;
-		if (count)
+		
 		{
-			if (i + sizeof(symbol_t) <= inSize)
+			while (i < inSizeSimd)
 			{
 				const uint32_t cmpMask = _mm_movemask_epi8(_mm_cmpeq_epi8(symbol, _mm_loadu_si128((const symbol_t *)&pIn[i])));
 
@@ -68,11 +69,10 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 				{
 					count += sizeof(symbol_t);
 					i += sizeof(symbol_t);
-					continue;
 				}
-#ifdef UNBOUND
 				else
 				{
+#ifdef UNBOUND
 #ifdef _MSC_VER
 					unsigned long offset;
 					_BitScanForward(&offset, ~cmpMask);
@@ -82,8 +82,9 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 
 					i += offset;
 					count += offset;
-				}
 #endif
+					break;
+				}
 			}
 		}
 		
