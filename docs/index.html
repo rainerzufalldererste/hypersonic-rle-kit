@@ -457,7 +457,7 @@ window.addEventListener("scroll", reveal);
                 var closest = 99999.9;
 
                 for (let p in obj.points) {
-                    var d = dist(obj.points[p][obj.xStat], obj.points[p].ratio);
+                    var d = dist(obj.points[p][obj.xStat], obj.points[p][obj.yStat]);
 
                     if (d < closest) {
                       closest = d;
