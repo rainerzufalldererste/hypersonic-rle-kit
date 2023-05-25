@@ -53,9 +53,11 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 	symbol_t lastSymbol = _mm_setzero_si128();
 #endif
 
+	const size_t inSizeSimdScan = inSize - sizeof(__m128i) * 2;
+
 	while (i < inSize)
 	{
-
+	continue_outer_loop:;
 		if (count)
 		{
 			if (i + sizeof(symbol_t) <= inSize)
@@ -224,6 +226,41 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 					index += copySize;
 
 					lastRLE = i;
+				}
+			}
+
+			while (i < inSizeSimdScan)
+			{
+				const __m128i current = _mm_loadu_si128((const __m128i *)(pIn + i));
+				const __m128i other = _mm_loadu_si128((const __m128i *)(pIn + i + 16));
+				const __m128i matchMask = _mm_cmpeq_epi8(current, other);
+				const uint32_t bitMask = _mm_movemask_epi8(matchMask);
+
+				if (bitMask == 0xFFFF)
+				{
+					symbol = _mm_loadu_si128((const symbol_t *)&pIn[i]);
+
+					i += symbolSize * 2;
+					count = symbolSize * 2;
+
+					goto continue_outer_loop;
+				}
+				else if ((bitMask & 0x8000) == 0)
+				{
+					i += symbolSize;
+				}
+				else
+				{
+					const uint32_t hiMask = (~bitMask) << 16;
+
+#ifdef _MSC_VER
+		      unsigned long bit;
+		      _BitScanReverse(&bit, hiMask);
+#else
+		      const uint32_t bit = 31 - __builtin_clz(hiMask);
+#endif
+
+					i += (bit - 15);
 				}
 			}
 
