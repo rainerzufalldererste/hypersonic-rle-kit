@@ -591,3 +591,5 @@ uint32_t CONCAT3(rle48_, CODEC, FUNC_NAME)(IN const uint8_t *pIn, const uint32_t
 
   return (uint32_t)index;
 }
+
+#undef FUNC_NAME

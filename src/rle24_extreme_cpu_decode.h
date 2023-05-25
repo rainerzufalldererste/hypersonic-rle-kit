@@ -18,6 +18,7 @@ __attribute__((target("avx2")))
 static void CONCAT3(rle24_, CODEC, FUNC_NAME)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
+
 #if defined(IMPL_SSE2) || defined(IMPL_SSSE3)
   __m128i symbol = _mm_setzero_si128();
 #elif defined(IMPL_AVX2)
