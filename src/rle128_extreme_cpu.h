@@ -602,7 +602,7 @@ static void CONCAT3(rle128_, CODEC, _decompress_avx)(IN const uint8_t *pInStart,
 #ifndef PACKED
 		symbol = _mm256_castps_si256(_mm256_broadcast_ps((const __m128 *)pInStart));
 		pInStart += sizeof(symbol_t);
-		symbolCount = (size_t)* pInStart;
+		symbolCount = (size_t)*pInStart;
 		pInStart++;
 
 		if (symbolCount == 0)
@@ -610,9 +610,6 @@ static void CONCAT3(rle128_, CODEC, _decompress_avx)(IN const uint8_t *pInStart,
 			symbolCount = *(uint32_t *)pInStart;
 			pInStart += sizeof(uint32_t);
 		}
-
-		offset = (size_t)* pInStart;
-		pInStart++;
 #else
 		symbolCount = (size_t)*pInStart;
 		pInStart++;

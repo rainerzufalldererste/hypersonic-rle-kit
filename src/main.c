@@ -54,6 +54,7 @@ const char ArgumentMaxSimdSSE41[] = "sse4.1";
 const char ArgumentMaxSimdSSSE3[] = "ssse3";
 const char ArgumentMaxSimdSSE3[] = "sse3";
 const char ArgumentMaxSimdSSE2[] = "sse2";
+const char ArgumentTest[] = "--test";
 
 #ifdef _WIN32
 const char ArgumentCpuCore[] = "--cpu-core";
@@ -324,6 +325,7 @@ int main(int argc, char **pArgv)
     printf("\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentShort, ArgumentNotShort);
     printf("\t\tif '%s': [%s 0, 1, 3, 7]\n", ArgumentMatch, ArgumentExtremeLutSize);
     printf("\n\t[%s <%s / %s / %s / %s / %s / %s / %s / %s>]\n", ArgumentMaxSimd, ArgumentMaxSimdAVX512F, ArgumentMaxSimdAVX2, ArgumentMaxSimdAVX, ArgumentMaxSimdSSE42, ArgumentMaxSimdSSE41, ArgumentMaxSimdSSSE3, ArgumentMaxSimdSSE3, ArgumentMaxSimdSSE2);
+    printf("\n\t[%s (fail on simgle compression/decompression/validation failure)]\n", ArgumentTest);
     printf("\n\n\tOR: (for debugging purposes only)\n\n");
     printf("\t[%s <Output File Name>]\n\n", ArgumentTo);
     printf("\t[%s]\n\t\tif '%s': [%s (8 | 16 | 24 | 32 | 48 | 64 | 128)] (symbol size)\n\t\tif '%s': [%s] (include unaligned repeats, capacity vs. accuracy tradeoff)\n\t\tif '%s': [%s] (preferable if many rle-symbol-repeats)\n\n", ArgumentExtreme, ArgumentExtreme, ArgumentExtremeSize, ArgumentExtreme, ArgumentExtremeByteGran, ArgumentExtreme, ArgumentExtremePacked);
@@ -352,6 +354,7 @@ int main(int argc, char **pArgv)
   bool matchBenchmarks = false;
   bool analyzeFileContents = false;
   bool noDelays = false;
+  bool isTestRun = false;
 
 #ifdef _WIN32
   size_t cpuCoreIndex = 0;
@@ -370,6 +373,13 @@ int main(int argc, char **pArgv)
         outputFileName = pArgv[argIndex + 1];
         argIndex += 2;
         argsRemaining -= 2;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentTest, sizeof(ArgumentTest)) == 0)
+      {
+        isTestRun = true;
+        noDelays = true;
+        argIndex++;
+        argsRemaining--;
       }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentMatch, sizeof(ArgumentMatch)) == 0)
       {
@@ -1449,6 +1459,18 @@ int main(int argc, char **pArgv)
       if (compressedSize == 0)
       {
         printf("\r%s| <FAILED TO COMRPESS>\n", codecNames[currentCodec]);
+
+
+        if (!avxSupported && currentCodec == MultiMTF256)
+        {
+          printf("\r%s| <AVX NOT SUPPORTED BY PLATFORM>\n", codecNames[currentCodec]);
+
+          continue;
+        }
+
+        if (isTestRun)
+          return -1;
+
         continue;
       }
 
@@ -1920,6 +1942,9 @@ int main(int argc, char **pArgv)
       {
         printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | <FAILED TO DECOMRPESS>\n", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
 
+        if (isTestRun)
+          return -1;
+
         continue;
       }
 
@@ -1927,7 +1952,11 @@ int main(int argc, char **pArgv)
 
       puts("");
 
-      Validate(pUncompressedData, pDecompressedData, fileSize);
+      if (!Validate(pUncompressedData, pDecompressedData, fileSize))
+      {
+        if (isTestRun)
+          return -1;
+      }
     }
   }
   else // !benchmarkAll
@@ -2205,6 +2234,10 @@ int main(int argc, char **pArgv)
     if (0 == compressedSize)
     {
       puts("Failed to compress file.");
+
+      if (isTestRun)
+        return -1;
+
       goto epilogue;
     }
 
@@ -2448,6 +2481,10 @@ int main(int argc, char **pArgv)
     if ((uint32_t)fileSize != decompressedSize)
     {
       puts("Failed to decompress file.");
+
+      if (isTestRun)
+        return -1;
+
       goto epilogue;
     }
     
@@ -2493,6 +2530,10 @@ int main(int argc, char **pArgv)
       if (!Validate(pUncompressedData, pDecompressedData, fileSize))
       {
         puts("Validation Failed.");
+
+        if (isTestRun)
+          return -1;
+
         goto epilogue;
       }
     }
