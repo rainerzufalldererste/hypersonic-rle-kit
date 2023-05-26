@@ -99,7 +99,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 #endif
 				{
 #ifndef PACKED
-					_mm_store_si128((symbol_t *)(&pOut[index]), symbol);
+					_mm_storeu_si128((symbol_t *)(&pOut[index]), symbol);
 					index += symbolSize;
 #endif
 
@@ -141,7 +141,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 
 					if (!isSameSymbolMask)
 					{
-						_mm_store_si128((symbol_t *)(&pOut[index]), symbol);
+						_mm_storeu_si128((symbol_t *)(&pOut[index]), symbol);
 						index += symbolSize;
 					}
 #endif
@@ -164,7 +164,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 				else if (count >= RLE128_EXTREME_MULTI_MIN_RANGE_LONG)
 				{
 #ifndef PACKED
-					_mm_store_si128((symbol_t *)(&pOut[index]), symbol);
+					_mm_storeu_si128((symbol_t *)(&pOut[index]), symbol);
 					index += symbolSize;
 #endif
 					
@@ -206,7 +206,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 
 					if (!isSameSymbolMask)
 					{
-						_mm_store_si128((symbol_t *)(&pOut[index]), symbol);
+						_mm_storeu_si128((symbol_t *)(&pOut[index]), symbol);
 						index += symbolSize;
 					}
 #endif
@@ -290,7 +290,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 #endif
 		{
 #ifndef PACKED
-			_mm_store_si128((symbol_t *)(&pOut[index]), symbol);
+			_mm_storeu_si128((symbol_t *)(&pOut[index]), symbol);
 			index += symbolSize;
 #endif
 
@@ -332,7 +332,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 
 			if (!isSameSymbolMask)
 			{
-				_mm_store_si128((symbol_t *)(&pOut[index]), symbol);
+				_mm_storeu_si128((symbol_t *)(&pOut[index]), symbol);
 				index += symbolSize;
 			}
 #endif
@@ -351,7 +351,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 			index += copySize;
 
 #ifndef PACKED
-			_mm_store_si128((symbol_t *)(&pOut[index]), _mm_setzero_si128());
+			_mm_storeu_si128((symbol_t *)(&pOut[index]), _mm_setzero_si128());
 			index += symbolSize;
 			pOut[index] = 0;
 			index++;
@@ -374,7 +374,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 		else if (count >= RLE128_EXTREME_MULTI_MIN_RANGE_LONG)
 		{
 #ifndef PACKED
-			_mm_store_si128((symbol_t *)(&pOut[index]), symbol);
+			_mm_storeu_si128((symbol_t *)(&pOut[index]), symbol);
 			index += symbolSize;
 #endif
 			
@@ -416,7 +416,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 
 			if (!isSameSymbolMask)
 			{
-				_mm_store_si128((symbol_t *)(&pOut[index]), symbol);
+				_mm_storeu_si128((symbol_t *)(&pOut[index]), symbol);
 				index += symbolSize;
 			}
 #endif
@@ -437,7 +437,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 			index += copySize;
 
 #ifndef PACKED
-			_mm_store_si128((symbol_t *)(&pOut[index]), _mm_setzero_si128());
+			_mm_storeu_si128((symbol_t *)(&pOut[index]), _mm_setzero_si128());
 			index += symbolSize;
 			pOut[index] = 0;
 			index++;
@@ -460,7 +460,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 		else
 		{
 #ifndef PACKED
-			_mm_store_si128((symbol_t *)(&pOut[index]), _mm_setzero_si128());
+			_mm_storeu_si128((symbol_t *)(&pOut[index]), _mm_setzero_si128());
 			index += symbolSize;
 			pOut[index] = 0;
 			index++;
