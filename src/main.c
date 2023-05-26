@@ -21,6 +21,7 @@
 #endif
 
 #include "rle.h"
+#include "simd_platform.h"
 
 const char ArgumentTo[] = "--to";
 const char ArgumentSubSections[] = "--sub-sections";
@@ -44,6 +45,15 @@ const char ArgumentMMTF[] = "--mmtf";
 const char ArgumentSH[] = "--sh";
 const char ArgumentAnalyze[] = "--analyze";
 const char ArgumentMatch[] = "--match";
+const char ArgumentMaxSimd[] = "--max-simd";
+const char ArgumentMaxSimdAVX512F[] = "avx512f";
+const char ArgumentMaxSimdAVX2[] = "avx2";
+const char ArgumentMaxSimdAVX[] = "avx";
+const char ArgumentMaxSimdSSE42[] = "sse4.2";
+const char ArgumentMaxSimdSSE41[] = "sse4.1";
+const char ArgumentMaxSimdSSSE3[] = "ssse3";
+const char ArgumentMaxSimdSSE3[] = "sse3";
+const char ArgumentMaxSimdSSE2[] = "sse2";
 
 #ifdef _WIN32
 const char ArgumentCpuCore[] = "--cpu-core";
@@ -313,6 +323,7 @@ int main(int argc, char **pArgv)
     printf("\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentMulti, ArgumentSingle);
     printf("\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentShort, ArgumentNotShort);
     printf("\t\tif '%s': [%s 0, 1, 3, 7]\n", ArgumentMatch, ArgumentExtremeLutSize);
+    printf("\n\t[%s <%s / %s / %s / %s / %s / %s / %s / %s>]\n", ArgumentMaxSimd, ArgumentMaxSimdAVX512F, ArgumentMaxSimdAVX2, ArgumentMaxSimdAVX, ArgumentMaxSimdSSE42, ArgumentMaxSimdSSE41, ArgumentMaxSimdSSSE3, ArgumentMaxSimdSSE3, ArgumentMaxSimdSSE2);
     printf("\n\n\tOR: (for debugging purposes only)\n\n");
     printf("\t[%s <Output File Name>]\n\n", ArgumentTo);
     printf("\t[%s]\n\t\tif '%s': [%s (8 | 16 | 24 | 32 | 48 | 64 | 128)] (symbol size)\n\t\tif '%s': [%s] (include unaligned repeats, capacity vs. accuracy tradeoff)\n\t\tif '%s': [%s] (preferable if many rle-symbol-repeats)\n\n", ArgumentExtreme, ArgumentExtreme, ArgumentExtremeSize, ArgumentExtreme, ArgumentExtremeByteGran, ArgumentExtreme, ArgumentExtremePacked);
@@ -365,6 +376,141 @@ int main(int argc, char **pArgv)
         matchBenchmarks = true;
         argIndex++;
         argsRemaining--;
+      }
+      else if (argsRemaining >= 2 && strncmp(pArgv[argIndex], ArgumentMaxSimd, sizeof(ArgumentMaxSimd)) == 0)
+      {
+        _DetectCPUFeatures();
+
+        do
+        {
+          if (strncmp(pArgv[argIndex + 1], ArgumentMaxSimdAVX512F, sizeof(ArgumentMaxSimdAVX512F)) == 0)
+          {
+            if (!avx512FSupported)
+            {
+              puts("AVX512F is not supported by this platform. Aborting.");
+              return 1;
+            }
+
+            // In future versions with other simd flavours better than avx512 supported, disable them here.
+
+            break;
+          }
+
+          avx512FSupported = false;
+          avx512PFSupported = false;
+          avx512ERSupported = false;
+          avx512CDSupported = false;
+          avx512BWSupported = false;
+          avx512DQSupported = false;
+          avx512VLSupported = false;
+          avx512IFMASupported = false;
+          avx512VBMISupported = false;
+          avx512VNNISupported = false;
+          avx512VBMI2Supported = false;
+          avx512POPCNTDQSupported = false;
+          avx512BITALGSupported = false;
+          avx5124VNNIWSupported = false;
+          avx5124FMAPSSupported = false;
+
+          if (strncmp(pArgv[argIndex + 1], ArgumentMaxSimdAVX2, sizeof(ArgumentMaxSimdAVX2)) == 0)
+          {
+            if (!avx2Supported)
+            {
+              puts("AVX2 is not supported by this platform. Aborting.");
+              return 1;
+            }
+
+            break;
+          }
+
+          avx2Supported = false;
+          fma3Supported = false;
+
+          if (strncmp(pArgv[argIndex + 1], ArgumentMaxSimdAVX, sizeof(ArgumentMaxSimdAVX)) == 0)
+          {
+            if (!avxSupported)
+            {
+              puts("AVX is not supported by this platform. Aborting.");
+              return 1;
+            }
+
+            break;
+          }
+
+          avxSupported = false;
+
+          if (strncmp(pArgv[argIndex + 1], ArgumentMaxSimdSSE42, sizeof(ArgumentMaxSimdSSE42)) == 0)
+          {
+            if (!sse42Supported)
+            {
+              puts("SSE4.2 is not supported by this platform. Aborting.");
+              return 1;
+            }
+
+            break;
+          }
+
+          sse42Supported = false;
+
+          if (strncmp(pArgv[argIndex + 1], ArgumentMaxSimdSSE41, sizeof(ArgumentMaxSimdSSE41)) == 0)
+          {
+            if (!sse41Supported)
+            {
+              puts("SSE4.1 is not supported by this platform. Aborting.");
+              return 1;
+            }
+
+            break;
+          }
+
+          sse41Supported = false;
+
+          if (strncmp(pArgv[argIndex + 1], ArgumentMaxSimdSSSE3, sizeof(ArgumentMaxSimdSSSE3)) == 0)
+          {
+            if (!ssse3Supported)
+            {
+              puts("SSSE3 is not supported by this platform. Aborting.");
+              return 1;
+            }
+
+            break;
+          }
+
+          ssse3Supported = false;
+
+          if (strncmp(pArgv[argIndex + 1], ArgumentMaxSimdSSE3, sizeof(ArgumentMaxSimdSSE3)) == 0)
+          {
+            if (!sse3Supported)
+            {
+              puts("SSE3 is not supported by this platform. Aborting.");
+              return 1;
+            }
+
+            break;
+          }
+
+          sse3Supported = false;
+
+          if (strncmp(pArgv[argIndex + 1], ArgumentMaxSimdSSE2, sizeof(ArgumentMaxSimdSSE2)) == 0)
+          {
+            if (!sse2Supported)
+            {
+              puts("SSE2 is not supported by this platform. Aborting.");
+              return 1;
+            }
+
+            break;
+          }
+
+          sse2Supported = false;
+
+          printf("Invalid SIMD Variant '%s' specified.", pArgv[argIndex + 1]);
+          return 1;
+
+        } while (false);
+
+        argIndex += 2;
+        argsRemaining -= 2;
       }
       else if (argsRemaining >= 2 && strncmp(pArgv[argIndex], ArgumentSubSections, sizeof(ArgumentSubSections)) == 0)
       {
