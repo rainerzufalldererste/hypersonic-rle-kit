@@ -40,15 +40,11 @@ jobs:
     
     - name: Download Sample File
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: curl https://www.dropbox.com/s/yvsl1lg98c4maq1/video_frame.raw?dl=1 --output video_frame.raw
+      run: wget https://www.dropbox.com/s/yvsl1lg98c4maq1/video_frame.raw
 
     - name: Mark as Executable
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: chmod +x hsrlekit
-
-    - name: Dump As Hex, because WTF?
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: xxd video_frame.raw
 
     - name: Test AVX2
       working-directory: ${{env.GITHUB_WORKSPACE}}
