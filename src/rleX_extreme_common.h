@@ -69,7 +69,7 @@ else \
   uint8_t *pCOut = pOut; \
 \
   if (unaligned != 0) \
-  { _mm_storeu_si128((__m128i *)pCOut, _mm_stream_load_si128((__m128i *)pCIn)); \
+  { _mm_storeu_si128((__m128i *)pCOut, _mm_loadu_si128((__m128i *)pCIn)); \
     pCIn = (uint8_t *)((size_t)pCIn & ~(size_t)(sizeof(__m128i) - 1)) + sizeof(__m128i); \
     pCOut += (pCIn - pInStart); \
   } \
@@ -78,7 +78,7 @@ else \
   pInStart += offset; \
 \
   while (pCOut < pOut) \
-  { MULTI(_mm_storeu_si128((__m128i *)pCOut, _mm_load_si128((__m128i *)pCIn)); \
+  { MULTI(_mm_storeu_si128((__m128i *)pCOut, _mm_stream_load_si128((__m128i *)pCIn)); \
     pCIn += sizeof(__m128i); \
     pCOut += sizeof(__m128i);) \
     _mm_prefetch((const char *)pCIn + SSE_PREFETCH_BYTES, PREFETCH_TYPE); \
