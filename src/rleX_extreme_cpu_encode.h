@@ -68,7 +68,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, ENCODE_FUNC_NAME))(IN const u
 
       if (bitMask & 1)
       {
-        if (bitMask != ((uint32_t)(1) << sizeof(current)) - 1)
+        if (bitMask != (uint32_t)((size_t)(1) << sizeof(current)) - 1)
         {
 #ifdef _MSC_VER
           unsigned long bit;
