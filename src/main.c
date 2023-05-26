@@ -1948,7 +1948,7 @@ int main(int argc, char **pArgv)
       printf("Mode: hypersonic rle kit ");
 
       if (_Args.hasMode && _Args.isModeLowEntropy)
-        fputs("Normal ", stdout);
+        fputs("LowEntropy ", stdout);
       else if (_Args.hasMode && _Args.isModeExtreme)
         fputs("Extreme ", stdout);
       else if (_Args.hasMode && _Args.isModeMMTF)
@@ -1960,7 +1960,7 @@ int main(int argc, char **pArgv)
       else
         fputs("Ultra ", stdout);
 
-      if ((!(_Args.hasMode && _Args.isModeExtreme) || (_Args.hasBitCount && _Args.bitCount == 8) && (_Args.hasSingleMode && _Args.isSingleMode)))
+      if ((((_Args.hasMode && (_Args.isModeLowEntropy || _Args.isModeExtreme)) && (!_Args.hasBitCount || _Args.bitCount == 8)) && (_Args.hasSingleMode && _Args.isSingleMode)))
         fputs("Single-Symbol-Mode ", stdout);
 
       if ((_Args.hasMode && _Args.isModeExtreme) && (_Args.hasPackedMode && _Args.isPacked))

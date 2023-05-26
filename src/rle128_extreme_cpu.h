@@ -53,8 +53,8 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 	symbol_t lastSymbol = _mm_setzero_si128();
 #endif
 
-	const size_t inSizeSimdScan = inSize - sizeof(__m128i) * 2;
-	const size_t inSizeSimd = inSize - sizeof(__m128i);
+	const int64_t inSizeSimdScan = inSize - sizeof(__m128i) * 2;
+	const int64_t inSizeSimd = inSize - sizeof(__m128i);
 
 	while (i < inSize)
 	{

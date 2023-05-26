@@ -126,9 +126,9 @@ static void CONCAT3(rle24_, CODEC, FUNC_NAME)(IN const uint8_t *pInStart, OUT ui
       symbol1 = _mm_or_si128(symbol1, _mm_or_si128(_mm_and_si128(shift3, pattern13), _mm_and_si128(shift2, pattern12)));
       symbol2 = _mm_or_si128(symbol2, _mm_or_si128(_mm_and_si128(shift3, pattern23), _mm_and_si128(shift2, pattern22)));
 #elif defined(IMPL_SSSE3)
-      const __m128i symbol0 = _mm_shuffle_epi8(symbol, shuffle0);
-      const __m128i symbol1 = _mm_shuffle_epi8(symbol, shuffle1);
-      const __m128i symbol2 = _mm_shuffle_epi8(symbol, shuffle2);
+      symbol0 = _mm_shuffle_epi8(symbol, shuffle0);
+      symbol1 = _mm_shuffle_epi8(symbol, shuffle1);
+      symbol2 = _mm_shuffle_epi8(symbol, shuffle2);
 #elif defined(IMPL_AVX2)
       symbol0 = _mm256_shuffle_epi8(symbol, shuffle0);
       symbol1 = _mm256_shuffle_epi8(symbol, shuffle1);
@@ -174,7 +174,11 @@ static void CONCAT3(rle24_, CODEC, FUNC_NAME)(IN const uint8_t *pInStart, OUT ui
 #endif
 
     // memcpy.
+#if defined(IMPL_SSE2) || defined(IMPL_SSSE3)
+    MEMCPY_SSE_MULTI;
+#else
     MEMCPY_AVX_MULTI;
+#endif
 
     if (!symbolCount)
       return;

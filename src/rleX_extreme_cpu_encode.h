@@ -33,10 +33,10 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, ENCODE_FUNC_NAME))(IN const u
 
 #if defined(COMPRESS_IMPL_SSE2)
   __m128i symbolSimd = CONCAT2(_mm_set1_epi, TYPE_SIZE)(symbol);
-  const size_t inSizeSimd = inSize - sizeof(__m128i) - sizeof(symbol_t);
+  const int64_t inSizeSimd = inSize - sizeof(__m128i) - sizeof(symbol_t);
 #elif defined(COMPRESS_IMPL_AVX2)
   __m256i symbolSimd = CONCAT2(_mm256_set1_epi, TYPE_SIZE)(symbol);
-  const size_t inSizeSimd = inSize - sizeof(__m256i) - sizeof(symbol_t);
+  const int64_t inSizeSimd = inSize - sizeof(__m256i) - sizeof(symbol_t);
 #endif
 
 #ifdef PACKED
@@ -74,7 +74,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, ENCODE_FUNC_NAME))(IN const u
           unsigned long bit;
           _BitScanForward64(&bit, ~bitMask);
 #else
-          const uint64_t bit = __builtin_ctzl(~bitMask);
+          uint64_t bit = __builtin_ctzl(~bitMask);
 #endif
 #ifndef UNBOUND
           bit &= ~(uint32_t)(((uint32_t)(TYPE_SIZE / 8)) - 1);
