@@ -95,7 +95,7 @@ uint32_t CONCAT3(rle48_, CODEC, FUNC_NAME)(IN const uint8_t *pIn, const uint32_t
 
       if (bitMask & 1)
       {
-        if (bitMask != (uint32_t)((size_t)(1) << sizeof(current)) - 1)
+        if (bitMask != (uint32_t)(((size_t)(1) << sizeof(current)) - 1))
         {
 #ifdef _MSC_VER
           unsigned long bit;
