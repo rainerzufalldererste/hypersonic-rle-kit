@@ -278,7 +278,7 @@ uint32_t rle8_sh_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT uint
   pOut += sizeof(uint32_t) * 2;
 
   rle8_sh_header_state header;
-  header.pHeader = header.pHeaderStart = pOut + outSize - 1;
+  header.pHeader = header.pHeaderStart = (uint32_t *)((uint8_t *)pFileHeader + outSize - 1);
   header.nextBit = 0;
   header.headerSize = 1;
 

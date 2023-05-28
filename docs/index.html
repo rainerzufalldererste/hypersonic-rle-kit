@@ -15,10 +15,10 @@
       </div>
       <div class="text">
         <ul>
-            <li>A selection of 100+ RLE and related codecs optimized for all kinds of different inputs and scenarios</li>
-            <li>Single Core Decompression Speeds > 33 GiB/s have been observed.</li>
+            <li>A selection of <b>100+</b> RLE and related codecs optimized for all kinds of different inputs and scenarios</li>
+            <li>Single Core decompression speeds > 34 GB/s and compression > 28 GB/s have been observed with large files. Small files can even exceed 120 GB/s decode, 60 GB/s encode.</li>
             <li>Written in C.</li>
-            <li>SIMD Variants for AVX-512F, AVX2, AVX, SSE4.1, SSSE3, SSE2 and SSE variants are available for various decoders and encoders. Automatically picked at runtime based on the extensions available on the current platform.</li>
+            <li>SIMD Variants for AVX-512F, AVX2, AVX, SSE4.1, SSSE3 and SSE2 variants are available for various decoders and encoders. Automatically picked at runtime based on the extensions available on the current platform.</li>
             <li>Specialized versions for various different scenarios. (Single RLE Symbol, Short Strings of RLE Symbol, 8 Bit, 16 Bit, 24 Bit, 32 Bit, 48 Bit, 64 Bit, 128 Bit, High probability of reoccuring symbols etc.)</li>
             <li>OpenCL variant available for some of the decoders.</li>
         </ul>
@@ -42,7 +42,19 @@ function reveal() {
 
 window.addEventListener("scroll", reveal);
       </script>
-      <div class="tooltip_hidden" id="tooltip"><p><b id="tooltip_text">headline</b><b id="tooltip_pareto">pareto</b></p><p id="tooltip_sub1">text1</p><p id="tooltip_sub2">text2</p><p id="tooltip_sub3">text3</p></div>
+      <div class="tooltip_hidden" id="tooltip">
+        <p>
+          <b id="tooltip_text">headline</b>
+          <b id="tooltip_pareto" title="decoder throughput vs compression ratio pareto">decode/ratio pareto</b>
+          <b id="tooltip_pareto2" title="encoder throughput vs compression ratio pareto">encode/ratio pareto</b>
+          <b id="tooltip_pareto3" title="decoder throughput vs entropy compressibility pareto">decode/entropy pareto</b>
+          <b id="tooltip_pareto4" title="encoder throughput vs entropy compressibility pareto">encode/entropy pareto</b>
+        </p>
+        <p id="tooltip_sub1">text1</p>
+        <p id="tooltip_sub2">text2</p>
+        <p id="tooltip_sub3">text3</p>
+        <p id="tooltip_sub4">text4</p>
+      </div>
       <script>
           function point(ctx, x, y, radius, fillStyle, strokeStyle, lineWidth) {
               ctx.beginPath();
@@ -77,6 +89,8 @@ window.addEventListener("scroll", reveal);
             obj.maxRatio = 0;
             obj.minEncode = 0;
             obj.maxEncode = 0;
+            obj.minEntropy = 100;
+            obj.maxEntropy = 0;
             obj.points = [];
             obj.lines = [];
             obj.xStat = "decode";
@@ -85,7 +99,7 @@ window.addEventListener("scroll", reveal);
             lastColorIndex = 0;
           }
 
-          function add_point(obj, decode, ratio, encode, label, isForeign = false) {
+          function add_point(obj, decode, ratio, encode, entropy, label, foreign = false) {
             if (decode > obj.maxDecode) obj.maxDecode = decode;
             if (ratio > obj.maxRatio) obj.maxRatio = ratio;
             if (encode > obj.maxEncode) obj.maxEncode = encode;
@@ -93,7 +107,16 @@ window.addEventListener("scroll", reveal);
             if (ratio < obj.minRatio) obj.minRatio = ratio;
             if (encode < obj.minEncode) obj.minEncode = encode;
 
-            obj.points[label] = { decode: decode, ratio: ratio, encode: encode, foreign: !!isForeign };
+            if (entropy != null) {
+              if (entropy > obj.maxEntropy) obj.maxEntropy = entropy;
+              if (entropy < obj.minEntropy) obj.minEntropy = entropy;
+            }
+
+            obj.points[label] = { decode: decode, name: label, ratio: ratio, encode: encode, foreign: !!foreign, entropy: entropy };
+          }
+
+          function add_point_no_entropy(obj, decode, ratio, encode, label, foreign = false) {
+            add_point(obj, decode, ratio, encode, null, label, foreign);
           }
 
           function add_line(obj, labels, color) {
@@ -110,28 +133,35 @@ window.addEventListener("scroll", reveal);
           }
 
           function transformX(obj, x, rangeX, offsetX) {
-            return offsetX + (x - obj.minDecode) / rangeX;
+            return offsetX + (x - obj.minX) / rangeX;
           }
 
           function transformY(obj, y, rangeY, offsetY) {
-            return offsetY + (y - obj.minRatio) / rangeY;
+            return offsetY + (y - obj.minY) / rangeY;
           }
 
-          function draw_point(ctx, obj, p, rangeX, rangeY, offsetX, offsetY) {
-            point(ctx, transformX(obj, p[obj.xStat], rangeX, offsetX), transformY(obj, p[obj.yStat], rangeY, offsetY), (p.isPareto == true ? 10 : 6) * window.devicePixelRatio, p.foreign ? "#333" : "#FFF", p.foreign ? "#777" : "#DDD", 2 * window.devicePixelRatio);
+          function pixelRatio() {
+            return (1 + window.devicePixelRatio) * 0.5;
+          } 
+
+          function draw_point(ctx, obj, p, rangeX, rangeY, offsetX, offsetY, paretoName) {
+            point(ctx, transformX(obj, p[obj.xStat], rangeX, offsetX), transformY(obj, p[obj.yStat], rangeY, offsetY), (p[paretoName] == true ? 10 : 6) * pixelRatio(), (p.name == obj.bestP ? "#EF7" : p.foreign ? "#333" : "#DDD"), p.foreign ? "#777" : "#DDD", 2 * pixelRatio());
           }
 
           function draw_line(ctx, obj, l, rangeX, rangeY, offsetX, offsetY, lineWidth) {
             let points = l.points;
 
             ctx.beginPath();
-            ctx.moveTo(transformX(obj, points[0][obj.xStat], rangeX, offsetX), transformY(obj, points[0][obj.yStat], rangeY, offsetY));
+
+            if (obj.yStat != 'entropy' || points[0].entropy != null)
+              ctx.moveTo(transformX(obj, points[0][obj.xStat], rangeX, offsetX), transformY(obj, points[0][obj.yStat], rangeY, offsetY));
             
             for (let i = 1; i < points.length; i++)
+              if (obj.yStat != 'entropy' || points[i].entropy != null)
                 ctx.lineTo(transformX(obj, points[i][obj.xStat], rangeX, offsetX), transformY(obj, points[i][obj.yStat], rangeY, offsetY));
 
             ctx.strokeStyle = l.color;
-            ctx.lineWidth = lineWidth * window.devicePixelRatio * (l.pareto == true ? 4 : 1);
+            ctx.lineWidth = lineWidth * pixelRatio() * (l.pareto == true ? 4 : 1);
             ctx.stroke();
           }
 
@@ -145,7 +175,7 @@ window.addEventListener("scroll", reveal);
                 ctx.lineTo(transformX(obj, points[i].x, rangeX, offsetX), transformY(obj, points[i].y, rangeY, offsetY));
 
             ctx.strokeStyle = l.color;
-            ctx.lineWidth = lineWidth * window.devicePixelRatio * (l.pareto == true ? 4 : 1);
+            ctx.lineWidth = lineWidth * pixelRatio() * (l.pareto == true ? 4 : 1);
             ctx.stroke();
           }
 
@@ -170,7 +200,7 @@ window.addEventListener("scroll", reveal);
 
             do {
                 points[points.length] = n;
-                n.isPareto = true;
+                n.pareto_dvr = true;
 
                 found = false;
 
@@ -187,7 +217,7 @@ window.addEventListener("scroll", reveal);
                 }
             } while (found);
 
-            obj.lines[obj.lines.length] = { points: points, color: "#AAFF2244", pareto: true };
+            obj.lines[obj.lines.length] = { points: points, color: "#AAFF2244", pareto: true, pareto_dvr: true };
           }
 
           function calc_pareto_line2(obj) {
@@ -205,7 +235,7 @@ window.addEventListener("scroll", reveal);
 
             do {
                 points[points.length] = n;
-                n.isPareto2 = true;
+                n.pareto_evr = true;
 
                 found = false;
 
@@ -222,7 +252,77 @@ window.addEventListener("scroll", reveal);
                 }
             } while (found);
 
-            obj.lines[obj.lines.length] = { points: points, color: "#DDEE2208", pareto: true };
+            obj.lines[obj.lines.length] = { points: points, color: "#DDEE2208", pareto: true, pareto_evr: true };
+          }
+
+          function calc_pareto_line3(obj) {
+            let points = [];
+            let n = {};
+            n.decode = 0;
+            n.entropy = 0;
+
+            for (let p in obj.points) {
+                if (obj.points[p].decode > n.decode)
+                    n = obj.points[p];
+            }
+
+            let found = false;
+
+            do {
+                points[points.length] = n;
+                n.pareto_dve = true;
+
+                found = false;
+
+                let last = n;
+                n = {};
+                n.decode = 0;
+                n.entropy = 0;
+
+                for (let p in obj.points) {
+                    if (obj.points[p].entropy != null && obj.points[p].decode > n.decode && obj.points[p].entropy < last.entropy && obj.points[p].decode < last.decode) {
+                        n = obj.points[p];
+                        found = true
+                    }
+                }
+            } while (found);
+
+            obj.lines[obj.lines.length] = { points: points, color: "#44AAFF08", pareto: true, pareto_dve: true };
+          }
+
+          function calc_pareto_line4(obj) {
+            let points = [];
+            let n = {};
+            n.encode = 0;
+            n.entropy = 0;
+
+            for (let p in obj.points) {
+                if (obj.points[p].entropy != null && obj.points[p].encode > n.encode)
+                    n = obj.points[p];
+            }
+
+            let found = false;
+
+            do {
+                points[points.length] = n;
+                n.pareto_eve = true;
+
+                found = false;
+
+                let last = n;
+                n = {};
+                n.encode = 0;
+                n.entropy = 0;
+
+                for (let p in obj.points) {
+                    if (obj.points[p].entropy != null && obj.points[p].encode > n.encode && obj.points[p].entropy < last.entropy && obj.points[p].encode < last.encode) {
+                        n = obj.points[p];
+                        found = true
+                    }
+                }
+            } while (found);
+
+            obj.lines[obj.lines.length] = { points: points, color: "#44FFAA08", pareto: true, pareto_eve: true };
           }
 
           function draw_obj(ctx, obj) {
@@ -238,40 +338,71 @@ window.addEventListener("scroll", reveal);
             let topX = 50;
             let topY = 10;
 
-            obj.minRatio = Math.floor(obj.minRatio / 10) * 10;
+            let visible_pareto_line = "";
+
+            if (obj.xStat == "decode") {
+              visible_pareto_line = "d";
+              obj.minX = obj.minDecode;
+              obj.maxX = obj.maxDecode;
+            } else {
+              visible_pareto_line = "e";
+              obj.minX = obj.minEncode;
+              obj.maxX = obj.maxEncode;
+            }
+
+            visible_pareto_line += "v";
+
+            if (obj.yStat == "ratio") {
+              visible_pareto_line += "r";
+              obj.minY = Math.floor(obj.minRatio / 10) * 10;
+              obj.maxY = obj.maxRatio;
+            } else {
+              visible_pareto_line += "e";
+              obj.minY = Math.floor(obj.minEntropy / 2) * 2;
+              obj.maxY = obj.maxEntropy;
+            }
             
-            let nativeYRange = obj.maxRatio - obj.minRatio;
+            let nativeYRange = obj.maxY - obj.minY;
             let stepY = Math.max(1, Math.floor(nativeYRange / 6));
             
-            let nativeXRange = obj.maxDecode - obj.minDecode;
+            let nativeXRange = obj.maxX - obj.minX;
             let stepX = (Math.max(1, Math.floor(nativeXRange / 9 / 500)) * 500);
 
-            let rangeX = (obj.maxDecode - obj.minDecode) / (obj.width - borderX);
-            let rangeY = (obj.maxRatio - obj.minRatio) / (obj.height - borderY);
+            let rangeX = (obj.maxX - obj.minX) / (obj.width - borderX);
+            let rangeY = (obj.maxY - obj.minY) / (obj.height - borderY);
             
             // X Axis.
-            for (let x = obj.minDecode; x <= obj.maxDecode; x += stepX) {
-              draw_line_xy(ctx, obj, { points: [{ y: obj.minRatio, x: x }, { y: obj.maxRatio, x: x }], color: x == obj.minDecode ? "#555" : "#333" }, rangeX, rangeY, topX, topY, x == obj.minDecode ? 4 : 2);
+            for (let x = obj.minX; x <= obj.maxX; x += stepX) {
+              draw_line_xy(ctx, obj, { points: [{ y: obj.minY, x: x }, { y: obj.maxY, x: x }], color: x == obj.minX ? "#555" : "#333" }, rangeX, rangeY, topX, topY, x == obj.minX ? 4 : 2);
             }
 
             // Y Axis.
-            for (let y = obj.minRatio; y <= obj.maxRatio; y += stepY) {
-              draw_line_xy(ctx, obj, { points: [{ x: obj.minDecode, y: y }, { x: obj.maxDecode, y: y }], color: y == obj.minRatio ? "#555" : "#333" }, rangeX, rangeY, topX, topY, y == obj.minRatio ? 4 : 2);
+            for (let y = obj.minY; y <= obj.maxY; y += stepY) {
+              draw_line_xy(ctx, obj, { points: [{ x: obj.minX, y: y }, { x: obj.maxX, y: y }], color: y == obj.minY ? "#555" : "#333" }, rangeX, rangeY, topX, topY, y == obj.minY ? 4 : 2);
             }
             
             // X Axis.
-            for (let x = obj.minDecode; x <= obj.maxDecode; x += stepX) {
-                if (x > obj.minDecode) draw_label(ctx, obj, x, obj.minRatio, x + " MiB/s", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
+            for (let x = obj.minX; x <= obj.maxX; x += stepX) {
+                if (x > obj.minX) draw_label(ctx, obj, x, obj.minY, x + " MiB/s", rangeX, rangeY, topX, topY, (30 /* * pixelRatio() */) + "px monospace", "#888");
             }
 
             // Y Axis.
-            for (let y = obj.minRatio; y <= obj.maxRatio; y += stepY) {
-                if (y > obj.minRatio) draw_label(ctx, obj, obj.minDecode, y, y + "%", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
+            for (let y = obj.minY; y <= obj.maxY; y += stepY) {
+                if (y > obj.minY) draw_label(ctx, obj, obj.minX, y, y + "%", rangeX, rangeY, topX, topY, (30 /* * pixelRatio() */) + "px monospace", "#888");
             }
             
-            for (i in obj.lines)
+            for (i in obj.lines) {
+              if (obj.lines[i].pareto == true) {
+                if (obj.lines[i]["pareto_" + visible_pareto_line] != null) {
+                  obj.lines[i].color = obj.lines[i].color.substring(0, 7) + "66";
+                } else {
+                  obj.lines[i].color = obj.lines[i].color.substring(0, 7) + "18";
+                }
+              }
+
               if (obj.lines[i].pareto == true || obj.lines[i].foreign == true)
                 draw_line(ctx, obj, obj.lines[i], rangeX, rangeY, topX, topY, 4);
+            }
 
             function contains(arr, i) {
               for (l in arr)
@@ -287,7 +418,8 @@ window.addEventListener("scroll", reveal);
                     draw_line(ctx, obj, obj.lines[i], rangeX, rangeY, topX, topY, 4);
 
             for (i in obj.points)
-                draw_point(ctx, obj, obj.points[i], rangeX, rangeY, topX, topY);
+              if (obj.yStat != 'entropy' || obj.points[i].entropy != null)
+                draw_point(ctx, obj, obj.points[i], rangeX, rangeY, topX, topY, "pareto_" + visible_pareto_line);
           }
 
           function handle_mouseover(event, obj) {
@@ -315,8 +447,8 @@ window.addEventListener("scroll", reveal);
                 var topX = 50;
                 var topY = -15;
 
-                var rangeX = (obj.maxDecode - obj.minDecode) / (obj.width - borderX);
-                var rangeY = (obj.maxRatio - obj.minRatio) / (obj.height - borderY);
+                var rangeX = (obj.maxX - obj.minX) / (obj.width - borderX);
+                var rangeY = (obj.maxY - obj.minY) / (obj.height - borderY);
 
                 function dist(x, y) {
                     let dx = transformX(obj, x, rangeX, topX) - internalX;
@@ -329,7 +461,7 @@ window.addEventListener("scroll", reveal);
                 var closest = 99999.9;
 
                 for (let p in obj.points) {
-                    var d = dist(obj.points[p][obj.xStat], obj.points[p].ratio);
+                    var d = dist(obj.points[p][obj.xStat], obj.points[p][obj.yStat]);
 
                     if (d < closest) {
                       closest = d;
@@ -337,7 +469,7 @@ window.addEventListener("scroll", reveal);
                     }
                 }
 
-                if (closest > 50 * window.devicePixelRatio || bestP == null) {
+                if (closest > 50 * pixelRatio() || bestP == null) {
                   var tooltip = document.getElementById("tooltip");
                   tooltip.style.left = "0px";
                   tooltip.style.top = "0px";
@@ -345,14 +477,18 @@ window.addEventListener("scroll", reveal);
                   bestP = null;
                 } else {
                   var tooltip = document.getElementById("tooltip");
-                  tooltip.style.left = (mouseX + 20 * window.devicePixelRatio) + "px";
+                  tooltip.style.left = (mouseX + 20 * pixelRatio()) + "px";
                   tooltip.style.top = mouseY + "px";
                   tooltip.className = "tooltip_visible";
                   document.getElementById("tooltip_text").innerText = bestP + (obj.points[bestP].foreign ? " (foreign codec)" : "");
                   document.getElementById("tooltip_sub1").innerText = "decoder throughput: " + obj.points[bestP].decode + " MiB/s";
                   document.getElementById("tooltip_sub2").innerText = "encoder throughput: " + obj.points[bestP].encode + " MiB/s";
                   document.getElementById("tooltip_sub3").innerText = "compression ratio: " + obj.points[bestP].ratio + " %";
-                  document.getElementById("tooltip_pareto").className = obj.points[bestP].isPareto == true ? "pareto" : "non_pareto";
+                  document.getElementById("tooltip_sub4").innerText = obj.points[bestP].entropy == null ? "" : "entropy compressible to: " + obj.points[bestP].entropy + " %";
+                  document.getElementById("tooltip_pareto").className = obj.points[bestP].pareto_dvr == true ? "pareto" : "non_pareto";
+                  document.getElementById("tooltip_pareto2").className = obj.points[bestP].pareto_evr == true ? "pareto" : "non_pareto";
+                  document.getElementById("tooltip_pareto3").className = obj.points[bestP].pareto_dve == true ? "pareto" : "non_pareto";
+                  document.getElementById("tooltip_pareto4").className = obj.points[bestP].pareto_eve == true ? "pareto" : "non_pareto";
                 }
 
                 if (obj.bestP != bestP)
@@ -362,153 +498,177 @@ window.addEventListener("scroll", reveal);
                 }
             }
           }
+
+          function setXMetric(metric) {
+            var charts = document.getElementsByClassName("chart");
+
+            for (let i = 0; i < charts.length; i++) {
+              charts[i].xStat = metric;
+              draw_obj(charts[i].getContext("2d"), charts[i]);
+            }
+
+            var active_buttons = document.getElementsByClassName(metric == "decode" ? "graph_metricX l" : "graph_metricX r");
+            var inactive_buttons = document.getElementsByClassName(metric == "decode" ? "graph_metricX r" : "graph_metricX l");
+
+            for (let i = 0; i < active_buttons.length; i++)
+              active_buttons[i].className  = active_buttons[i].className.replace(" active", "") + " active";
+
+            for (let i = 0; i < inactive_buttons.length; i++)
+              inactive_buttons[i].className = inactive_buttons[i].className.replace(" active", "");
+          }
+
+          function setYMetric(metric) {
+            var charts = document.getElementsByClassName("chart");
+
+            for (let i = 0; i < charts.length; i++) {
+              charts[i].yStat = metric;
+              draw_obj(charts[i].getContext("2d"), charts[i]);
+            }
+
+            var active_buttons = document.getElementsByClassName(metric == "ratio" ? "graph_metricY l" : "graph_metricY r");
+            var inactive_buttons = document.getElementsByClassName(metric == "ratio" ? "graph_metricY r" : "graph_metricY l");
+
+            for (let i = 0; i < active_buttons.length; i++)
+              active_buttons[i].className = active_buttons[i].className.replace(" active", "") + " active";
+
+            for (let i = 0; i < inactive_buttons.length; i++)
+              inactive_buttons[i].className = inactive_buttons[i].className.replace(" active", "");
+          }
       </script>
       <hr/>
       <h2>benchmarks</h2>
       <div class="graph_container">
         <h3>video_frame.raw (heavily quantized video frame dcts)</h3>
+        <div class="graph_metric_container">
+          <a class="graph_metricY r" onclick="javascript:setYMetric('entropy')">entropy</a>
+          <a class="graph_metricY l active" onclick="javascript:setYMetric('ratio')">ratio</a>
+        </div>
+        <div class="graph_metric_container">
+          <a class="graph_metricX r" onclick="javascript:setXMetric('encode')">encode</a>
+          <a class="graph_metricX l active" onclick="javascript:setXMetric('decode')">decode</a>
+        </div>
         <canvas id="video_frame" class="chart"></canvas>
         <script>
             var obj = document.getElementById("video_frame");
             var ctx = obj.getContext("2d");
-            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            ctx.scale(pixelRatio(), pixelRatio());
 
             init_obj(obj);
 
-            add_point(obj, 25830.4,  19.34,  3319.6, "8 Bit");
-            add_point(obj, 14888.3,  18.23,  2567.2, "8 Bit Short");
-            add_point(obj, 19783.6,  17.95,  2907.5, "8 Bit Packed");
-            add_point(obj, 11045.0,  16.93,  2365.1, "8 Bit 1LUT Short");
-            add_point(obj, 15819.2,  17.41,  2122.9, "8 Bit 3LUT");
-            add_point(obj,  8100.4,  16.49,  2085.6, "8 Bit 3LUT Short");
-            add_point(obj, 16100.9,  17.46,  2094.6, "8 Bit 7LUT");
-            add_point(obj,  6417.5,  16.91,  1889.1, "8 Bit 7LUT Short");
+            add_point(obj, 25830.4,  19.34,  3319.6,  9.4955146, "8 Bit");
+            add_point(obj, 15094.7,  18.23,  2567.2,  9.7531101, "8 Bit Short");
+            add_point(obj, 19783.6,  17.95,  2907.5,  9.6882812, "8 Bit Packed");
+            add_point(obj, 11069.1,  16.93,  2365.1,  9.8706398, "8 Bit 1LUT Short");
+            add_point(obj, 15819.2,  17.41,  2146.7,  9.7992750, "8 Bit 3LUT");
+            add_point(obj,  8100.4,  16.49,  2085.6,  9.9314305, "8 Bit 3LUT Short");
+            add_point(obj, 16100.9,  17.46,  2094.6,  9.9427719, "8 Bit 7LUT");
+            add_point(obj,  6471.6,  16.91,  1889.1, 10.4327732, "8 Bit 7LUT Short");
+            add_point(obj, 23750.2,  18.31,  1654.7,  9.7144537, "8 Bit Single");
+            add_point(obj, 14143.6,  17.05,  1414.4,  9.8131039, "8 Bit Single Short");
+            add_point(obj, 17669.0,  17.96,  1493.4, 10.3260394, "8 Bit Single Packed");
+            add_point(obj, 22477.8,  20.32,  5216.2,  9.5610480, "16 Bit (Symbol)");
+            add_point(obj, 16970.4,  19.64,  4203.1,  9.7389198, "16 Bit Short (Symbol)");
+            add_point(obj, 20519.7,  18.55,  4853.1,  9.4835334, "16 Bit Packed (Symbol)");
+            add_point(obj, 13705.5,  18.23,  3783.5,  9.7198969, "16 Bit 1LUT Short (Symbol)");
+            add_point(obj, 15025.4,  18.16,  3503.9,  9.8172493, "16 Bit 3LUT (Symbol)");
+            add_point(obj, 11762.9,  17.98,  3348.6,  9.8745047, "16 Bit 3LUT Short (Symbol)");
+            add_point(obj, 14159.3,  17.98,  3358.1,  9.9684932, "16 Bit 7LUT (Symbol)");
+            add_point(obj,  9822.9,  18.05,  3020.5, 10.1467590, "16 Bit 7LUT Short (Symbol)");
+            add_point(obj, 22416.9,  20.10,  5478.5,  9.6134637, "16 Bit (Byte)");
+            add_point(obj, 15811.8,  19.40,  4233.6,  9.8373196, "16 Bit Short (Byte)");
+            add_point(obj, 19368.9,  18.47,  5118.2,  9.6257626, "16 Bit Packed (Byte)");
+            add_point(obj, 12951.5,  18.06,  3745.3,  9.8978211, "16 Bit 1LUT Short (Byte)");
+            add_point(obj, 15577.4,  17.74,  3708.2,  9.8162062, "16 Bit 3LUT (Byte)");
+            add_point(obj, 11857.4,  17.80,  3354.1, 10.0307866, "16 Bit 3LUT Short (Byte)");
+            add_point(obj, 13249.8,  17.53,  3526.7,  9.9626452, "16 Bit 7LUT (Byte)");
+            add_point(obj, 10771.9,  18.07,  3221.7, 10.3897353, "16 Bit 7LUT Short (Byte)");
+            add_point(obj, 25477.9,  21.50,  6782.3,  9.4514986, "24 Bit (Symbol)");
+            add_point(obj, 20852.9,  21.01,  5556.5,  9.5647250, "24 Bit Short (Symbol)");
+            add_point(obj, 20685.2,  19.49,  6261.9,  9.4481505, "24 Bit Packed (Symbol)");
+            add_point(obj, 17424.2,  19.34,  5288.2,  9.4966507, "24 Bit 1LUT Short (Symbol)");
+            add_point(obj, 18637.8,  19.06,  5025.7,  9.4895581, "24 Bit 3LUT (Symbol)");
+            add_point(obj, 16574.0,  19.19,  4797.3,  9.6239935, "24 Bit 3LUT Short (Symbol)");
+            add_point(obj, 17841.3,  18.97,  4932.1,  9.6707428, "24 Bit 7LUT (Symbol)");
+            add_point(obj, 15912.0,  19.32,  4460.3,  9.8473189, "24 Bit 7LUT Short (Symbol)");
+            add_point(obj, 24319.8,  20.80,  7139.4,  9.6605624, "24 Bit (Byte)");
+            add_point(obj, 18481.8,  20.48,  5896.7,  9.8163371, "24 Bit Short (Byte)");
+            add_point(obj, 21560.0,  19.19,  6890.9,  9.5677211, "24 Bit Packed (Byte)");
+            add_point(obj, 17919.7,  19.05,  5348.3,  9.7370727, "24 Bit 1LUT Short (Byte)");
+            add_point(obj, 18636.5,  18.52,  5367.1,  9.4880371, "24 Bit 3LUT (Byte)");
+            add_point(obj, 17031.0,  18.85,  4959.9,  9.8127776, "24 Bit 3LUT Short (Byte)");
+            add_point(obj, 17679.4,  18.44,  5196.5,  9.5865171, "24 Bit 7LUT (Byte)");
+            add_point(obj, 17476.9,  19.00,  4936.8,  9.9790042, "24 Bit 7LUT Short (Byte)");
+            add_point(obj, 23103.8,  22.01,  8739.7,  9.6710847, "32 Bit (Symbol)");
+            add_point(obj, 20274.7,  21.83,  7369.5,  9.7044759, "32 Bit Short (Symbol)");
+            add_point(obj, 22783.7,  20.21,  8590.2,  9.3200560, "32 Bit Packed (Symbol)");
+            add_point(obj, 19574.3,  20.11,  6877.4,  9.4953367, "32 Bit 1LUT Short (Symbol)");
+            add_point(obj, 23101.2,  19.87,  6728.6,  9.3414036, "32 Bit 3LUT (Symbol)");
+            add_point(obj, 19362.3,  20.01,  6203.2,  9.5752667, "32 Bit 3LUT Short (Symbol)");
+            add_point(obj, 22139.9,  19.84,  6715.8,  9.4083632, "32 Bit 7LUT (Symbol)");
+            add_point(obj, 19252.3,  20.13,  6084.6,  9.7046069, "32 Bit 7LUT Short (Symbol)");
+            add_point(obj, 23873.2,  21.39,  9207.3,  9.6960716, "32 Bit (Byte)");
+            add_point(obj, 19997.9,  21.31,  7606.5,  9.8354008, "32 Bit Short (Byte)");
+            add_point(obj, 23569.8,  19.82,  8946.4,  9.4626511, "32 Bit Packed (Byte)");
+            add_point(obj, 21489.2,  19.80,  6847.4,  9.7006083, "32 Bit 1LUT Short (Byte)");
+            add_point(obj, 23580.3,  19.25,  7149.3,  9.3380330, "32 Bit 3LUT (Byte)");
+            add_point(obj, 21495.7,  19.59,  6572.5,  9.7291691, "32 Bit 3LUT Short (Byte)");
+            add_point(obj, 23033.8,  19.22,  7066.1,  9.4498241, "32 Bit 7LUT (Byte)");
+            add_point(obj, 20569.2,  19.59,  6499.1,  9.7592291, "32 Bit 7LUT Short (Byte)");
+            add_point(obj, 26340.0,  23.41, 10310.9,  9.6045657, "48 Bit (Symbol)");
+            add_point(obj, 23543.4,  23.33,  9046.6,  9.6380720, "48 Bit Short (Symbol)");
+            add_point(obj, 25859.7,  21.39, 10165.4,  9.2365949, "48 Bit Packed (Symbol)");
+            add_point(obj, 22728.5,  21.35,  8785.8,  9.3801399, "48 Bit 1LUT Short (Symbol)");
+            add_point(obj, 25211.4,  21.15,  8754.4,  9.2486617, "48 Bit 3LUT (Symbol)");
+            add_point(obj, 22619.4,  21.29,  8093.1,  9.4399195, "48 Bit 3LUT Short (Symbol)");
+            add_point(obj, 25167.8,  21.16,  8578.9,  9.3029774, "48 Bit 7LUT (Symbol)");
+            add_point(obj, 23043.2,  21.37,  7859.7,  9.5301167, "48 Bit 7LUT Short (Symbol)");
+            add_point(obj, 26481.4,  22.66, 11132.9,  9.6316948, "48 Bit (Byte)");
+            add_point(obj, 23735.5,  22.67,  9264.3,  9.7520763, "48 Bit Short (Byte)");
+            add_point(obj, 26397.7,  20.84, 10911.9,  9.4011462, "48 Bit Packed (Byte)");
+            add_point(obj, 25306.7,  20.78,  9183.4,  9.4818547, "48 Bit 1LUT Short (Byte)");
+            add_point(obj, 25603.9,  20.41,  9304.9,  9.2534182, "48 Bit 3LUT (Byte)");
+            add_point(obj, 24528.3,  20.64,  8737.6,  9.5079045, "48 Bit 3LUT Short (Byte)");
+            add_point(obj, 25088.5,  20.42,  9457.1,  9.3350657, "48 Bit 7LUT (Byte)");
+            add_point(obj, 24312.1,  20.61,  8535.6,  9.5069209, "48 Bit 7LUT Short (Byte)");
+            add_point(obj, 25516.4,  24.53, 12830.0,  9.6058076, "64 Bit (Symbol)");
+            add_point(obj, 24813.3,  24.47, 11172.4,  9.6398073, "64 Bit Short (Symbol)");
+            add_point(obj, 26375.4,  22.34, 12697.9,  9.2277167, "64 Bit Packed (Symbol)");
+            add_point(obj, 25039.3,  22.30, 10721.4,  9.3566827, "64 Bit 1LUT Short (Symbol)");
+            add_point(obj, 26928.5,  22.13, 10871.0,  9.2438435, "64 Bit 3LUT (Symbol)");
+            add_point(obj, 25477.9,  22.26,  9928.3,  9.4154766, "64 Bit 3LUT Short (Symbol)");
+            add_point(obj, 27262.6,  22.16, 10854.3,  9.2940682, "64 Bit 7LUT (Symbol)");
+            add_point(obj, 25897.8,  22.32,  9889.6,  9.4847261, "64 Bit 7LUT Short (Symbol)");
+            add_point(obj, 25773.6,  23.66, 13514.1,  9.6345288, "64 Bit (Byte)");
+            add_point(obj, 25870.8,  23.70, 11402.0,  9.7355325, "64 Bit Short (Byte)");
+            add_point(obj, 26183.1,  21.63, 13306.5,  9.4042460, "64 Bit Packed (Byte)");
+            add_point(obj, 26474.7,  21.54, 11382.6,  9.3940281, "64 Bit 1LUT Short (Byte)");
+            add_point(obj, 27864.0,  21.30, 11442.9,  9.2487112, "64 Bit 3LUT (Byte)");
+            add_point(obj, 26319.5,  21.44, 10691.2,  9.4236552, "64 Bit 3LUT Short (Byte)");
+            add_point(obj, 26879.6,  21.32, 11479.3,  9.3238279, "64 Bit 7LUT (Byte)");
+            add_point(obj, 26478.9,  21.43, 10595.6,  9.4395354, "64 Bit 7LUT Short (Byte)");
+            add_point(obj, 27205.5,  27.60, 10045.7,  9.7617068, "128 Bit (Symbol)");
+            add_point(obj, 27815.3,  24.82,  9963.4,  9.3561489, "128 Bit Packed (Symbol)");
+            add_point(obj, 27678.5,  26.46, 10634.1,  9.7430623, "128 Bit (Byte)");
+            add_point(obj, 27795.2,  23.83, 10448.1,  9.5010078, "128 Bit Packed (Byte)");
+            add_point(obj,  1676.7,  12.51,   332.0,  9.8176262, "8 Bit RLE + Huffman-esque");
+            add_point(obj,  3786.4,  21.05,  2921.2, 10.7248493, "8 Bit MMTF 128");
+            add_point(obj,  2690.6,  19.93,   800.2,  9.0539068, "Low Entropy");
+            add_point(obj,  4389.0,  19.96,   802.4,  9.0975284, "Low Entropy Single");
+            add_point(obj,  2813.7,  24.08,   809.5, 11.6113032, "Low Entropy Short");
+            add_point(obj,  5360.6,  24.11,   790.2, 11.6918446, "Low Entropy Short Single");
+            //add_point(obj,  3642.0, 100.00,  3402.9, 15.6299590, "Multi MTF 128 Bit (Transform)");
+            //add_point(obj,  5630.4, 100.00,  5472.6, 15.8774566, "Multi MTF 256 Bit (Transform)");
+            //add_point(obj,  1985.9, 100.00,  1863.0, 14.9123199, "Bit MMTF 8 Bit (Transform)");
+            //add_point(obj,  2294.7, 100.00,  2426.7, 15.5598593, "Bit MMTF 16 Bit (Transform)");
+            //add_point(obj, 28667.8, 100.00, 28590.1, 14.0253211, "memcpy");
 
-            add_point(obj, 23750.2,  18.31,  1654.7, "8 Bit Single");
-            add_point(obj, 14143.6,  17.05,  1393.2, "8 Bit Single Short");
-            add_point(obj, 17669.0,  17.96,  1479.9, "8 Bit Single Packed");
-
-            add_point(obj, 22374.1,  20.32,  2146.1, "16 Bit (Symbol)");
-            add_point(obj, 20009.2,  18.55,  1844.0, "16 Bit Packed (Symbol)");
-            add_point(obj, 22416.9,  20.10,  2036.8, "16 Bit (Byte)");
-            add_point(obj, 19366.7,  18.47,  1915.9, "16 Bit Packed (Byte)");
-
-            add_point(obj, 25460.9,  21.50,  2401.9, "24 Bit (Symbol)");
-            add_point(obj, 20685.2,  19.49,  2182.2, "24 Bit Packed (Symbol)");
-            add_point(obj, 24017.9,  20.80,  2471.3, "24 Bit (Byte)");
-            add_point(obj, 21006.0,  19.19,  2347.6, "24 Bit Packed (Byte)");
-
-            add_point(obj, 22918.0,  22.01,  2859.5, "32 Bit (Symbol)");
-            add_point(obj, 22783.7,  20.21,  2490.0, "32 Bit Packed (Symbol)");
-            add_point(obj, 23873.2,  21.39,  2802.9, "32 Bit (Byte)");
-            add_point(obj, 23569.8,  19.82,  2564.4, "32 Bit Packed (Byte)");
-            
-            add_point(obj, 25692.0,  23.41,  3003.5, "48 Bit (Symbol)");
-            add_point(obj, 25859.7,  21.39,  2867.0, "48 Bit Packed (Symbol)");
-            add_point(obj, 26481.4,  22.66,  3329.7, "48 Bit (Byte)");
-            add_point(obj, 25920.9,  20.84,  3009.6, "48 Bit Packed (Byte)");
-
-            add_point(obj, 25516.4,  24.53,  3397.1, "64 Bit (Symbol)");
-            add_point(obj, 26375.4,  22.34,  2965.1, "64 Bit Packed (Symbol)");
-            add_point(obj, 25360.7,  23.66,  3497.4, "64 Bit (Byte)");
-            add_point(obj, 26063.4,  21.63,  2822.7, "64 Bit Packed (Byte)");
-
-            add_point(obj, 27173.0,  27.60,  2689.9, "128 Bit (Symbol)");
-            add_point(obj, 27761.3,  24.82,  3159.8, "128 Bit Packed (Symbol)");
-            add_point(obj, 27446.2,  26.46,  3424.4, "128 Bit (Byte)");
-            add_point(obj, 27795.2,  23.83,  3284.2, "128 Bit Packed (Byte)");
-            
-            add_point(obj,  1676.7,  12.51,   332.0, "8 Bit RLE + Huffman-esque");
-            add_point(obj,  3786.4,  21.05,  2921.2, "8 Bit MMTF 128");
-            add_point(obj,  2690.6,  19.93,   800.2, "Low Entropy");
-            add_point(obj,  4389.0,  19.96,   775.6, "Low Entropy Single");
-            add_point(obj,  2805.3,  24.08,   809.5, "Low Entropy Short");
-            add_point(obj,  5302.1,  24.11,   714.0, "Low Entropy Short Single");
-
-            //add_point(obj,  3642.0, 100.00,  3352.0, "Multi MTF 128 Bit (Transform)");
-            //add_point(obj,  5630.4, 100.00,  5472.6, "Multi MTF 256 Bit (Transform)");
-            //add_point(obj, 28520.5, 100.00, 26572.3, "memcpy");
-
-            add_point(obj, 16970.4,  19.64,  1327.0, "16 Bit Short (Symbol)");
-            add_point(obj, 13705.5,  18.23,  1212.3, "16 Bit 1LUT Short (Symbol)");
-            add_point(obj, 15025.4,  18.16,   941.9, "16 Bit 3LUT (Symbol)");
-            add_point(obj, 11762.9,  17.98,   909.1, "16 Bit 3LUT Short (Symbol)");
-            add_point(obj, 14159.3,  17.98,   762.8, "16 Bit 7LUT (Symbol)");
-            add_point(obj,  9822.9,  18.05,   730.9, "16 Bit 7LUT Short (Symbol)");
-
-            add_point(obj, 15811.8,  19.40,  1352.7, "16 Bit Short (Byte)");
-            add_point(obj, 12951.5,  18.06,  1263.7, "16 Bit 1LUT Short (Byte)");
-            add_point(obj, 15577.4,  17.74,   984.7, "16 Bit 3LUT (Byte)");
-            add_point(obj, 11857.4,  17.80,   914.3, "16 Bit 3LUT Short (Byte)");
-            add_point(obj, 13249.8,  17.53,   787.2, "16 Bit 7LUT (Byte)");
-            add_point(obj, 10771.9,  18.07,   739.1, "16 Bit 7LUT Short (Byte)");
-
-            add_point(obj, 20852.9,  21.01,  1311.1, "24 Bit Short (Symbol)");
-            add_point(obj, 17325.8,  19.34,  1214.6, "24 Bit 1LUT Short (Symbol)");
-            add_point(obj, 18637.8,  19.06,  1024.9, "24 Bit 3LUT (Symbol)");
-            add_point(obj, 16574.0,  19.19,  1015.1, "24 Bit 3LUT Short (Symbol)");
-            add_point(obj, 17841.3,  18.97,   804.3, "24 Bit 7LUT (Symbol)");
-            add_point(obj, 15730.7,  19.32,   831.3, "24 Bit 7LUT Short (Symbol)");
-
-            add_point(obj, 18481.8,  20.48,  1379.1, "24 Bit Short (Byte)");
-            add_point(obj, 17919.7,  19.05,  1392.3, "24 Bit 1LUT Short (Byte)");
-            add_point(obj, 18636.5,  18.52,  1171.2, "24 Bit 3LUT (Byte)");
-            add_point(obj, 16768.7,  18.85,   973.4, "24 Bit 3LUT Short (Byte)");
-            add_point(obj, 17679.4,  18.44,   911.7, "24 Bit 7LUT (Byte)");
-            add_point(obj, 17476.9,  19.00,   853.6, "24 Bit 7LUT Short (Byte)");
-
-            add_point(obj, 20274.7,  21.83,  1431.8, "32 Bit Short (Symbol)");
-            add_point(obj, 19574.3,  20.11,  1352.8, "32 Bit 1LUT Short (Symbol)");
-            add_point(obj, 23101.2,  19.87,  1176.8, "32 Bit 3LUT (Symbol)");
-            add_point(obj, 19362.3,  20.01,  1075.7, "32 Bit 3LUT Short (Symbol)");
-            add_point(obj, 22139.9,  19.84,   943.9, "32 Bit 7LUT (Symbol)");
-            add_point(obj, 19252.3,  20.13,   874.6, "32 Bit 7LUT Short (Symbol)");
-
-            add_point(obj, 19997.9,  21.31,  1566.7, "32 Bit Short (Byte)");
-            add_point(obj, 21489.2,  19.80,  1456.7, "32 Bit 1LUT Short (Byte)");
-            add_point(obj, 23580.3,  19.25,  1289.7, "32 Bit 3LUT (Byte)");
-            add_point(obj, 21495.7,  19.59,  1150.8, "32 Bit 3LUT Short (Byte)");
-            add_point(obj, 23033.8,  19.22,  1005.3, "32 Bit 7LUT (Byte)");
-            add_point(obj, 20569.2,  19.59,   915.0, "32 Bit 7LUT Short (Byte)");
-
-            add_point(obj, 23543.4,  23.33,  1358.4, "48 Bit Short (Symbol)");
-            add_point(obj, 22728.5,  21.35,  1342.0, "48 Bit 1LUT Short (Symbol)");
-            add_point(obj, 25030.4,  21.15,  1339.2, "48 Bit 3LUT (Symbol)");
-            add_point(obj, 22619.4,  21.29,  1093.3, "48 Bit 3LUT Short (Symbol)");
-            add_point(obj, 25167.8,  21.16,   954.3, "48 Bit 7LUT (Symbol)");
-            add_point(obj, 23043.2,  21.37,   908.8, "48 Bit 7LUT Short (Symbol)");
-
-            add_point(obj, 23735.5,  22.67,  1439.1, "48 Bit Short (Byte)");
-            add_point(obj, 25306.7,  20.78,  1479.6, "48 Bit 1LUT Short (Byte)");
-            add_point(obj, 25603.9,  20.41,  1223.9, "48 Bit 3LUT (Byte)");
-            add_point(obj, 24528.3,  20.64,  1181.4, "48 Bit 3LUT Short (Byte)");
-            add_point(obj, 25080.3,  20.42,  1067.5, "48 Bit 7LUT (Byte)");
-            add_point(obj, 24312.1,  20.61,   825.2, "48 Bit 7LUT Short (Byte)");
-
-            add_point(obj, 24813.3,  24.47,  1482.1, "64 Bit Short (Symbol)");
-            add_point(obj, 25039.3,  22.30,  1355.2, "64 Bit 1LUT Short (Symbol)");
-            add_point(obj, 26928.5,  22.13,  1223.4, "64 Bit 3LUT (Symbol)");
-            add_point(obj, 25477.9,  22.26,  1087.7, "64 Bit 3LUT Short (Symbol)");
-            add_point(obj, 27262.6,  22.16,  1006.5, "64 Bit 7LUT (Symbol)");
-            add_point(obj, 25897.8,  22.32,   906.0, "64 Bit 7LUT Short (Symbol)");
-
-            add_point(obj, 25870.8,  23.70,  1592.0, "64 Bit Short (Byte)");
-            add_point(obj, 26474.7,  21.54,  1505.6, "64 Bit 1LUT Short (Byte)");
-            add_point(obj, 27864.0,  21.30,  1341.1, "64 Bit 3LUT (Byte)");
-            add_point(obj, 26319.5,  21.44,  1131.6, "64 Bit 3LUT Short (Byte)");
-            add_point(obj, 26879.6,  21.32,  1006.1, "64 Bit 7LUT (Byte)");
-            add_point(obj, 26478.9,  21.43,   973.0, "64 Bit 7LUT Short (Byte)");
-
-            add_point(obj,  4109.9, 16.0, 1124.6, "trle", true);
-            add_point(obj,  9175.2, 17.8, 1107.6, "srle 0", true);
-            add_point(obj,  9198.3, 18.7, 1801.2, "srle 8", true);
-            add_point(obj, 10667.0, 21.3, 1649.2, "srle 16", true);
-            add_point(obj, 14922.9, 24.2, 2950.6, "srle 32", true);
-            add_point(obj, 20526.3, 27.5, 5003.2, "srle 64", true);
-            add_point(obj,  2570.0, 19.7,  427.6, "mrle", true);
-
-            let colors = ["#efe16d", "#ffc65f", "#ffaa60", "#ff8d6d", "#ff7382", "#fd609a", "#df58b2", "#b15ac7"];
-            let alpha = "33";
+            add_point_no_entropy(obj,  4109.9, 16.0, 1124.6, "trle", true);
+            add_point_no_entropy(obj,  9175.2, 17.8, 1107.6, "srle 0", true);
+            add_point_no_entropy(obj,  9198.3, 18.7, 1801.2, "srle 8", true);
+            add_point_no_entropy(obj, 10667.0, 21.3, 1649.2, "srle 16", true);
+            add_point_no_entropy(obj, 14922.9, 24.2, 2950.6, "srle 32", true);
+            add_point_no_entropy(obj, 20526.3, 27.5, 5003.2, "srle 64", true);
+            add_point_no_entropy(obj,  2570.0, 19.7,  427.6, "mrle", true);
 
             add_line(obj, ["8 Bit", "16 Bit (Symbol)", "24 Bit (Symbol)", "32 Bit (Symbol)", "48 Bit (Symbol)", "64 Bit (Symbol)", "128 Bit (Symbol)"], getColor());
             add_line(obj, ["8 Bit", "16 Bit (Byte)", "24 Bit (Byte)", "32 Bit (Byte)", "48 Bit (Byte)", "64 Bit (Byte)", "128 Bit (Byte)"], getColor());
@@ -533,6 +693,8 @@ window.addEventListener("scroll", reveal);
 
             calc_pareto_line(obj);
             calc_pareto_line2(obj);
+            calc_pareto_line3(obj);
+            calc_pareto_line4(obj);
 
             window.addEventListener("resize", () => { draw_obj(document.getElementById("video_frame").getContext("2d"), document.getElementById("video_frame")); });
             window.addEventListener("load", () => { draw_obj(document.getElementById("video_frame").getContext("2d"), document.getElementById("video_frame")); });
@@ -541,136 +703,136 @@ window.addEventListener("scroll", reveal);
       </div>
       <div class="graph_container">
         <h3>1034.db (checkers program &quot;end game table base&quot;)</h3>
+        <div class="graph_metric_container">
+          <a class="graph_metricY r" onclick="javascript:setYMetric('entropy')">entropy</a>
+          <a class="graph_metricY l active" onclick="javascript:setYMetric('ratio')">ratio</a>
+        </div>
+        <div class="graph_metric_container">
+          <a class="graph_metricX r" onclick="javascript:setXMetric('encode')">encode</a>
+          <a class="graph_metricX l active" onclick="javascript:setXMetric('decode')">decode</a>
+        </div>
         <canvas id="1034" class="chart"></canvas>
         <script>
             var obj = document.getElementById("1034");
             var ctx = obj.getContext("2d");
-            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            ctx.scale(pixelRatio(), pixelRatio());
 
             init_obj(obj);
             
-            add_point(obj, 21583.8,  23.02,  2443.8, "8 Bit");
-            add_point(obj,  9882.7,  21.12,  1896.9, "8 Bit Short");
-            add_point(obj, 15151.8,  20.10,  2199.4, "8 Bit Packed");
-            add_point(obj,  7855.4,  18.91,  1767.7, "8 Bit 1LUT Short");
-            add_point(obj, 14211.6,  19.77,  1841.7, "8 Bit 3LUT");
-            add_point(obj,  7026.0,  19.11,  1708.3, "8 Bit 3LUT Short");
-            add_point(obj, 14629.5,  19.75,  1768.7, "8 Bit 7LUT");
-            add_point(obj,  5285.0,  19.81,  1503.9, "8 Bit 7LUT Short");
-            add_point(obj, 18469.7,  20.59,  1325.0, "8 Bit Single");
-            add_point(obj,  9756.7,  18.55,  1117.8, "8 Bit Single Short");
-            add_point(obj, 14221.0,  20.16,  1270.5, "8 Bit Single Packed");
-            add_point(obj, 16863.5,  24.89,  1722.0, "16 Bit (Symbol)");
-            add_point(obj, 16451.9,  21.30,  1452.1, "16 Bit Packed (Symbol)");
-            add_point(obj, 17468.6,  24.39,  1670.5, "16 Bit (Byte)");
-            add_point(obj, 15516.6,  20.65,  1485.7, "16 Bit Packed (Byte)");
-            add_point(obj, 20043.9,  27.27,  1906.0, "24 Bit (Symbol)");
-            add_point(obj, 18192.7,  23.07,  1648.8, "24 Bit Packed (Symbol)");
-            add_point(obj, 19801.1,  25.90,  1884.7, "24 Bit (Byte)");
-            add_point(obj, 17670.5,  22.05,  1815.6, "24 Bit Packed (Byte)");
-            add_point(obj, 17347.4,  28.39,  2162.4, "32 Bit (Symbol)");
-            add_point(obj, 17746.9,  24.55,  1784.7, "32 Bit Packed (Symbol)");
-            add_point(obj, 17496.2,  27.15,  2057.2, "32 Bit (Byte)");
-            add_point(obj, 17818.2,  23.44,  1831.9, "32 Bit Packed (Byte)");
-            add_point(obj, 21104.2,  31.22,  2221.4, "48 Bit (Symbol)");
-            add_point(obj, 21429.6,  27.10,  2102.7, "48 Bit Packed (Symbol)");
-            add_point(obj, 22123.2,  29.76,  2612.1, "48 Bit (Byte)");
-            add_point(obj, 22210.4,  25.87,  2200.6, "48 Bit Packed (Byte)");
-            add_point(obj, 20578.4,  33.36,  2592.9, "64 Bit (Symbol)");
-            add_point(obj, 21329.9,  28.75,  2050.6, "64 Bit Packed (Symbol)");
-            add_point(obj, 21036.6,  31.66,  2742.4, "64 Bit (Byte)");
-            add_point(obj, 22019.2,  27.29,  2246.0, "64 Bit Packed (Byte)");
-            add_point(obj, 23432.1,  39.84,  2387.9, "128 Bit (Symbol)");
-            add_point(obj, 23879.3,  33.52,  2172.0, "128 Bit Packed (Symbol)");
-            add_point(obj, 24011.4,  37.25,  2489.4, "128 Bit (Byte)");
-            add_point(obj, 23977.4,  31.21,  2293.4, "128 Bit Packed (Byte)");
-            add_point(obj,  1456.9,  16.76,   326.5, "8 Bit RLE + Huffman-esque");
-            add_point(obj,  2819.2,  26.61,  2118.5, "8 Bit MMTF 128");
-            add_point(obj,  4282.1,  21.15,   799.7, "Low Entropy");
-            add_point(obj,  4292.2,  21.15,   718.2, "Low Entropy Single");
-            add_point(obj,  5365.7,  24.87,   799.0, "Low Entropy Short");
-            add_point(obj,  5386.2,  24.87,   674.0, "Low Entropy Short Single");
-            //add_point(obj,  2666.7, 100.00,  2539.3, "Multi MTF 128 Bit (Transform)");
-            //add_point(obj,  4094.2, 100.00,  4064.7, "Multi MTF 256 Bit (Transform)");
-            //add_point(obj, 25902.1, 100.00, 26380.3, "memcpy");
+            add_point(obj, 21198.0,  23.02,  2443.8, 12.0836010, "8 Bit");
+            add_point(obj,  9882.7,  21.12,  1896.9, 12.6285297, "8 Bit Short");
+            add_point(obj, 15151.8,  20.10,  2199.4, 12.7408752, "8 Bit Packed");
+            add_point(obj,  7905.5,  18.91,  1767.7, 12.4615098, "8 Bit 1LUT Short");
+            add_point(obj, 14211.6,  19.77,  1841.7, 12.3102470, "8 Bit 3LUT");
+            add_point(obj,  7026.0,  19.11,  1708.3, 12.6370120, "8 Bit 3LUT Short");
+            add_point(obj, 14629.5,  19.75,  1768.7, 12.4977672, "8 Bit 7LUT");
+            add_point(obj,  5295.8,  19.81,  1503.9, 13.0692685, "8 Bit 7LUT Short");
+            add_point(obj, 18469.7,  20.59,  1325.0, 12.0644551, "8 Bit Single");
+            add_point(obj,  9756.9,  18.55,  1157.3, 12.0939862, "8 Bit Single Short");
+            add_point(obj, 14221.0,  20.16,  1281.7, 12.3180161, "8 Bit Single Packed");
+            add_point(obj, 17449.8,  24.89,  3483.6, 12.2665915, "16 Bit (Symbol)");
+            add_point(obj, 11537.3,  24.04,  2833.5, 12.6500580, "16 Bit Short (Symbol)");
+            add_point(obj, 16501.8,  21.30,  3263.8, 12.4990498, "16 Bit Packed (Symbol)");
+            add_point(obj, 10285.3,  20.83,  2611.8, 12.3534613, "16 Bit 1LUT Short (Symbol)");
+            add_point(obj, 14805.1,  20.98,  2517.8, 12.4042393, "16 Bit 3LUT (Symbol)");
+            add_point(obj,  9686.2,  21.15,  2349.9, 12.5418421, "16 Bit 3LUT Short (Symbol)");
+            add_point(obj, 14977.9,  20.93,  2588.1, 12.4531714, "16 Bit 7LUT (Symbol)");
+            add_point(obj,  9892.9,  21.68,  2267.0, 12.7394762, "16 Bit 7LUT Short (Symbol)");
+            add_point(obj, 17468.6,  24.39,  3572.5, 12.3634678, "16 Bit (Byte)");
+            add_point(obj, 10733.8,  23.50,  2880.7, 12.8413326, "16 Bit Short (Byte)");
+            add_point(obj, 15516.6,  20.65,  3378.7, 12.5926548, "16 Bit Packed (Byte)");
+            add_point(obj,  9867.6,  20.57,  2570.9, 12.6644203, "16 Bit 1LUT Short (Byte)");
+            add_point(obj, 15500.6,  20.20,  2641.6, 12.2995726, "16 Bit 3LUT (Byte)");
+            add_point(obj, 10080.2,  20.73,  2377.1, 12.7660210, "16 Bit 3LUT Short (Byte)");
+            add_point(obj, 13971.5,  20.14,  2708.0, 12.3462362, "16 Bit 7LUT (Byte)");
+            add_point(obj, 11057.5,  21.51,  2398.4, 13.0386938, "16 Bit 7LUT Short (Byte)");
+            add_point(obj, 20043.9,  27.27,  4141.6, 11.9507488, "24 Bit (Symbol)");
+            add_point(obj, 14017.8,  26.74,  3402.3, 12.3535643, "24 Bit Short (Symbol)");
+            add_point(obj, 18192.7,  23.07,  3919.0, 12.2336872, "24 Bit Packed (Symbol)");
+            add_point(obj, 12363.7,  23.04,  3293.2, 12.2513639, "24 Bit 1LUT Short (Symbol)");
+            add_point(obj, 16450.8,  22.66,  3272.0, 12.0407080, "24 Bit 3LUT (Symbol)");
+            add_point(obj, 12727.0,  23.19,  3037.5, 12.3746716, "24 Bit 3LUT Short (Symbol)");
+            add_point(obj, 16588.4,  22.66,  3235.2, 12.0778296, "24 Bit 7LUT (Symbol)");
+            add_point(obj, 13539.3,  23.56,  2918.4, 12.5508442, "24 Bit 7LUT Short (Symbol)");
+            add_point(obj, 19801.1,  25.90,  4397.6, 12.4109470, "24 Bit (Byte)");
+            add_point(obj, 12977.1,  25.74,  3640.0, 12.8070743, "24 Bit Short (Byte)");
+            add_point(obj, 17670.5,  22.05,  4233.2, 12.3395957, "24 Bit Packed (Byte)");
+            add_point(obj, 13615.3,  22.42,  3353.6, 12.5999802, "24 Bit 1LUT Short (Byte)");
+            add_point(obj, 16464.5,  21.52,  3448.9, 11.9624188, "24 Bit 3LUT (Byte)");
+            add_point(obj, 13749.7,  22.37,  3187.4, 12.6269481, "24 Bit 3LUT Short (Byte)");
+            add_point(obj, 16815.8,  21.52,  3409.5, 12.0228990, "24 Bit 7LUT (Byte)");
+            add_point(obj, 15295.9,  22.78,  3215.8, 12.7314422, "24 Bit 7LUT Short (Byte)");
+            add_point(obj, 17347.4,  28.39,  5115.5, 12.2663102, "32 Bit (Symbol)");
+            add_point(obj, 14602.8,  28.35,  4286.5, 12.4372354, "32 Bit Short (Symbol)");
+            add_point(obj, 17746.9,  24.55,  4966.9, 11.9627739, "32 Bit Packed (Symbol)");
+            add_point(obj, 15125.2,  24.73,  4072.6, 12.1347400, "32 Bit 1LUT Short (Symbol)");
+            add_point(obj, 19972.5,  24.15,  4113.9, 11.7532618, "32 Bit 3LUT (Symbol)");
+            add_point(obj, 15306.2,  24.66,  3720.7, 12.1854705, "32 Bit 3LUT Short (Symbol)");
+            add_point(obj, 19701.4,  24.19,  4035.6, 11.8169202, "32 Bit 7LUT (Symbol)");
+            add_point(obj, 15785.3,  24.85,  3656.4, 12.2722436, "32 Bit 7LUT Short (Symbol)");
+            add_point(obj, 17950.4,  27.15,  5371.9, 12.3990211, "32 Bit (Byte)");
+            add_point(obj, 14841.4,  27.34,  4401.7, 12.7719799, "32 Bit Short (Byte)");
+            add_point(obj, 17864.4,  23.44,  5240.1, 12.1505819, "32 Bit Packed (Byte)");
+            add_point(obj, 17409.2,  23.96,  4115.3, 12.5362159, "32 Bit 1LUT Short (Byte)");
+            add_point(obj, 20829.1,  22.86,  4289.1, 11.7931769, "32 Bit 3LUT (Byte)");
+            add_point(obj, 17130.3,  23.69,  3923.5, 12.4598470, "32 Bit 3LUT Short (Byte)");
+            add_point(obj, 20065.2,  22.89,  4294.6, 11.8625039, "32 Bit 7LUT (Byte)");
+            add_point(obj, 17239.9,  23.74,  3905.5, 12.4354604, "32 Bit 7LUT Short (Byte)");
+            add_point(obj, 21171.4,  31.22,  6153.3, 12.0165421, "48 Bit (Symbol)");
+            add_point(obj, 17887.6,  31.34,  5411.5, 12.2288297, "48 Bit Short (Symbol)");
+            add_point(obj, 21838.9,  27.10,  6109.0, 11.6885256, "48 Bit Packed (Symbol)");
+            add_point(obj, 17771.2,  27.34,  5252.9, 11.8756257, "48 Bit 1LUT Short (Symbol)");
+            add_point(obj, 20596.4,  26.94,  5253.2, 11.5962622, "48 Bit 3LUT (Symbol)");
+            add_point(obj, 17803.3,  27.32,  4887.7, 11.9163735, "48 Bit 3LUT Short (Symbol)");
+            add_point(obj, 20606.5,  27.07,  5255.8, 11.7125249, "48 Bit 7LUT (Symbol)");
+            add_point(obj, 18720.1,  27.45,  4835.4, 11.9743644, "48 Bit 7LUT Short (Symbol)");
+            add_point(obj, 22123.2,  29.76,  6570.1, 12.1928199, "48 Bit (Byte)");
+            add_point(obj, 18616.8,  30.02,  5511.6, 12.5271453, "48 Bit Short (Byte)");
+            add_point(obj, 22210.4,  25.87,  6516.7, 11.9485592, "48 Bit Packed (Byte)");
+            add_point(obj, 20072.6,  26.07,  5494.4, 12.1402361, "48 Bit 1LUT Short (Byte)");
+            add_point(obj, 20904.4,  25.41,  5712.4, 11.6601937, "48 Bit 3LUT (Byte)");
+            add_point(obj, 19340.5,  25.93,  5262.9, 12.0941204, "48 Bit 3LUT Short (Byte)");
+            add_point(obj, 21044.9,  25.54,  5686.4, 11.7710817, "48 Bit 7LUT (Byte)");
+            add_point(obj, 19749.0,  25.91,  5266.8, 12.0351664, "48 Bit 7LUT Short (Byte)");
+            add_point(obj, 20578.4,  33.36,  7693.6, 11.9835218, "64 Bit (Symbol)");
+            add_point(obj, 19620.5,  33.51,  6572.9, 12.1912903, "64 Bit Short (Symbol)");
+            add_point(obj, 21684.2,  28.75,  7602.4, 11.5996694, "64 Bit Packed (Symbol)");
+            add_point(obj, 20853.6,  28.95,  6334.5, 11.7791137, "64 Bit 1LUT Short (Symbol)");
+            add_point(obj, 23401.9,  28.66,  6464.5, 11.5612879, "64 Bit 3LUT (Symbol)");
+            add_point(obj, 21147.3,  28.98,  5946.7, 11.8280870, "64 Bit 3LUT Short (Symbol)");
+            add_point(obj, 22050.6,  28.82,  6475.4, 11.6874272, "64 Bit 7LUT (Symbol)");
+            add_point(obj, 21737.3,  29.08,  6019.1, 11.8706676, "64 Bit 7LUT Short (Symbol)");
+            add_point(obj, 21153.2,  31.66,  8034.7, 12.1602291, "64 Bit (Byte)");
+            add_point(obj, 20885.3,  31.89,  6716.5, 12.4579063, "64 Bit Short (Byte)");
+            add_point(obj, 22219.0,  27.29,  7836.3, 11.9036382, "64 Bit Packed (Byte)");
+            add_point(obj, 22705.1,  27.34,  6663.8, 11.9789425, "64 Bit 1LUT Short (Byte)");
+            add_point(obj, 23777.1,  26.90,  6780.3, 11.6255998, "64 Bit 3LUT (Byte)");
+            add_point(obj, 22500.5,  27.25,  6324.0, 11.9554522, "64 Bit 3LUT Short (Byte)");
+            add_point(obj, 22970.8,  27.05,  6839.2, 11.7558958, "64 Bit 7LUT (Byte)");
+            add_point(obj, 22686.1,  27.25,  6327.6, 11.9162825, "64 Bit 7LUT Short (Byte)");
+            add_point(obj, 23477.5,  39.84,  6287.4, 12.1632402, "128 Bit (Symbol)");
+            add_point(obj, 23879.3,  33.52,  6350.6, 11.6496804, "128 Bit Packed (Symbol)");
+            add_point(obj, 24011.4,  37.25,  6763.4, 12.2809767, "128 Bit (Byte)");
+            add_point(obj, 23994.6,  31.21,  6582.9, 11.9752919, "128 Bit Packed (Byte)");
+            add_point(obj,  1456.9,  16.76,   326.5, 12.3588168, "8 Bit RLE + Huffman-esque");
+            add_point(obj,  2819.2,  26.61,  2118.5, 14.8487802, "8 Bit MMTF 128");
+            add_point(obj,  4282.1,  21.15,   799.7, 10.3695959, "Low Entropy");
+            add_point(obj,  4292.2,  21.15,   765.9, 10.3695959, "Low Entropy Single");
+            add_point(obj,  5398.9,  24.87,   799.0, 14.2027174, "Low Entropy Short");
+            add_point(obj,  5392.9,  24.87,   778.3, 14.2027174, "Low Entropy Short Single");
+            //add_point(obj,  2666.7, 100.00,  2539.3, 17.9028597, "Multi MTF 128 Bit (Transform)");
+            //add_point(obj,  4094.2, 100.00,  4064.7, 18.3512674, "Multi MTF 256 Bit (Transform)");
+            //add_point(obj,  1982.4, 100.00,  1859.1, 15.3704741, "Bit MMTF 8 Bit (Transform)");
+            //add_point(obj,  2290.6, 100.00,  2343.3, 16.7890417, "Bit MMTF 16 Bit (Transform)");
+            //add_point(obj, 27304.6, 100.00, 26689.1, 16.7581665, "memcpy");
 
-            add_point(obj, 11537.3,  24.04,  1079.1, "16 Bit Short (Symbol)");
-            add_point(obj, 10285.3,  20.83,   998.6, "16 Bit 1LUT Short (Symbol)");
-            add_point(obj, 14805.1,  20.98,   836.1, "16 Bit 3LUT (Symbol)");
-            add_point(obj,  9686.2,  21.15,   808.1, "16 Bit 3LUT Short (Symbol)");
-            add_point(obj, 14977.9,  20.93,   710.0, "16 Bit 7LUT (Symbol)");
-            add_point(obj,  9892.9,  21.68,   668.3, "16 Bit 7LUT Short (Symbol)");
-
-            add_point(obj, 10733.8,  23.50,  1006.6, "16 Bit Short (Byte)");
-            add_point(obj,  9867.6,  20.57,  1044.8, "16 Bit 1LUT Short (Byte)");
-            add_point(obj, 15500.6,  20.20,   893.8, "16 Bit 3LUT (Byte)");
-            add_point(obj, 10057.2,  20.73,   810.5, "16 Bit 3LUT Short (Byte)");
-            add_point(obj, 13971.5,  20.14,   708.7, "16 Bit 7LUT (Byte)");
-            add_point(obj, 11057.5,  21.51,   677.4, "16 Bit 7LUT Short (Byte)");
-
-            add_point(obj, 14017.8,  26.74,  1027.3, "24 Bit Short (Symbol)");
-            add_point(obj, 12211.1,  23.04,   969.6, "24 Bit 1LUT Short (Symbol)");
-            add_point(obj, 16450.8,  22.66,   851.0, "24 Bit 3LUT (Symbol)");
-            add_point(obj, 12727.0,  23.19,   845.4, "24 Bit 3LUT Short (Symbol)");
-            add_point(obj, 16588.4,  22.66,   707.1, "24 Bit 7LUT (Symbol)");
-            add_point(obj, 13491.3,  23.56,   717.9, "24 Bit 7LUT Short (Symbol)");
-
-            add_point(obj, 12964.6,  25.74,  1125.9, "24 Bit Short (Byte)");
-            add_point(obj, 13615.3,  22.42,  1133.7, "24 Bit 1LUT Short (Byte)");
-            add_point(obj, 16464.5,  21.52,   982.6, "24 Bit 3LUT (Byte)");
-            add_point(obj, 13749.7,  22.37,   766.5, "24 Bit 3LUT Short (Byte)");
-            add_point(obj, 16119.5,  21.52,   791.9, "24 Bit 7LUT (Byte)");
-            add_point(obj, 15295.9,  22.78,   751.9, "24 Bit 7LUT Short (Byte)");
-
-            add_point(obj, 14602.8,  28.35,  1097.0, "32 Bit Short (Symbol)");
-            add_point(obj, 15125.2,  24.73,  1085.8, "32 Bit 1LUT Short (Symbol)");
-            add_point(obj, 19972.5,  24.15,   946.0, "32 Bit 3LUT (Symbol)");
-            add_point(obj, 15306.2,  24.66,   869.0, "32 Bit 3LUT Short (Symbol)");
-            add_point(obj, 19701.4,  24.19,   778.0, "32 Bit 7LUT (Symbol)");
-            add_point(obj, 15785.3,  24.85,   725.7, "32 Bit 7LUT Short (Symbol)");
-
-            add_point(obj, 14841.4,  27.34,  1220.1, "32 Bit Short (Byte)");
-            add_point(obj, 17409.2,  23.96,  1176.7, "32 Bit 1LUT Short (Byte)");
-            add_point(obj, 20829.1,  22.86,  1053.9, "32 Bit 3LUT (Byte)");
-            add_point(obj, 17130.3,  23.69,   942.7, "32 Bit 3LUT Short (Byte)");
-            add_point(obj, 20065.2,  22.89,   771.7, "32 Bit 7LUT (Byte)");
-            add_point(obj, 17239.9,  23.74,   761.3, "32 Bit 7LUT Short (Byte)");
-
-            add_point(obj, 17887.6,  31.34,  1016.3, "48 Bit Short (Symbol)");
-            add_point(obj, 17757.6,  27.34,  1046.8, "48 Bit 1LUT Short (Symbol)");
-            add_point(obj, 20137.8,  26.94,   884.6, "48 Bit 3LUT (Symbol)");
-            add_point(obj, 17803.3,  27.32,   860.2, "48 Bit 3LUT Short (Symbol)");
-            add_point(obj, 20606.5,  27.07,   748.9, "48 Bit 7LUT (Symbol)");
-            add_point(obj, 18720.1,  27.45,   638.1, "48 Bit 7LUT Short (Symbol)");
-
-            add_point(obj, 18616.8,  30.02,  1129.4, "48 Bit Short (Byte)");
-            add_point(obj, 20072.6,  26.07,  1180.2, "48 Bit 1LUT Short (Byte)");
-            add_point(obj, 20904.4,  25.41,   970.8, "48 Bit 3LUT (Byte)");
-            add_point(obj, 19340.5,  25.93,   828.2, "48 Bit 3LUT Short (Byte)");
-            add_point(obj, 20941.7,  25.54,   851.6, "48 Bit 7LUT (Byte)");
-            add_point(obj, 19441.2,  25.91,   780.0, "48 Bit 7LUT Short (Byte)");
-
-            add_point(obj, 19620.5,  33.51,  1081.3, "64 Bit Short (Symbol)");
-            add_point(obj, 20853.6,  28.95,  1057.5, "64 Bit 1LUT Short (Symbol)");
-            add_point(obj, 23401.9,  28.66,   942.9, "64 Bit 3LUT (Symbol)");
-            add_point(obj, 21147.3,  28.98,   841.7, "64 Bit 3LUT Short (Symbol)");
-            add_point(obj, 22050.6,  28.82,   775.1, "64 Bit 7LUT (Symbol)");
-            add_point(obj, 21737.3,  29.08,   721.0, "64 Bit 7LUT Short (Symbol)");
-
-            add_point(obj, 20885.3,  31.89,  1222.6, "64 Bit Short (Byte)");
-            add_point(obj, 22705.1,  27.34,  1207.7, "64 Bit 1LUT Short (Byte)");
-            add_point(obj, 23777.1,  26.90,  1039.7, "64 Bit 3LUT (Byte)");
-            add_point(obj, 22500.5,  27.25,   884.6, "64 Bit 3LUT Short (Byte)");
-            add_point(obj, 22970.8,  27.05,   785.9, "64 Bit 7LUT (Byte)");
-            add_point(obj, 22686.1,  27.25,   767.2, "64 Bit 7LUT Short (Byte)");
-
-            add_point(obj,  4291.4, 17.4, 1137.2, "trle", true);
-            add_point(obj,  9113.0, 20.2, 1130.2, "srle 0", true);
-            add_point(obj,  9092.7, 22.0, 1863.1, "srle 8", true);
-            add_point(obj, 10108.9, 27.1, 1657.0, "srle 16", true);
-            add_point(obj, 13160.2, 32.7, 2910.3, "srle 32", true);
-            add_point(obj, 19314.2, 39.5, 4990.2, "srle 64", true);
-            add_point(obj,  3182.7, 21.0,  461.4, "mrle", true);
+            add_point_no_entropy(obj,  4291.4, 17.4, 1137.2, "trle", true);
+            add_point_no_entropy(obj,  9113.0, 20.2, 1130.2, "srle 0", true);
+            add_point_no_entropy(obj,  9092.7, 22.0, 1863.1, "srle 8", true);
+            add_point_no_entropy(obj, 10108.9, 27.1, 1657.0, "srle 16", true);
+            add_point_no_entropy(obj, 13160.2, 32.7, 2910.3, "srle 32", true);
+            add_point_no_entropy(obj, 19314.2, 39.5, 4990.2, "srle 64", true);
+            add_point_no_entropy(obj,  3182.7, 21.0,  461.4, "mrle", true);
 
             add_line(obj, ["8 Bit", "16 Bit (Symbol)", "24 Bit (Symbol)", "32 Bit (Symbol)", "48 Bit (Symbol)", "64 Bit (Symbol)", "128 Bit (Symbol)"], getColor());
             add_line(obj, ["8 Bit", "16 Bit (Byte)", "24 Bit (Byte)", "32 Bit (Byte)", "48 Bit (Byte)", "64 Bit (Byte)", "128 Bit (Byte)"], getColor());
@@ -695,6 +857,8 @@ window.addEventListener("scroll", reveal);
 
             calc_pareto_line(obj);
             calc_pareto_line2(obj);
+            calc_pareto_line3(obj);
+            calc_pareto_line4(obj);
 
             window.addEventListener("resize", () => { draw_obj(document.getElementById("1034").getContext("2d"), document.getElementById("1034")); });
             window.addEventListener("load", () => { draw_obj(document.getElementById("1034").getContext("2d"), document.getElementById("1034")); });
@@ -703,137 +867,137 @@ window.addEventListener("scroll", reveal);
       </div>
       <div class="graph_container">
         <h3>enwiki.btw (wikipedia extract encoded using libdivsufsort)</h3>
+        <div class="graph_metric_container">
+          <a class="graph_metricY r" onclick="javascript:setYMetric('entropy')">entropy</a>
+          <a class="graph_metricY l active" onclick="javascript:setYMetric('ratio')">ratio</a>
+        </div>
+        <div class="graph_metric_container">
+          <a class="graph_metricX r" onclick="javascript:setXMetric('encode')">encode</a>
+          <a class="graph_metricX l active" onclick="javascript:setXMetric('decode')">decode</a>
+        </div>
         <p>Single Symbol codecs have been removed since the dataset isn't suitable.</p>
         <canvas id="enwiki" class="chart"></canvas>
         <script>
             var obj = document.getElementById("enwiki");
             var ctx = obj.getContext("2d");
-            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            ctx.scale(pixelRatio(), pixelRatio());
 
             init_obj(obj);
 
-            add_point(obj, 16097.6,  48.80,  1219.7, "8 Bit");
-            add_point(obj,  6975.0,  44.42,   899.3, "8 Bit Short");
-            add_point(obj,  7514.9,  44.86,  1038.7, "8 Bit Packed");
-            add_point(obj,  4088.0,  41.87,   815.0, "8 Bit 1LUT Short");
-            add_point(obj,  6116.6,  43.29,   775.1, "8 Bit 3LUT");
-            add_point(obj,  3043.5,  40.34,   765.3, "8 Bit 3LUT Short");
-            add_point(obj,  4845.2,  42.98,   720.4, "8 Bit 7LUT");
-            add_point(obj,  2038.7,  41.27,   655.3, "8 Bit 7LUT Short");
-            //add_point(obj, 16843.4,  88.75,  1127.0, "8 Bit Single");
-            //add_point(obj, 13814.9,  88.17,  1071.5, "8 Bit Single Short");
-            //add_point(obj, 14564.1,  88.59,  1097.4, "8 Bit Single Packed");
-            add_point(obj, 12708.1,  51.49,  1098.3, "16 Bit (Symbol)");
-            add_point(obj,  9417.5,  47.89,   886.7, "16 Bit Packed (Symbol)");
-            add_point(obj, 12981.9,  50.74,  1024.0, "16 Bit (Byte)");
-            add_point(obj,  8322.4,  46.99,   913.4, "16 Bit Packed (Byte)");
-            add_point(obj, 15413.8,  54.90,  1244.0, "24 Bit (Symbol)");
-            add_point(obj, 10041.7,  50.61,  1056.8, "24 Bit Packed (Symbol)");
-            add_point(obj, 14838.0,  52.73,  1196.6, "24 Bit (Byte)");
-            add_point(obj, 10085.5,  49.39,  1159.4, "24 Bit Packed (Byte)");
-            add_point(obj, 13837.0,  55.92,  1380.0, "32 Bit (Symbol)");
-            add_point(obj, 11767.3,  52.84,  1158.5, "32 Bit Packed (Symbol)");
-            add_point(obj, 14032.1,  54.27,  1327.9, "32 Bit (Byte)");
-            add_point(obj, 12316.8,  51.63,  1213.6, "32 Bit Packed (Byte)");
-            add_point(obj, 16115.9,  59.24,  1398.1, "48 Bit (Symbol)");
-            add_point(obj, 15370.2,  56.26,  1321.0, "48 Bit Packed (Symbol)");
-            add_point(obj, 16775.3,  57.58,  1557.6, "48 Bit (Byte)");
-            add_point(obj, 16106.6,  55.01,  1385.7, "48 Bit Packed (Byte)");
-            add_point(obj, 17521.9,  61.69,  1557.9, "64 Bit (Symbol)");
-            add_point(obj, 17252.6,  58.87,  1353.7, "64 Bit Packed (Symbol)");
-            add_point(obj, 17737.0,  59.94,  1606.6, "64 Bit (Byte)");
-            add_point(obj, 16491.9,  57.33,  1421.2, "64 Bit Packed (Byte)");
-            add_point(obj, 18760.9,  66.89,  1489.9, "128 Bit (Symbol)");
-            add_point(obj, 20061.6,  64.32,  1415.5, "128 Bit Packed (Symbol)");
-            add_point(obj, 19088.4,  65.39,  1512.1, "128 Bit (Byte)");
-            add_point(obj, 19334.9,  62.94,  1461.5, "128 Bit Packed (Byte)");
-            add_point(obj,  1236.2,  42.52,   271.7, "8 Bit RLE + Huffman-esque");
-            add_point(obj,  1299.9,  63.49,  1101.2, "8 Bit MMTF 128");
-            add_point(obj,   913.9,  64.19,   381.1, "Low Entropy");
-            //add_point(obj,  7491.0,  89.22,   533.0, "Low Entropy Single");
-            add_point(obj,  1403.6,  66.17,   394.1, "Low Entropy Short");
-            //add_point(obj,  9809.1,  89.65,   545.2, "Low Entropy Short Single");
-            //add_point(obj,  1289.8, 100.00,  1205.9, "Multi MTF 128 Bit (Transform)");
-            //add_point(obj,  1966.1, 100.00,  2012.2, "Multi MTF 256 Bit (Transform)");
-            //add_point(obj, 25742.6, 100.00, 25684.9, "memcpy");
+            add_point(obj, 16097.6,  48.80,  1225.6, 34.1292849, "8 Bit");
+            add_point(obj,  6975.0,  44.42,   899.3, 32.2611929, "8 Bit Short");
+            add_point(obj,  7514.9,  44.86,  1038.7, 32.9456427, "8 Bit Packed");
+            add_point(obj,  4088.0,  41.87,   828.2, 31.3801202, "8 Bit 1LUT Short");
+            add_point(obj,  6116.6,  43.29,   775.1, 32.2650914, "8 Bit 3LUT");
+            add_point(obj,  3046.5,  40.34,   765.3, 30.6340463, "8 Bit 3LUT Short");
+            add_point(obj,  4845.2,  42.98,   720.4, 32.4238501, "8 Bit 7LUT");
+            add_point(obj,  2064.8,  41.27,   655.3, 31.3133051, "8 Bit 7LUT Short");
+            //add_point(obj, 17021.5,  88.75,  1138.4, 60.1401039, "8 Bit Single");
+            //add_point(obj, 13814.9,  88.17,  1082.6, 59.7635014, "8 Bit Single Short");
+            //add_point(obj, 15197.0,  88.59,  1107.5, 60.3098001, "8 Bit Single Packed");
+            add_point(obj, 12954.1,  51.49,  2022.6, 35.7014658, "16 Bit (Symbol)");
+            add_point(obj,  8234.2,  49.11,  1590.3, 34.7171647, "16 Bit Short (Symbol)");
+            add_point(obj,  9417.5,  47.89,  1871.4, 34.2505856, "16 Bit Packed (Symbol)");
+            add_point(obj,  5926.8,  46.43,  1425.4, 33.4693523, "16 Bit 1LUT Short (Symbol)");
+            add_point(obj,  5712.5,  46.24,  1249.5, 34.0824838, "16 Bit 3LUT (Symbol)");
+            add_point(obj,  4638.3,  45.48,  1231.9, 33.1369538, "16 Bit 3LUT Short (Symbol)");
+            add_point(obj,  4835.6,  45.49,  1216.2, 33.7183903, "16 Bit 7LUT (Symbol)");
+            add_point(obj,  3547.7,  45.68,  1099.2, 33.4575242, "16 Bit 7LUT Short (Symbol)");
+            add_point(obj, 12981.9,  50.74,  2077.1, 35.3270356, "16 Bit (Byte)");
+            add_point(obj,  7814.9,  48.33,  1623.9, 34.4085641, "16 Bit Short (Byte)");
+            add_point(obj,  8322.4,  46.99,  1975.6, 33.9624138, "16 Bit Packed (Byte)");
+            add_point(obj,  5410.5,  45.96,  1404.6, 33.4717294, "16 Bit 1LUT Short (Byte)");
+            add_point(obj,  5786.9,  44.91,  1332.9, 33.3617236, "16 Bit 3LUT (Byte)");
+            add_point(obj,  4614.4,  44.93,  1230.7, 33.0409018, "16 Bit 3LUT Short (Byte)");
+            add_point(obj,  4792.9,  44.17,  1269.3, 33.0020650, "16 Bit 7LUT (Byte)");
+            add_point(obj,  4104.7,  45.94,  1180.0, 33.8720868, "16 Bit 7LUT Short (Byte)");
+            add_point(obj, 15663.3,  54.90,  2832.4, 37.3283231, "24 Bit (Symbol)");
+            add_point(obj, 11423.9,  53.35,  2302.7, 36.4754770, "24 Bit Short (Symbol)");
+            add_point(obj, 10041.7,  50.61,  2562.9, 35.6142232, "24 Bit Packed (Symbol)");
+            add_point(obj,  8243.6,  50.39,  2169.6, 34.9488918, "24 Bit 1LUT Short (Symbol)");
+            add_point(obj,  8300.4,  49.22,  2023.4, 35.1417625, "24 Bit 3LUT (Symbol)");
+            add_point(obj,  7299.9,  49.64,  1921.4, 34.8891371, "24 Bit 3LUT Short (Symbol)");
+            add_point(obj,  7046.2,  48.72,  1916.1, 34.8862441, "24 Bit 7LUT (Symbol)");
+            add_point(obj,  6396.7,  49.75,  1738.6, 35.2399455, "24 Bit 7LUT Short (Symbol)");
+            add_point(obj, 14838.0,  52.73,  3024.8, 36.4353237, "24 Bit (Byte)");
+            add_point(obj,  9429.9,  51.80,  2446.2, 36.0545863, "24 Bit Short (Byte)");
+            add_point(obj, 10096.3,  49.39,  2846.0, 35.0016695, "24 Bit Packed (Byte)");
+            add_point(obj,  7919.4,  49.55,  2174.2, 35.0356874, "24 Bit 1LUT Short (Byte)");
+            add_point(obj,  8316.6,  47.63,  2154.2, 34.2336347, "24 Bit 3LUT (Byte)");
+            add_point(obj,  7306.0,  48.65,  1966.6, 34.4879130, "24 Bit 3LUT Short (Byte)");
+            add_point(obj,  7081.2,  47.15,  2021.5, 33.8581359, "24 Bit 7LUT (Byte)");
+            add_point(obj,  7168.7,  48.98,  1882.9, 35.0105447, "24 Bit 7LUT Short (Byte)");
+            add_point(obj, 13935.4,  55.92,  3938.4, 38.1686326, "32 Bit (Symbol)");
+            add_point(obj, 10479.6,  55.44,  3248.3, 37.7876765, "32 Bit Short (Symbol)");
+            add_point(obj, 11767.3,  52.84,  3747.9, 36.5368547, "32 Bit Packed (Symbol)");
+            add_point(obj,  9273.2,  52.55,  2981.2, 36.0133522, "32 Bit 1LUT Short (Symbol)");
+            add_point(obj, 10983.7,  51.67,  2863.1, 35.9448947, "32 Bit 3LUT (Symbol)");
+            add_point(obj,  8656.2,  52.00,  2619.5, 36.0600295, "32 Bit 3LUT Short (Symbol)");
+            add_point(obj,  9790.6,  51.37,  2781.7, 35.7143246, "32 Bit 7LUT (Symbol)");
+            add_point(obj,  8115.3,  52.02,  2483.2, 36.2684990, "32 Bit 7LUT Short (Symbol)");
+            add_point(obj, 14054.1,  54.27,  4155.4, 37.2762506, "32 Bit (Byte)");
+            add_point(obj,  9989.6,  54.14,  3338.1, 37.2280376, "32 Bit Short (Byte)");
+            add_point(obj, 12316.8,  51.63,  3991.3, 35.9377270, "32 Bit Packed (Byte)");
+            add_point(obj, 10707.9,  51.94,  2997.3, 36.2176551, "32 Bit 1LUT Short (Byte)");
+            add_point(obj, 11014.7,  50.02,  3049.7, 35.1532795, "32 Bit 3LUT (Byte)");
+            add_point(obj,  9837.5,  51.06,  2759.6, 35.5623843, "32 Bit 3LUT Short (Byte)");
+            add_point(obj,  9734.1,  49.72,  2929.3, 34.9698796, "32 Bit 7LUT (Byte)");
+            add_point(obj,  8709.7,  50.81,  2651.2, 35.6942864, "32 Bit 7LUT Short (Byte)");
+            add_point(obj, 16634.1,  59.24,  5176.9, 39.7691651, "48 Bit (Symbol)");
+            add_point(obj, 14371.7,  59.03,  4525.5, 39.5464085, "48 Bit Short (Symbol)");
+            add_point(obj, 15370.2,  56.26,  5076.7, 38.1170964, "48 Bit Packed (Symbol)");
+            add_point(obj, 13079.7,  56.10,  4245.6, 37.7030661, "48 Bit 1LUT Short (Symbol)");
+            add_point(obj, 14226.2,  55.33,  4118.6, 37.6319984, "48 Bit 3LUT (Symbol)");
+            add_point(obj, 12520.1,  55.57,  3853.9, 37.6904522, "48 Bit 3LUT Short (Symbol)");
+            add_point(obj, 13209.8,  55.15,  3972.6, 37.4684718, "48 Bit 7LUT (Symbol)");
+            add_point(obj, 11880.5,  55.48,  3675.6, 37.7850602, "48 Bit 7LUT Short (Symbol)");
+            add_point(obj, 17036.4,  57.58,  5568.3, 38.8640187, "48 Bit (Byte)");
+            add_point(obj, 14478.2,  57.63,  4645.9, 39.0140445, "48 Bit Short (Byte)");
+            add_point(obj, 16106.6,  55.01,  5463.9, 37.4760828, "48 Bit Packed (Byte)");
+            add_point(obj, 14721.6,  55.01,  4501.0, 37.5139299, "48 Bit 1LUT Short (Byte)");
+            add_point(obj, 14552.7,  53.66,  4511.6, 36.7822588, "48 Bit 3LUT (Byte)");
+            add_point(obj, 13543.8,  54.28,  4126.7, 37.0239625, "48 Bit 3LUT Short (Byte)");
+            add_point(obj, 13340.3,  53.48,  4362.4, 36.6419382, "48 Bit 7LUT (Byte)");
+            add_point(obj, 12474.8,  53.96,  3981.8, 36.8991074, "48 Bit 7LUT Short (Byte)");
+            add_point(obj, 17521.9,  61.69,  7226.5, 41.0161702, "64 Bit (Symbol)");
+            add_point(obj, 15689.1,  61.45,  6218.3, 40.7897186, "64 Bit Short (Symbol)");
+            add_point(obj, 17252.6,  58.87,  6995.2, 39.4157290, "64 Bit Packed (Symbol)");
+            add_point(obj, 15418.4,  58.57,  5801.5, 38.9726193, "64 Bit 1LUT Short (Symbol)");
+            add_point(obj, 16351.6,  57.91,  5637.3, 38.9076316, "64 Bit 3LUT (Symbol)");
+            add_point(obj, 14907.5,  58.09,  5277.5, 38.9349331, "64 Bit 3LUT Short (Symbol)");
+            add_point(obj, 15693.7,  57.75,  5542.4, 38.7603903, "64 Bit 7LUT (Symbol)");
+            add_point(obj, 14249.7,  57.94,  5133.1, 38.9682333, "64 Bit 7LUT Short (Symbol)");
+            add_point(obj, 17821.4,  59.94,  7594.6, 40.0491782, "64 Bit (Byte)");
+            add_point(obj, 15893.3,  60.00,  6370.6, 40.2209136, "64 Bit Short (Byte)");
+            add_point(obj, 16557.0,  57.33,  7285.0, 38.6511419, "64 Bit Packed (Byte)");
+            add_point(obj, 16263.8,  57.24,  6176.4, 38.6042250, "64 Bit 1LUT Short (Byte)");
+            add_point(obj, 17019.3,  56.28,  6050.7, 38.0388155, "64 Bit 3LUT (Byte)");
+            add_point(obj, 15548.0,  56.63,  5640.5, 38.1621316, "64 Bit 3LUT Short (Byte)");
+            add_point(obj, 16061.7,  56.10,  5933.0, 37.9178881, "64 Bit 7LUT (Byte)");
+            add_point(obj, 15142.2,  56.35,  5449.0, 37.9976528, "64 Bit 7LUT Short (Byte)");
+            add_point(obj, 19406.6,  66.89,  5670.4, 43.8537314, "128 Bit (Symbol)");
+            add_point(obj, 20237.7,  64.32,  5640.8, 42.3538968, "128 Bit Packed (Symbol)");
+            add_point(obj, 19807.6,  65.39,  5654.0, 42.9611455, "128 Bit (Byte)");
+            add_point(obj, 20158.4,  62.94,  5650.8, 41.6087652, "128 Bit Packed (Byte)");
+            add_point(obj,  1236.2,  42.52,   271.7, 32.6883482, "8 Bit RLE + Huffman-esque");
+            add_point(obj,  1299.9,  63.49,  1101.2, 29.8407286, "8 Bit MMTF 128");
+            add_point(obj,   913.9,  64.19,   383.3, 34.0634138, "Low Entropy");
+            //add_point(obj,  7491.0,  89.22,   561.6, 59.5028009, "Low Entropy Single");
+            add_point(obj,  1412.4,  66.17,   394.1, 36.1105593, "Low Entropy Short");
+            //add_point(obj,  9841.2,  89.65,   576.5, 61.0483200, "Low Entropy Short Single");
+            //add_point(obj,  1289.8, 100.00,  1206.2, 33.9207893, "Multi MTF 128 Bit (Transform)");
+            //add_point(obj,  1966.1, 100.00,  2012.2, 35.6471065, "Multi MTF 256 Bit (Transform)");
+            //add_point(obj,  1973.5, 100.00,  1843.2, 35.8678697, "Bit MMTF 8 Bit (Transform)");
+            //add_point(obj,  2272.9, 100.00,  2309.8, 38.3361702, "Bit MMTF 16 Bit (Transform)");
+            //add_point(obj, 27041.2, 100.00, 26973.3, 65.9382889, "memcpy");
 
-            add_point(obj,  2341.0, 42.4,  697.6, "trle", true);
-            add_point(obj,  6341.4, 46.9,  680.6, "srle 0", true);
-            add_point(obj,  6310.3, 46.9,  858.6, "srle 8", true);
-            add_point(obj,  8818.9, 54.4,  906.4, "srle 16", true);
-            add_point(obj, 13030.9, 61.0, 1766.0, "srle 32", true);
-            add_point(obj, 18660.4, 66.8, 3289.0, "srle 64", true);
-            add_point(obj,  1131.5, 64.1,  320.2, "mrle", true);
-
-            add_point(obj,   8234.2, 49.11,  613.2, "16 Bit Short (Symbol)");
-            add_point(obj,   5926.8, 46.43,  542.3, "16 Bit 1LUT Short (Symbol)");
-            add_point(obj,   5658.3, 46.24,  419.8, "16 Bit 3LUT (Symbol)");
-            add_point(obj,   4638.3, 45.48,  404.5, "16 Bit 3LUT Short (Symbol)");
-            add_point(obj,   4835.6, 45.49,  347.8, "16 Bit 7LUT (Symbol)");
-            add_point(obj,   3547.7, 45.68,  332.1, "16 Bit 7LUT Short (Symbol)");
-            
-            add_point(obj,   7814.9, 48.33,  607.0, "16 Bit Short (Byte)");
-            add_point(obj,   5377.0, 45.96,  529.6, "16 Bit 1LUT Short (Byte)");
-            add_point(obj,   5786.9, 44.91,  430.2, "16 Bit 3LUT (Byte)");
-            add_point(obj,   4614.4, 44.93,  383.3, "16 Bit 3LUT Short (Byte)");
-            add_point(obj,   4792.9, 44.17,  356.6, "16 Bit 7LUT (Byte)");
-            add_point(obj,   4104.7, 45.94,  340.9, "16 Bit 7LUT Short (Byte)");
-
-            add_point(obj, 11423.9,  53.35,   584.3, "24 Bit Short (Symbol)");
-            add_point(obj,  8183.5,  50.39,   535.4, "24 Bit 1LUT Short (Symbol)");
-            add_point(obj,  8300.4,  49.22,   442.5, "24 Bit 3LUT (Symbol)");
-            add_point(obj,  7299.9,  49.64,   445.2, "24 Bit 3LUT Short (Symbol)");
-            add_point(obj,  7046.2,  48.72,   354.2, "24 Bit 7LUT (Symbol)");
-            add_point(obj,  6396.7,  49.75,   370.8, "24 Bit 7LUT Short (Symbol)");
-
-            add_point(obj,  9429.9,  51.80,   609.9, "24 Bit Short (Byte)");
-            add_point(obj,  7919.4,  49.55,   612.1, "24 Bit 1LUT Short (Byte)");
-            add_point(obj,  8316.6,  47.63,   512.6, "24 Bit 3LUT (Byte)");
-            add_point(obj,  7285.1,  48.65,   419.0, "24 Bit 3LUT Short (Byte)");
-            add_point(obj,  7081.2,  47.15,   396.0, "24 Bit 7LUT (Byte)");
-            add_point(obj,  7168.7,  48.98,   376.4, "24 Bit 7LUT Short (Byte)");
-            
-            add_point(obj,  10104.6, 55.44,  623.2, "32 Bit Short (Symbol)");
-            add_point(obj,   9273.2, 52.55,  582.7, "32 Bit 1LUT Short (Symbol)");
-            add_point(obj,  10983.7, 51.67,  503.5, "32 Bit 3LUT (Symbol)");
-            add_point(obj,   8656.2, 52.00,  454.1, "32 Bit 3LUT Short (Symbol)");
-            add_point(obj,   9790.6, 51.37,  342.3, "32 Bit 7LUT (Symbol)");
-            add_point(obj,   8115.3, 52.02,  320.4, "32 Bit 7LUT Short (Symbol)");
-            
-            add_point(obj,   9639.1, 54.14,  656.0, "32 Bit Short (Byte)");
-            add_point(obj,  10560.9, 51.94,  621.3, "32 Bit 1LUT Short (Byte)");
-            add_point(obj,  10891.0, 50.02,  544.7, "32 Bit 3LUT (Byte)");
-            add_point(obj,   9738.0, 51.06,  481.4, "32 Bit 3LUT Short (Byte)");
-            add_point(obj,   9542.8, 49.72,  418.0, "32 Bit 7LUT (Byte)");
-            add_point(obj,   8709.7, 50.81,  384.7, "32 Bit 7LUT Short (Byte)");
-
-            add_point(obj,  14216.8, 59.03,  570.4, "48 Bit Short (Symbol)");
-            add_point(obj,  13079.7, 56.10,  562.8, "48 Bit 1LUT Short (Symbol)");
-            add_point(obj,  14226.2, 55.33,  473.8, "48 Bit 3LUT (Symbol)");
-            add_point(obj,  12520.1, 55.57,  453.8, "48 Bit 3LUT Short (Symbol)");
-            add_point(obj,  13147.0, 55.15,  397.9, "48 Bit 7LUT (Symbol)");
-            add_point(obj,  11880.5, 55.48,  328.8, "48 Bit 7LUT Short (Symbol)");
-
-            add_point(obj,  14415.6, 57.63,  596.4, "48 Bit Short (Byte)");
-            add_point(obj,  14721.6, 55.01,  620.4, "48 Bit 1LUT Short (Byte)");
-            add_point(obj,  14552.7, 53.66,  506.8, "48 Bit 3LUT (Byte)");
-            add_point(obj,  13543.8, 54.28,  430.0, "48 Bit 3LUT Short (Byte)");
-            add_point(obj,  13340.3, 53.48,  443.8, "48 Bit 7LUT (Byte)");
-            add_point(obj,  12474.8, 53.96,  401.2, "48 Bit 7LUT Short (Byte)");
-
-            add_point(obj,  15169.8, 61.45,  589.2, "64 Bit Short (Symbol)");
-            add_point(obj,  15418.4, 58.57,  520.3, "64 Bit 1LUT Short (Symbol)");
-            add_point(obj,  16270.4, 57.91,  510.4, "64 Bit 3LUT (Symbol)");
-            add_point(obj,  14660.4, 58.09,  446.9, "64 Bit 3LUT Short (Symbol)");
-            add_point(obj,  15143.5, 57.75,  412.5, "64 Bit 7LUT (Symbol)");
-            add_point(obj,  13930.6, 57.94,  380.3, "64 Bit 7LUT Short (Symbol)");
-            
-            add_point(obj,  15891.2, 60.00,  651.3, "64 Bit Short (Byte)");
-            add_point(obj,  16113.9, 57.24,  621.0, "64 Bit 1LUT Short (Byte)");
-            add_point(obj,  17019.3, 56.28,  532.3, "64 Bit 3LUT (Byte)");
-            add_point(obj,  15191.5, 56.63,  447.2, "64 Bit 3LUT Short (Byte)");
-            add_point(obj,  15915.5, 56.10,  427.2, "64 Bit 7LUT (Byte)");
-            add_point(obj,  15142.2, 56.35,  394.9, "64 Bit 7LUT Short (Byte)");
+            add_point_no_entropy(obj,  2341.0, 42.4,  697.6, "trle", true);
+            add_point_no_entropy(obj,  6341.4, 46.9,  680.6, "srle 0", true);
+            add_point_no_entropy(obj,  6310.3, 46.9,  858.6, "srle 8", true);
+            add_point_no_entropy(obj,  8818.9, 54.4,  906.4, "srle 16", true);
+            add_point_no_entropy(obj, 13030.9, 61.0, 1766.0, "srle 32", true);
+            add_point_no_entropy(obj, 18660.4, 66.8, 3289.0, "srle 64", true);
+            add_point_no_entropy(obj,  1131.5, 64.1,  320.2, "mrle", true);
 
             add_line(obj, ["8 Bit", "16 Bit (Symbol)", "24 Bit (Symbol)", "32 Bit (Symbol)", "48 Bit (Symbol)", "64 Bit (Symbol)", "128 Bit (Symbol)"], getColor());
             add_line(obj, ["8 Bit", "16 Bit (Byte)", "24 Bit (Byte)", "32 Bit (Byte)", "48 Bit (Byte)", "64 Bit (Byte)", "128 Bit (Byte)"], getColor());
@@ -858,6 +1022,8 @@ window.addEventListener("scroll", reveal);
 
             calc_pareto_line(obj);
             calc_pareto_line2(obj);
+            calc_pareto_line3(obj);
+            calc_pareto_line4(obj);
 
             window.addEventListener("resize", () => { draw_obj(document.getElementById("enwiki").getContext("2d"), document.getElementById("enwiki")); });
             window.addEventListener("load", () => { draw_obj(document.getElementById("enwiki").getContext("2d"), document.getElementById("enwiki")); });
@@ -866,52 +1032,59 @@ window.addEventListener("scroll", reveal);
       </div>
       <div class="graph_container">
         <h3>tj5oyhhuehv11.bmp (high-resolution pixelart bitmap image)</h3>
-        <p>Non 24/48 Bit codecs have been removed since the compression ratio is negligible or uncompetitive everywhere else.<br/>Decompression Speed doesn't start at zero, because otherwise the graph wouldn't be particularly useful.</p>
+        <div class="graph_metric_container">
+          <a class="graph_metricY r" onclick="javascript:setYMetric('entropy')">entropy</a>
+          <a class="graph_metricY l active" onclick="javascript:setYMetric('ratio')">ratio</a>
+        </div>
+        <div class="graph_metric_container">
+          <a class="graph_metricX r" onclick="javascript:setXMetric('encode')">encode</a>
+          <a class="graph_metricX l active" onclick="javascript:setXMetric('decode')">decode</a>
+        </div>
+        <p>Non 24/48 Bit codecs have been removed since the compression ratio is negligible or uncompetitive everywhere else.<br/>Decompression and Compression Speed don't start at zero, because otherwise the graph wouldn't be particularly useful.</p>
         <canvas id="pixelart" class="chart"></canvas>
         <script>
             var obj = document.getElementById("pixelart");
             var ctx = obj.getContext("2d");
-            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            ctx.scale(pixelRatio(), pixelRatio());
 
             init_obj(obj);
 
-            obj.minDecode = 31000.0; // otherwise the scaling is utter garbage.
-
-            add_point(obj, 33067.5,  1.84,  5852.0, "24 Bit (Symbol)");
-            add_point(obj, 32713.6,  2.08,  5336.3, "24 Bit Short (Symbol)");
-            add_point(obj, 32955.6,  2.00,  5487.5, "24 Bit Packed (Symbol)");
-            add_point(obj, 32751.7,  2.08,  4886.8, "24 Bit 1LUT Short (Symbol)");
-            add_point(obj, 33073.5,  1.31,  5335.0, "24 Bit 3LUT (Symbol)");
-            add_point(obj, 32890.5,  1.53,  5194.7, "24 Bit 3LUT Short (Symbol)");
-            add_point(obj, 32846.9,  1.20,  4670.1, "24 Bit 7LUT (Symbol)");
-            add_point(obj, 31750.2,  1.41,  5222.2, "24 Bit 7LUT Short (Symbol)");
-
-            add_point(obj, 33113.4,  2.13,  6052.7, "24 Bit (Byte)");
-            add_point(obj, 32825.6,  2.17,  5632.3, "24 Bit Short (Byte)");
-            add_point(obj, 32812.0,  2.32,  5603.5, "24 Bit Packed (Byte)");
-            add_point(obj, 32835.9,  2.17,  5697.6, "24 Bit 1LUT Short (Byte)");
-            add_point(obj, 33010.6,  1.49,  5614.2, "24 Bit 3LUT (Byte)");
-            add_point(obj, 32713.6,  1.63,  4870.9, "24 Bit 3LUT Short (Byte)");
-            add_point(obj, 32629.3,  1.37,  5493.1, "24 Bit 7LUT (Byte)");
-            add_point(obj, 31915.9,  1.52,  5489.0, "24 Bit 7LUT Short (Byte)");
-
-            add_point(obj, 32870.0,  2.78,  9145.2, "48 Bit (Symbol)");
-            add_point(obj, 32833.3,  2.79,  9738.3, "48 Bit Short (Symbol)");
-            add_point(obj, 32913.6,  2.87, 10349.4, "48 Bit Packed (Symbol)");
-            add_point(obj, 32750.9,  3.09,  9293.6, "48 Bit 1LUT Short (Symbol)");
-            add_point(obj, 32843.5,  1.71,  9184.1, "48 Bit 3LUT (Symbol)");
-            add_point(obj, 32717.0,  1.99,  9188.6, "48 Bit 3LUT Short (Symbol)");
-            add_point(obj, 32619.2,  1.49,  8992.3, "48 Bit 7LUT (Symbol)");
-            add_point(obj, 31846.0,  1.77,  8628.7, "48 Bit 7LUT Short (Symbol)");
+            obj.minDecode = 31000.0; // otherwise the respective scaling is utter garbage.
+            obj.minEncode = 17000.0; // otherwise the respective scaling is utter garbage.
             
-            add_point(obj, 32911.9,  3.16,  9317.6, "48 Bit (Byte)");
-            add_point(obj, 32689.1,  3.20,  9709.3, "48 Bit Short (Byte)");
-            add_point(obj, 32548.7,  3.35, 10199.2, "48 Bit Packed (Byte)");
-            add_point(obj, 32603.2,  3.20,  9691.9, "48 Bit 1LUT Short (Byte)");
-            add_point(obj, 32861.4,  1.98,  9629.9, "48 Bit 3LUT (Byte)");
-            add_point(obj, 32717.9,  2.13,  9244.4, "48 Bit 3LUT Short (Byte)");
-            add_point(obj, 32615.9,  1.76,  9347.5, "48 Bit 7LUT (Byte)");
-            add_point(obj, 31847.6,  1.90,  9069.5, "48 Bit 7LUT Short (Byte)");
+            add_point(obj, 33067.5,  1.84, 24537.1, 1.3191915, "24 Bit (Symbol)");
+            add_point(obj, 32713.6,  2.08, 21904.2, 1.5228315, "24 Bit Short (Symbol)");
+            add_point(obj, 32955.6,  2.00, 23590.4, 1.3864936, "24 Bit Packed (Symbol)");
+            add_point(obj, 32751.7,  2.08, 19894.5, 1.5068792, "24 Bit 1LUT Short (Symbol)");
+            add_point(obj, 33073.5,  1.31, 21232.5, 0.9314089, "24 Bit 3LUT (Symbol)");
+            add_point(obj, 32890.5,  1.53, 19147.7, 1.0356184, "24 Bit 3LUT Short (Symbol)");
+            add_point(obj, 32846.9,  1.20, 20599.0, 0.8311186, "24 Bit 7LUT (Symbol)");
+            add_point(obj, 31750.2,  1.41, 18916.5, 0.9210155, "24 Bit 7LUT Short (Symbol)");
+            add_point(obj, 33113.4,  2.13, 25939.7, 1.4364053, "24 Bit (Byte)");
+            add_point(obj, 32825.6,  2.17, 23579.9, 1.5833609, "24 Bit Short (Byte)");
+            add_point(obj, 32812.0,  2.32, 26738.2, 1.5104985, "24 Bit Packed (Byte)");
+            add_point(obj, 32835.9,  2.17, 21550.6, 1.5866496, "24 Bit 1LUT Short (Byte)");
+            add_point(obj, 33010.6,  1.49, 23408.0, 1.0295327, "24 Bit 3LUT (Byte)");
+            add_point(obj, 32713.6,  1.63, 21063.2, 1.1404079, "24 Bit 3LUT Short (Byte)");
+            add_point(obj, 32629.3,  1.37, 22589.6, 0.9818003, "24 Bit 7LUT (Byte)");
+            add_point(obj, 31915.9,  1.52, 20560.6, 0.9719229, "24 Bit 7LUT Short (Byte)");
+
+            add_point(obj, 32870.0,  2.78, 23645.9, 2.1194614, "48 Bit (Symbol)");
+            add_point(obj, 32833.3,  2.79, 21386.8, 2.2598266, "48 Bit Short (Symbol)");
+            add_point(obj, 32913.6,  2.87, 22575.5, 2.1690369, "48 Bit Packed (Symbol)");
+            add_point(obj, 32750.9,  3.09, 19362.4, 2.4095820, "48 Bit 1LUT Short (Symbol)");
+            add_point(obj, 32843.5,  1.71, 20826.5, 1.3319907, "48 Bit 3LUT (Symbol)");
+            add_point(obj, 32717.0,  1.99, 18834.0, 1.4731841, "48 Bit 3LUT Short (Symbol)");
+            add_point(obj, 32619.2,  1.49, 20185.7, 1.1536096, "48 Bit 7LUT (Symbol)");
+            add_point(obj, 31846.0,  1.77, 18184.3, 1.2586148, "48 Bit 7LUT Short (Symbol)");
+            add_point(obj, 32911.9,  3.16, 25473.5, 2.3141916, "48 Bit (Byte)");
+            add_point(obj, 32689.1,  3.20, 23439.2, 2.4788923, "48 Bit Short (Byte)");
+            add_point(obj, 32548.7,  3.35, 25371.9, 2.4020123, "48 Bit Packed (Byte)");
+            add_point(obj, 32603.2,  3.20, 20935.0, 2.4796156, "48 Bit 1LUT Short (Byte)");
+            add_point(obj, 32861.4,  1.98, 22790.5, 1.4880844, "48 Bit 3LUT (Byte)");
+            add_point(obj, 32717.9,  2.13, 20273.7, 1.6162883, "48 Bit 3LUT Short (Byte)");
+            add_point(obj, 32615.9,  1.76, 21776.5, 1.3407099, "48 Bit 7LUT (Byte)");
+            add_point(obj, 31847.6,  1.90, 20145.3, 1.3487622, "48 Bit 7LUT Short (Byte)");
 
             add_line(obj, ["24 Bit (Symbol)", "48 Bit (Symbol)"], getColor());
             add_line(obj, ["24 Bit (Byte)", "48 Bit (Byte)"], getColor());
@@ -932,6 +1105,8 @@ window.addEventListener("scroll", reveal);
 
             calc_pareto_line(obj);
             calc_pareto_line2(obj);
+            calc_pareto_line3(obj);
+            calc_pareto_line4(obj);
 
             window.addEventListener("resize", () => { draw_obj(document.getElementById("pixelart").getContext("2d"), document.getElementById("pixelart")); });
             window.addEventListener("load", () => { draw_obj(document.getElementById("pixelart").getContext("2d"), document.getElementById("pixelart")); });

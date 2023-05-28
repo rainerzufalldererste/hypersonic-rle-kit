@@ -53,12 +53,15 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 	symbol_t lastSymbol = _mm_setzero_si128();
 #endif
 
+	const int64_t inSizeSimdScan = inSize - sizeof(__m128i) * 2;
+	const int64_t inSizeSimd = inSize - sizeof(__m128i);
+
 	while (i < inSize)
 	{
-
-		if (count)
+	continue_outer_loop:;
+		
 		{
-			if (i + sizeof(symbol_t) <= inSize)
+			while (i < inSizeSimd)
 			{
 				const uint32_t cmpMask = _mm_movemask_epi8(_mm_cmpeq_epi8(symbol, _mm_loadu_si128((const symbol_t *)&pIn[i])));
 
@@ -66,11 +69,10 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 				{
 					count += sizeof(symbol_t);
 					i += sizeof(symbol_t);
-					continue;
 				}
-#ifdef UNBOUND
 				else
 				{
+#ifdef UNBOUND
 #ifdef _MSC_VER
 					unsigned long offset;
 					_BitScanForward(&offset, ~cmpMask);
@@ -80,8 +82,9 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 
 					i += offset;
 					count += offset;
-				}
 #endif
+					break;
+				}
 			}
 		}
 		
@@ -96,7 +99,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 #endif
 				{
 #ifndef PACKED
-					_mm_store_si128((symbol_t *)(&pOut[index]), symbol);
+					_mm_storeu_si128((symbol_t *)(&pOut[index]), symbol);
 					index += symbolSize;
 #endif
 
@@ -138,7 +141,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 
 					if (!isSameSymbolMask)
 					{
-						_mm_store_si128((symbol_t *)(&pOut[index]), symbol);
+						_mm_storeu_si128((symbol_t *)(&pOut[index]), symbol);
 						index += symbolSize;
 					}
 #endif
@@ -161,7 +164,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 				else if (count >= RLE128_EXTREME_MULTI_MIN_RANGE_LONG)
 				{
 #ifndef PACKED
-					_mm_store_si128((symbol_t *)(&pOut[index]), symbol);
+					_mm_storeu_si128((symbol_t *)(&pOut[index]), symbol);
 					index += symbolSize;
 #endif
 					
@@ -203,7 +206,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 
 					if (!isSameSymbolMask)
 					{
-						_mm_store_si128((symbol_t *)(&pOut[index]), symbol);
+						_mm_storeu_si128((symbol_t *)(&pOut[index]), symbol);
 						index += symbolSize;
 					}
 #endif
@@ -224,6 +227,41 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 					index += copySize;
 
 					lastRLE = i;
+				}
+			}
+
+			while (i < inSizeSimdScan)
+			{
+				const __m128i current = _mm_loadu_si128((const __m128i *)(pIn + i));
+				const __m128i other = _mm_loadu_si128((const __m128i *)(pIn + i + 16));
+				const __m128i matchMask = _mm_cmpeq_epi8(current, other);
+				const uint32_t bitMask = _mm_movemask_epi8(matchMask);
+
+				if (bitMask == 0xFFFF)
+				{
+					symbol = _mm_loadu_si128((const symbol_t *)&pIn[i]);
+
+					i += symbolSize * 2;
+					count = symbolSize * 2;
+
+					goto continue_outer_loop;
+				}
+				else if ((bitMask & 0x8000) == 0)
+				{
+					i += symbolSize;
+				}
+				else
+				{
+					const uint32_t hiMask = (~bitMask) << 16;
+
+#ifdef _MSC_VER
+		      unsigned long bit;
+		      _BitScanReverse(&bit, hiMask);
+#else
+		      const uint32_t bit = 31 - __builtin_clz(hiMask);
+#endif
+
+					i += (bit - 15);
 				}
 			}
 
@@ -252,7 +290,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 #endif
 		{
 #ifndef PACKED
-			_mm_store_si128((symbol_t *)(&pOut[index]), symbol);
+			_mm_storeu_si128((symbol_t *)(&pOut[index]), symbol);
 			index += symbolSize;
 #endif
 
@@ -294,7 +332,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 
 			if (!isSameSymbolMask)
 			{
-				_mm_store_si128((symbol_t *)(&pOut[index]), symbol);
+				_mm_storeu_si128((symbol_t *)(&pOut[index]), symbol);
 				index += symbolSize;
 			}
 #endif
@@ -313,7 +351,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 			index += copySize;
 
 #ifndef PACKED
-			_mm_store_si128((symbol_t *)(&pOut[index]), _mm_setzero_si128());
+			_mm_storeu_si128((symbol_t *)(&pOut[index]), _mm_setzero_si128());
 			index += symbolSize;
 			pOut[index] = 0;
 			index++;
@@ -336,7 +374,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 		else if (count >= RLE128_EXTREME_MULTI_MIN_RANGE_LONG)
 		{
 #ifndef PACKED
-			_mm_store_si128((symbol_t *)(&pOut[index]), symbol);
+			_mm_storeu_si128((symbol_t *)(&pOut[index]), symbol);
 			index += symbolSize;
 #endif
 			
@@ -378,7 +416,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 
 			if (!isSameSymbolMask)
 			{
-				_mm_store_si128((symbol_t *)(&pOut[index]), symbol);
+				_mm_storeu_si128((symbol_t *)(&pOut[index]), symbol);
 				index += symbolSize;
 			}
 #endif
@@ -399,7 +437,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 			index += copySize;
 
 #ifndef PACKED
-			_mm_store_si128((symbol_t *)(&pOut[index]), _mm_setzero_si128());
+			_mm_storeu_si128((symbol_t *)(&pOut[index]), _mm_setzero_si128());
 			index += symbolSize;
 			pOut[index] = 0;
 			index++;
@@ -422,7 +460,7 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 		else
 		{
 #ifndef PACKED
-			_mm_store_si128((symbol_t *)(&pOut[index]), _mm_setzero_si128());
+			_mm_storeu_si128((symbol_t *)(&pOut[index]), _mm_setzero_si128());
 			index += symbolSize;
 			pOut[index] = 0;
 			index++;
@@ -564,7 +602,7 @@ static void CONCAT3(rle128_, CODEC, _decompress_avx)(IN const uint8_t *pInStart,
 #ifndef PACKED
 		symbol = _mm256_castps_si256(_mm256_broadcast_ps((const __m128 *)pInStart));
 		pInStart += sizeof(symbol_t);
-		symbolCount = (size_t)* pInStart;
+		symbolCount = (size_t)*pInStart;
 		pInStart++;
 
 		if (symbolCount == 0)
@@ -572,9 +610,6 @@ static void CONCAT3(rle128_, CODEC, _decompress_avx)(IN const uint8_t *pInStart,
 			symbolCount = *(uint32_t *)pInStart;
 			pInStart += sizeof(uint32_t);
 		}
-
-		offset = (size_t)* pInStart;
-		pInStart++;
 #else
 		symbolCount = (size_t)*pInStart;
 		pInStart++;

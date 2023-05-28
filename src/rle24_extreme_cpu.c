@@ -1,8 +1,12 @@
 #include "rle.h"
 #include "rleX_extreme_common.h"
 
+#define TYPE_SIZE 24
+#define SIMD_TYPE_SIZE 32
+
 #include "rle24_extreme_cpu.h"
 
+#undef COMPRESS_IMPL_SSE2
 #define UNBOUND
 
 #include "rle24_extreme_cpu.h"

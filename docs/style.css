@@ -12,9 +12,14 @@ body {
     padding: 20pt 50pt;
 }
 
+b {
+  color: #c6ff8ef2;
+  font-weight: bold;
+}
+
 ::selection {
-  color: #41ffb8;
-  background-color: #146060;
+    color: #b6e156;
+    background-color: #31513d;
 }
 
 li {
@@ -34,13 +39,13 @@ canvas {
     top: 20px;
     left: 20px;
     display: block;
-    background: #03030355;
+    background: #03030330;
     padding: 2pt 5pt;
     line-height: 50%;
     font-size: 80%;
     user-select: none;
-    text-shadow: #000 0 0 2pt;
-    backdrop-filter: blur(10px);
+    text-shadow: #000 0 0 4pt;
+    backdrop-filter: blur(27px);
 }
 
 #tooltip b {
@@ -52,23 +57,28 @@ div.tooltip_hidden {
 }
 
 div.tooltip_visible {
-    opacity: 80%;
+    opacity: 95%;
 }
 
-#tooltip_pareto {
-    display: inline;
+#tooltip p {
+    line-height: 120%;
+}
+
+#tooltip_pareto, #tooltip_pareto2, #tooltip_pareto3, #tooltip_pareto4 {
+    display: inline-block;
     color: #c0ddb2;
     background: #43770e6b;
-    padding: 2pt 5pt;
+    padding: 5pt 5pt;
     border: solid 1pt #6f935e;
     border-radius: 3pt;
     margin: 0;
     margin-left: 4pt;
     font-size: 90%;
+    margin-top: 1pt;
 }
 
-#tooltip_pareto.non_pareto {
-    opacity: 0;
+#tooltip_pareto.non_pareto, #tooltip_pareto2.non_pareto, #tooltip_pareto3.non_pareto, #tooltip_pareto4.non_pareto {
+    display: none;
 }
 
 h1 {
@@ -76,11 +86,76 @@ h1 {
 }
 
 h2 {
-  color: #86ce91;
+  color: #9adb7c;
 }
 
 .header img {
   width: 533pt;
+  max-width: 80%;
   display: block;
-  margin: 50pt auto;
+  margin: 50pt auto 80pt;
+}
+
+.graph_container h3 {
+    display: inline;
+}
+
+.graph_container p {
+  display: inline-block;
+}
+
+.graph_metric_container {
+  display: inline-block;
+  float: right;
+}
+
+.graph_metricX, .graph_metricY {
+    background: #2d2d2d;
+    padding: 2pt 5pt;
+    border: solid 2pt #777;
+    border-radius: 5pt;
+    display: inline-block;
+    float: right;
+    margin: 4pt;
+    color: #959595;
+    cursor: pointer;
+    user-select: none;
+}
+
+.graph_metricX.l, .graph_metricY.l {
+    margin-right: -1pt;
+    border-bottom-right-radius: 0;
+    border-top-right-radius: 0;
+}
+
+.graph_metricX.r, .graph_metricY.r {
+    margin-left: -1pt;
+    border-bottom-left-radius: 0;
+    border-top-left-radius: 0;
+}
+
+.graph_metricX.active, .graph_metricY.active {
+    background: linear-gradient(0, #368651, #81bb54);
+    color: #fff;
+    border-color: #378752;
+}
+
+@media (max-width: 1000pt) {
+    .main {
+        width: 97.5%;
+        padding: 20pt 10pt;
+    }
+
+    .header img {
+        margin: 20pt auto 30pt;
+    }
+    
+    .graph_metric_container {
+        display: block;
+        float: none;
+    }
+
+    #tooltip {
+        min-width: 200pt;
+    }
 }

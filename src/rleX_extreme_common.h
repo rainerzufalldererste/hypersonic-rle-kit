@@ -1,42 +1,7 @@
 #ifndef rleX_extreme_common_h__
 #define rleX_extreme_common_h__
 
-#ifdef _MSC_VER
-#include <intrin.h>
-#define __builtin_popcount __popcnt
-#else
-#include <x86intrin.h>
-#endif
-
-
-//////////////////////////////////////////////////////////////////////////
-
-extern bool sseSupported;
-extern bool sse2Supported;
-extern bool sse3Supported;
-extern bool ssse3Supported;
-extern bool sse41Supported;
-extern bool sse42Supported;
-extern bool avxSupported;
-extern bool avx2Supported;
-extern bool fma3Supported;
-extern bool avx512FSupported;
-extern bool avx512PFSupported;
-extern bool avx512ERSupported;
-extern bool avx512CDSupported;
-extern bool avx512BWSupported;
-extern bool avx512DQSupported;
-extern bool avx512VLSupported;
-extern bool avx512IFMASupported;
-extern bool avx512VBMISupported;
-extern bool avx512VNNISupported;
-extern bool avx512VBMI2Supported;
-extern bool avx512POPCNTDQSupported;
-extern bool avx512BITALGSupported;
-extern bool avx5124VNNIWSupported;
-extern bool avx5124FMAPSSupported;
-
-void _DetectCPUFeatures();
+#include "simd_platform.h"
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -104,7 +69,7 @@ else \
   uint8_t *pCOut = pOut; \
 \
   if (unaligned != 0) \
-  { _mm_storeu_si128((__m128i *)pCOut, _mm_stream_load_si128((__m128i *)pCIn)); \
+  { _mm_storeu_si128((__m128i *)pCOut, _mm_loadu_si128((__m128i *)pCIn)); \
     pCIn = (uint8_t *)((size_t)pCIn & ~(size_t)(sizeof(__m128i) - 1)) + sizeof(__m128i); \
     pCOut += (pCIn - pInStart); \
   } \
@@ -113,7 +78,7 @@ else \
   pInStart += offset; \
 \
   while (pCOut < pOut) \
-  { MULTI(_mm_storeu_si128((__m128i *)pCOut, _mm_load_si128((__m128i *)pCIn)); \
+  { MULTI(_mm_storeu_si128((__m128i *)pCOut, _mm_stream_load_si128((__m128i *)pCIn)); \
     pCIn += sizeof(__m128i); \
     pCOut += sizeof(__m128i);) \
     _mm_prefetch((const char *)pCIn + SSE_PREFETCH_BYTES, PREFETCH_TYPE); \

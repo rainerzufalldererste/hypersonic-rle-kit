@@ -21,6 +21,7 @@
 #endif
 
 #include "rle.h"
+#include "simd_platform.h"
 
 const char ArgumentTo[] = "--to";
 const char ArgumentSubSections[] = "--sub-sections";
@@ -33,8 +34,8 @@ const char ArgumentNotShort[] = "--not-short";
 const char ArgumentUltra[] = "--low-entropy-short";
 const char ArgumentExtreme[] = "--extreme";
 const char ArgumentExtremeSize[] = "--x-size";
-const char ArgumentExtremeByteGran[] = "--byte-granularity";
-const char ArgumentExtremeSymbolGran[] = "--symbol-granularity";
+const char ArgumentExtremeByteGran[] = "--byte-aligned";
+const char ArgumentExtremeSymbolGran[] = "--symbol-aligned";
 const char ArgumentExtremePacked[] = "--packed";
 const char ArgumentExtremeNotPacked[] = "--not-packed";
 const char ArgumentExtremeLutSize[] = "--lut-size";
@@ -44,6 +45,16 @@ const char ArgumentMMTF[] = "--mmtf";
 const char ArgumentSH[] = "--sh";
 const char ArgumentAnalyze[] = "--analyze";
 const char ArgumentMatch[] = "--match";
+const char ArgumentMaxSimd[] = "--max-simd";
+const char ArgumentMaxSimdAVX512F[] = "avx512f";
+const char ArgumentMaxSimdAVX2[] = "avx2";
+const char ArgumentMaxSimdAVX[] = "avx";
+const char ArgumentMaxSimdSSE42[] = "sse4.2";
+const char ArgumentMaxSimdSSE41[] = "sse4.1";
+const char ArgumentMaxSimdSSSE3[] = "ssse3";
+const char ArgumentMaxSimdSSE3[] = "sse3";
+const char ArgumentMaxSimdSSE2[] = "sse2";
+const char ArgumentTest[] = "--test";
 
 #ifdef _WIN32
 const char ArgumentCpuCore[] = "--cpu-core";
@@ -157,6 +168,8 @@ typedef enum
 
   MultiMTF128,
   MultiMTF256,
+  BitMultiMTF8,
+  BitMultiMTF16,
 
   MemCopy,
 
@@ -268,6 +281,8 @@ static const char *codecNames[] =
   "Low Entropy Short Single      ",
   "Multi MTF 128 Bit (Transform) ",
   "Multi MTF 256 Bit (Transform) ",
+  "Bit MMTF 8 Bit (Transform)    ",
+  "Bit MMTF 16 Bit (Transform)   ",
   "memcpy                        ",
 };
 
@@ -309,6 +324,8 @@ int main(int argc, char **pArgv)
     printf("\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentMulti, ArgumentSingle);
     printf("\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentShort, ArgumentNotShort);
     printf("\t\tif '%s': [%s 0, 1, 3, 7]\n", ArgumentMatch, ArgumentExtremeLutSize);
+    printf("\n\t[%s <%s / %s / %s / %s / %s / %s / %s / %s>]\n", ArgumentMaxSimd, ArgumentMaxSimdAVX512F, ArgumentMaxSimdAVX2, ArgumentMaxSimdAVX, ArgumentMaxSimdSSE42, ArgumentMaxSimdSSE41, ArgumentMaxSimdSSSE3, ArgumentMaxSimdSSE3, ArgumentMaxSimdSSE2);
+    printf("\n\t[%s (fail on simgle compression/decompression/validation failure)]\n", ArgumentTest);
     printf("\n\n\tOR: (for debugging purposes only)\n\n");
     printf("\t[%s <Output File Name>]\n\n", ArgumentTo);
     printf("\t[%s]\n\t\tif '%s': [%s (8 | 16 | 24 | 32 | 48 | 64 | 128)] (symbol size)\n\t\tif '%s': [%s] (include unaligned repeats, capacity vs. accuracy tradeoff)\n\t\tif '%s': [%s] (preferable if many rle-symbol-repeats)\n\n", ArgumentExtreme, ArgumentExtreme, ArgumentExtremeSize, ArgumentExtreme, ArgumentExtremeByteGran, ArgumentExtreme, ArgumentExtremePacked);
@@ -337,6 +354,7 @@ int main(int argc, char **pArgv)
   bool matchBenchmarks = false;
   bool analyzeFileContents = false;
   bool noDelays = false;
+  bool isTestRun = false;
 
 #ifdef _WIN32
   size_t cpuCoreIndex = 0;
@@ -356,11 +374,153 @@ int main(int argc, char **pArgv)
         argIndex += 2;
         argsRemaining -= 2;
       }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentTest, sizeof(ArgumentTest)) == 0)
+      {
+        isTestRun = true;
+        noDelays = true;
+        argIndex++;
+        argsRemaining--;
+      }
       else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentMatch, sizeof(ArgumentMatch)) == 0)
       {
         matchBenchmarks = true;
         argIndex++;
         argsRemaining--;
+      }
+      else if (argsRemaining >= 2 && strncmp(pArgv[argIndex], ArgumentMaxSimd, sizeof(ArgumentMaxSimd)) == 0)
+      {
+        _DetectCPUFeatures();
+
+        do
+        {
+          if (strncmp(pArgv[argIndex + 1], ArgumentMaxSimdAVX512F, sizeof(ArgumentMaxSimdAVX512F)) == 0)
+          {
+            if (!avx512FSupported)
+            {
+              puts("AVX512F is not supported by this platform. Aborting.");
+              return 1;
+            }
+
+            // In future versions with other simd flavours better than avx512 supported, disable them here.
+
+            break;
+          }
+
+          avx512FSupported = false;
+          avx512PFSupported = false;
+          avx512ERSupported = false;
+          avx512CDSupported = false;
+          avx512BWSupported = false;
+          avx512DQSupported = false;
+          avx512VLSupported = false;
+          avx512IFMASupported = false;
+          avx512VBMISupported = false;
+          avx512VNNISupported = false;
+          avx512VBMI2Supported = false;
+          avx512POPCNTDQSupported = false;
+          avx512BITALGSupported = false;
+          avx5124VNNIWSupported = false;
+          avx5124FMAPSSupported = false;
+
+          if (strncmp(pArgv[argIndex + 1], ArgumentMaxSimdAVX2, sizeof(ArgumentMaxSimdAVX2)) == 0)
+          {
+            if (!avx2Supported)
+            {
+              puts("AVX2 is not supported by this platform. Aborting.");
+              return 1;
+            }
+
+            break;
+          }
+
+          avx2Supported = false;
+          fma3Supported = false;
+
+          if (strncmp(pArgv[argIndex + 1], ArgumentMaxSimdAVX, sizeof(ArgumentMaxSimdAVX)) == 0)
+          {
+            if (!avxSupported)
+            {
+              puts("AVX is not supported by this platform. Aborting.");
+              return 1;
+            }
+
+            break;
+          }
+
+          avxSupported = false;
+
+          if (strncmp(pArgv[argIndex + 1], ArgumentMaxSimdSSE42, sizeof(ArgumentMaxSimdSSE42)) == 0)
+          {
+            if (!sse42Supported)
+            {
+              puts("SSE4.2 is not supported by this platform. Aborting.");
+              return 1;
+            }
+
+            break;
+          }
+
+          sse42Supported = false;
+
+          if (strncmp(pArgv[argIndex + 1], ArgumentMaxSimdSSE41, sizeof(ArgumentMaxSimdSSE41)) == 0)
+          {
+            if (!sse41Supported)
+            {
+              puts("SSE4.1 is not supported by this platform. Aborting.");
+              return 1;
+            }
+
+            break;
+          }
+
+          sse41Supported = false;
+
+          if (strncmp(pArgv[argIndex + 1], ArgumentMaxSimdSSSE3, sizeof(ArgumentMaxSimdSSSE3)) == 0)
+          {
+            if (!ssse3Supported)
+            {
+              puts("SSSE3 is not supported by this platform. Aborting.");
+              return 1;
+            }
+
+            break;
+          }
+
+          ssse3Supported = false;
+
+          if (strncmp(pArgv[argIndex + 1], ArgumentMaxSimdSSE3, sizeof(ArgumentMaxSimdSSE3)) == 0)
+          {
+            if (!sse3Supported)
+            {
+              puts("SSE3 is not supported by this platform. Aborting.");
+              return 1;
+            }
+
+            break;
+          }
+
+          sse3Supported = false;
+
+          if (strncmp(pArgv[argIndex + 1], ArgumentMaxSimdSSE2, sizeof(ArgumentMaxSimdSSE2)) == 0)
+          {
+            if (!sse2Supported)
+            {
+              puts("SSE2 is not supported by this platform. Aborting.");
+              return 1;
+            }
+
+            break;
+          }
+
+          sse2Supported = false;
+
+          printf("Invalid SIMD Variant '%s' specified.", pArgv[argIndex + 1]);
+          return 1;
+
+        } while (false);
+
+        argIndex += 2;
+        argsRemaining -= 2;
       }
       else if (argsRemaining >= 2 && strncmp(pArgv[argIndex], ArgumentSubSections, sizeof(ArgumentSubSections)) == 0)
       {
@@ -735,9 +895,9 @@ int main(int argc, char **pArgv)
       return 1;
     }
 
-    if ((_Args.hasMode && (_Args.isModeMMTF || _Args.isModeRleMMTF)) && (_Args.hasBitCount && _Args.bitCount != 256 && _Args.bitCount != 128))
+    if ((_Args.hasMode && (_Args.isModeMMTF || _Args.isModeRleMMTF)) && (_Args.hasBitCount && _Args.bitCount != 8 && _Args.bitCount != 16 && _Args.bitCount != 256 && _Args.bitCount != 128))
     {
-      puts("MMTF Modes only supports mtf width of 128 or 256.");
+      puts("MMTF Modes only supports mtf width of 8, 16, 128 or 256.");
       return 1;
     }
 
@@ -771,7 +931,7 @@ int main(int argc, char **pArgv)
 
   compressedBufferSize = rle_compress_bounds((uint32_t)fileSize);
 
-  compressedBufferSize = max(compressedBufferSize, rle_mmtf_bounds((uint32_t)fileSize));
+  compressedBufferSize = max(compressedBufferSize, mmtf_bounds((uint32_t)fileSize));
   compressedBufferSize = max(compressedBufferSize, rle8_sh_bounds((uint32_t)fileSize));
   compressedBufferSize = max(compressedBufferSize, rle8_mmtf128_compress_bounds((uint32_t)fileSize));
   compressedBufferSize = max(compressedBufferSize, rle8_mmtf256_compress_bounds((uint32_t)fileSize));
@@ -1226,11 +1386,19 @@ int main(int argc, char **pArgv)
           break;
 
         case MultiMTF128:
-          compressedSize = rle_mmtf128_encode(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          compressedSize = mmtf128_encode(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case MultiMTF256:
-          compressedSize = rle_mmtf256_encode(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          compressedSize = mmtf256_encode(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case BitMultiMTF8:
+          compressedSize = bitmmtf8_encode(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case BitMultiMTF16:
+          compressedSize = bitmmtf16_encode(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Rle8SH:
@@ -1291,6 +1459,18 @@ int main(int argc, char **pArgv)
       if (compressedSize == 0)
       {
         printf("\r%s| <FAILED TO COMRPESS>\n", codecNames[currentCodec]);
+
+
+        if (!avxSupported && currentCodec == MultiMTF256)
+        {
+          printf("\r%s| <AVX NOT SUPPORTED BY PLATFORM>\n", codecNames[currentCodec]);
+
+          continue;
+        }
+
+        if (isTestRun)
+          return -1;
+
         continue;
       }
 
@@ -1694,11 +1874,19 @@ int main(int argc, char **pArgv)
           break;
 
         case MultiMTF128:
-          decompressedSize = rle_mmtf128_decode(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          decompressedSize = mmtf128_decode(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case MultiMTF256:
-          decompressedSize = rle_mmtf256_decode(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          decompressedSize = mmtf256_decode(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case BitMultiMTF8:
+          decompressedSize = bitmmtf8_decode(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
+          break;
+
+        case BitMultiMTF16:
+          decompressedSize = bitmmtf16_decode(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
         case Rle8SH:
@@ -1754,6 +1942,9 @@ int main(int argc, char **pArgv)
       {
         printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | <FAILED TO DECOMRPESS>\n", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
 
+        if (isTestRun)
+          return -1;
+
         continue;
       }
 
@@ -1761,7 +1952,11 @@ int main(int argc, char **pArgv)
 
       puts("");
 
-      Validate(pUncompressedData, pDecompressedData, fileSize);
+      if (!Validate(pUncompressedData, pDecompressedData, fileSize))
+      {
+        if (isTestRun)
+          return -1;
+      }
     }
   }
   else // !benchmarkAll
@@ -1782,7 +1977,7 @@ int main(int argc, char **pArgv)
       printf("Mode: hypersonic rle kit ");
 
       if (_Args.hasMode && _Args.isModeLowEntropy)
-        fputs("Normal ", stdout);
+        fputs("LowEntropy ", stdout);
       else if (_Args.hasMode && _Args.isModeExtreme)
         fputs("Extreme ", stdout);
       else if (_Args.hasMode && _Args.isModeMMTF)
@@ -1794,7 +1989,7 @@ int main(int argc, char **pArgv)
       else
         fputs("Ultra ", stdout);
 
-      if ((!(_Args.hasMode && _Args.isModeExtreme) || (_Args.hasBitCount && _Args.bitCount == 8) && (_Args.hasSingleMode && _Args.isSingleMode)))
+      if ((((_Args.hasMode && (_Args.isModeLowEntropy || _Args.isModeExtreme)) && (!_Args.hasBitCount || _Args.bitCount == 8)) && (_Args.hasSingleMode && _Args.isSingleMode)))
         fputs("Single-Symbol-Mode ", stdout);
 
       if ((_Args.hasMode && _Args.isModeExtreme) && (_Args.hasPackedMode && _Args.isPacked))
@@ -1994,11 +2189,11 @@ int main(int argc, char **pArgv)
           switch (_Args.bitCount)
           {
           case 128:
-            compressedSize = rle_mmtf128_encode(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+            compressedSize = mmtf128_encode(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
             break;
 
           case 256:
-            compressedSize = rle_mmtf256_encode(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+            compressedSize = mmtf256_encode(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
             break;
           }
         }
@@ -2039,6 +2234,10 @@ int main(int argc, char **pArgv)
     if (0 == compressedSize)
     {
       puts("Failed to compress file.");
+
+      if (isTestRun)
+        return -1;
+
       goto epilogue;
     }
 
@@ -2237,11 +2436,11 @@ int main(int argc, char **pArgv)
           switch (_Args.bitCount)
           {
           case 128:
-            decompressedSize = rle_mmtf128_decode(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+            decompressedSize = mmtf128_decode(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
             break;
 
           case 256:
-            decompressedSize = rle_mmtf256_decode(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+            decompressedSize = mmtf256_decode(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
             break;
           }
         }
@@ -2282,6 +2481,10 @@ int main(int argc, char **pArgv)
     if ((uint32_t)fileSize != decompressedSize)
     {
       puts("Failed to decompress file.");
+
+      if (isTestRun)
+        return -1;
+
       goto epilogue;
     }
     
@@ -2327,6 +2530,10 @@ int main(int argc, char **pArgv)
       if (!Validate(pUncompressedData, pDecompressedData, fileSize))
       {
         puts("Validation Failed.");
+
+        if (isTestRun)
+          return -1;
+
         goto epilogue;
       }
     }
@@ -2955,7 +3162,7 @@ bool CodecMatchesArgs(const codec_t codec)
     if (_Args.isModeLowEntropy && (codec < LowEntropy || codec > LowEntropyShortSingle))
       return false;
 
-    if (_Args.isModeMMTF && codec != MultiMTF128 && codec != MultiMTF256)
+    if (_Args.isModeMMTF && codec != MultiMTF128 && codec != MultiMTF256 && codec != BitMultiMTF8 && codec != BitMultiMTF16)
       return false;
 
     if (_Args.isModeSH && codec != Rle8SH)
@@ -3188,6 +3395,7 @@ bool CodecMatchesArgs(const codec_t codec)
     switch (codec)
     {
     case Extreme8Packed:
+    case Extreme8PackedSingle:
     case Extreme8_1SLShort:
     case Extreme16SymPacked:
     case Extreme16Sym_1SLShort:
@@ -3209,6 +3417,8 @@ bool CodecMatchesArgs(const codec_t codec)
     case Extreme64Sym_1SLShort:
     case Extreme64BytePacked:
     case Extreme64Byte_1SLShort:
+    case Extreme128SymPacked:
+    case Extreme128BytePacked:
       if (_Args.lutSize != 1)
         return false;
       break;
@@ -3292,6 +3502,7 @@ bool CodecMatchesArgs(const codec_t codec)
     case LowEntropySingle:
     case LowEntropyShort:
     case LowEntropyShortSingle:
+    case BitMultiMTF8:
       if (_Args.bitCount != 8)
         return false;
       break;
@@ -3312,6 +3523,7 @@ bool CodecMatchesArgs(const codec_t codec)
     case Extreme16Byte_3SLShort:
     case Extreme16Byte_7SL:
     case Extreme16Byte_7SLShort:
+    case BitMultiMTF16:
       if (_Args.bitCount != 16)
         return false;
       break;

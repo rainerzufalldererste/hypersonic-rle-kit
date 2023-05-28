@@ -34,3 +34,66 @@ jobs:
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}} /v:m
+    
+    - uses: actions/upload-artifact@v3
+      with:
+        name: build-win64
+        path: builds/bin/hsrlekit.exe
+
+  test:
+    runs-on: windows-latest
+    needs: build
+
+    steps:
+    - uses: actions/download-artifact@v3
+      with:
+        name: build-win64
+    
+    - name: Download Samples
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: git clone https://github.com/rainerzufalldererste/rle_samples.git
+
+    - name: Test AVX2
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: ./hsrlekit rle_samples/sample0.bin --test --min-time 0 --runs 0 --max-simd avx2
+      
+    - name: Test AVX
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: ./hsrlekit rle_samples/sample0.bin --test --min-time 0 --runs 0 --max-simd avx
+      
+    - name: Test SSE4.2
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: ./hsrlekit rle_samples/sample0.bin --test --min-time 0 --runs 0 --max-simd sse4.2
+      
+    - name: Test SSE4.1
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: ./hsrlekit rle_samples/sample0.bin --test --min-time 0 --runs 0 --max-simd sse4.1
+      
+    - name: Test SSSE3
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: ./hsrlekit rle_samples/sample0.bin --test --min-time 0 --runs 0 --max-simd ssse3
+      
+    - name: Test SSE3
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: ./hsrlekit rle_samples/sample0.bin --test --min-time 0 --runs 0 --max-simd sse3
+
+    - name: Test SSE2
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: ./hsrlekit rle_samples/sample0.bin --test --min-time 0 --runs 0 --max-simd sse2
+
+
+  release:
+    runs-on: windows-latest
+    needs: [ build, test ]
+    
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - uses: actions/download-artifact@v3
+      with:
+        name: build-win64
+
+    - name: Add to Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: hsrlekit.exe
