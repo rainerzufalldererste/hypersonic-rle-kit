@@ -15,7 +15,7 @@
       </div>
       <div class="text">
         <ul>
-            <li>A selection of 100+ RLE and related codecs optimized for all kinds of different inputs and scenarios</li>
+            <li>A selection of <b>100+</b> RLE and related codecs optimized for all kinds of different inputs and scenarios</li>
             <li>Single Core decompression speeds > 34 GB/s and compression > 28 GB/s have been observed with large files. Small files can even exceed 120 GB/s decode, 60 GB/s encode.</li>
             <li>Written in C.</li>
             <li>SIMD Variants for AVX-512F, AVX2, AVX, SSE4.1, SSSE3 and SSE2 variants are available for various decoders and encoders. Automatically picked at runtime based on the extensions available on the current platform.</li>
@@ -140,8 +140,12 @@ window.addEventListener("scroll", reveal);
             return offsetY + (y - obj.minY) / rangeY;
           }
 
+          function pixelRatio() {
+            return (1 + window.devicePixelRatio) * 0.5;
+          } 
+
           function draw_point(ctx, obj, p, rangeX, rangeY, offsetX, offsetY, paretoName) {
-            point(ctx, transformX(obj, p[obj.xStat], rangeX, offsetX), transformY(obj, p[obj.yStat], rangeY, offsetY), (p[paretoName] == true ? 10 : 6) * window.devicePixelRatio, (p.name == obj.bestP ? "#EF7" : p.foreign ? "#333" : "#DDD"), p.foreign ? "#777" : "#DDD", 2 * window.devicePixelRatio);
+            point(ctx, transformX(obj, p[obj.xStat], rangeX, offsetX), transformY(obj, p[obj.yStat], rangeY, offsetY), (p[paretoName] == true ? 10 : 6) * pixelRatio(), (p.name == obj.bestP ? "#EF7" : p.foreign ? "#333" : "#DDD"), p.foreign ? "#777" : "#DDD", 2 * pixelRatio());
           }
 
           function draw_line(ctx, obj, l, rangeX, rangeY, offsetX, offsetY, lineWidth) {
@@ -157,7 +161,7 @@ window.addEventListener("scroll", reveal);
                 ctx.lineTo(transformX(obj, points[i][obj.xStat], rangeX, offsetX), transformY(obj, points[i][obj.yStat], rangeY, offsetY));
 
             ctx.strokeStyle = l.color;
-            ctx.lineWidth = lineWidth * window.devicePixelRatio * (l.pareto == true ? 4 : 1);
+            ctx.lineWidth = lineWidth * pixelRatio() * (l.pareto == true ? 4 : 1);
             ctx.stroke();
           }
 
@@ -171,7 +175,7 @@ window.addEventListener("scroll", reveal);
                 ctx.lineTo(transformX(obj, points[i].x, rangeX, offsetX), transformY(obj, points[i].y, rangeY, offsetY));
 
             ctx.strokeStyle = l.color;
-            ctx.lineWidth = lineWidth * window.devicePixelRatio * (l.pareto == true ? 4 : 1);
+            ctx.lineWidth = lineWidth * pixelRatio() * (l.pareto == true ? 4 : 1);
             ctx.stroke();
           }
 
@@ -379,20 +383,20 @@ window.addEventListener("scroll", reveal);
             
             // X Axis.
             for (let x = obj.minX; x <= obj.maxX; x += stepX) {
-                if (x > obj.minX) draw_label(ctx, obj, x, obj.minY, x + " MiB/s", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
+                if (x > obj.minX) draw_label(ctx, obj, x, obj.minY, x + " MiB/s", rangeX, rangeY, topX, topY, (30 /* * pixelRatio() */) + "px monospace", "#888");
             }
 
             // Y Axis.
             for (let y = obj.minY; y <= obj.maxY; y += stepY) {
-                if (y > obj.minY) draw_label(ctx, obj, obj.minX, y, y + "%", rangeX, rangeY, topX, topY, (30 * window.devicePixelRatio) + "px monospace", "#888");
+                if (y > obj.minY) draw_label(ctx, obj, obj.minX, y, y + "%", rangeX, rangeY, topX, topY, (30 /* * pixelRatio() */) + "px monospace", "#888");
             }
             
             for (i in obj.lines) {
               if (obj.lines[i].pareto == true) {
                 if (obj.lines[i]["pareto_" + visible_pareto_line] != null) {
-                  obj.lines[i].color = obj.lines[i].color.substring(0, 7) + "44";
+                  obj.lines[i].color = obj.lines[i].color.substring(0, 7) + "66";
                 } else {
-                  obj.lines[i].color = obj.lines[i].color.substring(0, 7) + "08";
+                  obj.lines[i].color = obj.lines[i].color.substring(0, 7) + "18";
                 }
               }
 
@@ -465,7 +469,7 @@ window.addEventListener("scroll", reveal);
                     }
                 }
 
-                if (closest > 50 * window.devicePixelRatio || bestP == null) {
+                if (closest > 50 * pixelRatio() || bestP == null) {
                   var tooltip = document.getElementById("tooltip");
                   tooltip.style.left = "0px";
                   tooltip.style.top = "0px";
@@ -473,7 +477,7 @@ window.addEventListener("scroll", reveal);
                   bestP = null;
                 } else {
                   var tooltip = document.getElementById("tooltip");
-                  tooltip.style.left = (mouseX + 20 * window.devicePixelRatio) + "px";
+                  tooltip.style.left = (mouseX + 20 * pixelRatio()) + "px";
                   tooltip.style.top = mouseY + "px";
                   tooltip.className = "tooltip_visible";
                   document.getElementById("tooltip_text").innerText = bestP + (obj.points[bestP].foreign ? " (foreign codec)" : "");
@@ -535,15 +539,19 @@ window.addEventListener("scroll", reveal);
       <h2>benchmarks</h2>
       <div class="graph_container">
         <h3>video_frame.raw (heavily quantized video frame dcts)</h3>
-        <a class="graph_metricY r" onclick="javascript:setYMetric('entropy')">entropy</a>
-        <a class="graph_metricY l active" onclick="javascript:setYMetric('ratio')">ratio</a>
-        <a class="graph_metricX r" onclick="javascript:setXMetric('encode')">encode</a>
-        <a class="graph_metricX l active" onclick="javascript:setXMetric('decode')">decode</a>
+        <div class="graph_metric_container">
+          <a class="graph_metricY r" onclick="javascript:setYMetric('entropy')">entropy</a>
+          <a class="graph_metricY l active" onclick="javascript:setYMetric('ratio')">ratio</a>
+        </div>
+        <div class="graph_metric_container">
+          <a class="graph_metricX r" onclick="javascript:setXMetric('encode')">encode</a>
+          <a class="graph_metricX l active" onclick="javascript:setXMetric('decode')">decode</a>
+        </div>
         <canvas id="video_frame" class="chart"></canvas>
         <script>
             var obj = document.getElementById("video_frame");
             var ctx = obj.getContext("2d");
-            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            ctx.scale(pixelRatio(), pixelRatio());
 
             init_obj(obj);
 
@@ -695,15 +703,19 @@ window.addEventListener("scroll", reveal);
       </div>
       <div class="graph_container">
         <h3>1034.db (checkers program &quot;end game table base&quot;)</h3>
-        <a class="graph_metricY r" onclick="javascript:setYMetric('entropy')">entropy</a>
-        <a class="graph_metricY l active" onclick="javascript:setYMetric('ratio')">ratio</a>
-        <a class="graph_metricX r" onclick="javascript:setXMetric('encode')">encode</a>
-        <a class="graph_metricX l active" onclick="javascript:setXMetric('decode')">decode</a>
+        <div class="graph_metric_container">
+          <a class="graph_metricY r" onclick="javascript:setYMetric('entropy')">entropy</a>
+          <a class="graph_metricY l active" onclick="javascript:setYMetric('ratio')">ratio</a>
+        </div>
+        <div class="graph_metric_container">
+          <a class="graph_metricX r" onclick="javascript:setXMetric('encode')">encode</a>
+          <a class="graph_metricX l active" onclick="javascript:setXMetric('decode')">decode</a>
+        </div>
         <canvas id="1034" class="chart"></canvas>
         <script>
             var obj = document.getElementById("1034");
             var ctx = obj.getContext("2d");
-            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            ctx.scale(pixelRatio(), pixelRatio());
 
             init_obj(obj);
             
@@ -855,16 +867,20 @@ window.addEventListener("scroll", reveal);
       </div>
       <div class="graph_container">
         <h3>enwiki.btw (wikipedia extract encoded using libdivsufsort)</h3>
-        <a class="graph_metricY r" onclick="javascript:setYMetric('entropy')">entropy</a>
-        <a class="graph_metricY l active" onclick="javascript:setYMetric('ratio')">ratio</a>
-        <a class="graph_metricX r" onclick="javascript:setXMetric('encode')">encode</a>
-        <a class="graph_metricX l active" onclick="javascript:setXMetric('decode')">decode</a>
+        <div class="graph_metric_container">
+          <a class="graph_metricY r" onclick="javascript:setYMetric('entropy')">entropy</a>
+          <a class="graph_metricY l active" onclick="javascript:setYMetric('ratio')">ratio</a>
+        </div>
+        <div class="graph_metric_container">
+          <a class="graph_metricX r" onclick="javascript:setXMetric('encode')">encode</a>
+          <a class="graph_metricX l active" onclick="javascript:setXMetric('decode')">decode</a>
+        </div>
         <p>Single Symbol codecs have been removed since the dataset isn't suitable.</p>
         <canvas id="enwiki" class="chart"></canvas>
         <script>
             var obj = document.getElementById("enwiki");
             var ctx = obj.getContext("2d");
-            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            ctx.scale(pixelRatio(), pixelRatio());
 
             init_obj(obj);
 
@@ -1016,16 +1032,20 @@ window.addEventListener("scroll", reveal);
       </div>
       <div class="graph_container">
         <h3>tj5oyhhuehv11.bmp (high-resolution pixelart bitmap image)</h3>
-        <a class="graph_metricY r" onclick="javascript:setYMetric('entropy')">entropy</a>
-        <a class="graph_metricY l active" onclick="javascript:setYMetric('ratio')">ratio</a>
-        <a class="graph_metricX r" onclick="javascript:setXMetric('encode')">encode</a>
-        <a class="graph_metricX l active" onclick="javascript:setXMetric('decode')">decode</a>
+        <div class="graph_metric_container">
+          <a class="graph_metricY r" onclick="javascript:setYMetric('entropy')">entropy</a>
+          <a class="graph_metricY l active" onclick="javascript:setYMetric('ratio')">ratio</a>
+        </div>
+        <div class="graph_metric_container">
+          <a class="graph_metricX r" onclick="javascript:setXMetric('encode')">encode</a>
+          <a class="graph_metricX l active" onclick="javascript:setXMetric('decode')">decode</a>
+        </div>
         <p>Non 24/48 Bit codecs have been removed since the compression ratio is negligible or uncompetitive everywhere else.<br/>Decompression and Compression Speed don't start at zero, because otherwise the graph wouldn't be particularly useful.</p>
         <canvas id="pixelart" class="chart"></canvas>
         <script>
             var obj = document.getElementById("pixelart");
             var ctx = obj.getContext("2d");
-            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            ctx.scale(pixelRatio(), pixelRatio());
 
             init_obj(obj);
 

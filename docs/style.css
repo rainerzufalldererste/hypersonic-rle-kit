@@ -12,9 +12,14 @@ body {
     padding: 20pt 50pt;
 }
 
+b {
+  color: #c6ff8ef2;
+  font-weight: bold;
+}
+
 ::selection {
-  color: #41ffb8;
-  background-color: #146060;
+    color: #b6e156;
+    background-color: #31513d;
 }
 
 li {
@@ -81,7 +86,7 @@ h1 {
 }
 
 h2 {
-  color: #86ce91;
+  color: #9adb7c;
 }
 
 .header img {
@@ -95,6 +100,15 @@ h2 {
     display: inline;
 }
 
+.graph_container p {
+  display: inline-block;
+}
+
+.graph_metric_container {
+  display: inline-block;
+  float: right;
+}
+
 .graph_metricX, .graph_metricY {
     background: #2d2d2d;
     padding: 2pt 5pt;
@@ -102,7 +116,7 @@ h2 {
     border-radius: 5pt;
     display: inline-block;
     float: right;
-    margin: 2pt;
+    margin: 4pt;
     color: #959595;
     cursor: pointer;
     user-select: none;
@@ -121,10 +135,10 @@ h2 {
 }
 
 .graph_metricX.active, .graph_metricY.active {
-    background: linear-gradient(0, #39513d, #5e8a65);
+    background: linear-gradient(0, #368651, #81bb54);
     color: #fff;
+    border-color: #378752;
 }
-
 
 @media (max-width: 1000pt) {
     .main {
@@ -132,8 +146,16 @@ h2 {
         padding: 20pt 10pt;
     }
 
-    
     .header img {
         margin: 20pt auto 30pt;
+    }
+    
+    .graph_metric_container {
+        display: block;
+        float: none;
+    }
+
+    #tooltip {
+        min-width: 200pt;
     }
 }
