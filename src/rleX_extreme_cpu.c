@@ -62,4 +62,3 @@
 #define TYPE_SIZE 64
 #include "rleX_extreme_cpu.h"
 #undef TYPE_SIZE
-
