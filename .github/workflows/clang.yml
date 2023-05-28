@@ -24,7 +24,7 @@ jobs:
     - name: Build
       run: config=releaseclang_x64 make
     
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: build-clang64
         path: builds/bin/hsrlekit
@@ -34,13 +34,13 @@ jobs:
     needs: build
 
     steps:
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       with:
         name: build-clang64
     
-    - name: Download Sample File
+    - name: Download Samples
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: wget https://www.dropbox.com/s/yvsl1lg98c4maq1/video_frame.raw
+      run: git clone https://github.com/rainerzufalldererste/rle_samples.git
 
     - name: Mark as Executable
       working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -48,28 +48,28 @@ jobs:
 
     - name: Test AVX2
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: ./hsrlekit video_frame.raw --test --min-time 0 --runs 0 --max-simd avx2
+      run: ./hsrlekit rle_samples/sample0.bin --test --min-time 0 --runs 0 --max-simd avx2
       
     - name: Test AVX
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: ./hsrlekit video_frame.raw --test --min-time 0 --runs 0 --max-simd avx
+      run: ./hsrlekit rle_samples/sample0.bin --test --min-time 0 --runs 0 --max-simd avx
       
     - name: Test SSE4.2
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: ./hsrlekit video_frame.raw --test --min-time 0 --runs 0 --max-simd sse4.2
+      run: ./hsrlekit rle_samples/sample0.bin --test --min-time 0 --runs 0 --max-simd sse4.2
       
     - name: Test SSE4.1
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: ./hsrlekit video_frame.raw --test --min-time 0 --runs 0 --max-simd sse4.1
+      run: ./hsrlekit rle_samples/sample0.bin --test --min-time 0 --runs 0 --max-simd sse4.1
       
     - name: Test SSSE3
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: ./hsrlekit video_frame.raw --test --min-time 0 --runs 0 --max-simd ssse3
+      run: ./hsrlekit rle_samples/sample0.bin --test --min-time 0 --runs 0 --max-simd ssse3
       
     - name: Test SSE3
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: ./hsrlekit video_frame.raw --test --min-time 0 --runs 0 --max-simd sse3
+      run: ./hsrlekit rle_samples/sample0.bin --test --min-time 0 --runs 0 --max-simd sse3
 
     - name: Test SSE2
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: ./hsrlekit video_frame.raw --test --min-time 0 --runs 0 --max-simd sse2
+      run: ./hsrlekit rle_samples/sample0.bin --test --min-time 0 --runs 0 --max-simd sse2
