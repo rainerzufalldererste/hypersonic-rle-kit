@@ -204,7 +204,6 @@ The 24 Bit and 48 Bit Variants allow for run length encoding of common data layo
 | Multi MTF 256 Bit (Transform)  | 100.00 %   |    5,030.6 MiB/s   |    5,028.6 MiB/s   |   27.52 %   |
 | Bit MMTF 8 Bit (Transform)     | 100.00 %   |    1,861.6 MiB/s   |    1,984.2 MiB/s   |   73.85 %   |
 | Bit MMTF 16 Bit (Transform)    | 100.00 %   |    2,340.1 MiB/s   |    2,293.9 MiB/s   |   72.48 %   |
-
 | - | - | - | - | - |
 | memcpy                         | 100.00 %   |   28,288.5 MiB/s   |   28,261.3 MiB/s   |   77.03 %   |
 | trle    | 100.0 % |   433.10 MiB/s |  5,558.8 MiB/s | - |
