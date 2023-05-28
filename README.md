@@ -3,7 +3,7 @@
 
 ### What is it?
 - A selection of 100+ RLE and related codecs optimized for all kinds of different inputs and scenarios.
-- Usually the fastest run length en/decoder. **Single Core Decompression Speeds > 34 GB/s and Compression Speeds > 28 GB/s have been observed with large files.** (small files can exceed 120 GB/s decode, 60 GB/s encode)
+- Usually the fastest run length en/decoder by far. **Single Core Decompression Speeds > 34 GB/s and Compression Speeds > 28 GB/s have been observed with large files.** (small files can exceed 120 GB/s decode, 60 GB/s encode)
 - Written in C.
 - SIMD Variants for AVX-512F, AVX2, AVX, SSE4.1, SSSE3 and SSE2 variants are available for various decoders and encoders. Automatically picked at runtime based on the extensions available on the current platform.
 - Variants include: Single RLE Symbol, Short Strings of RLE Symbols, Byte Alignmed, Symbol Aligned, 8 Bit, 16 Bit, 24 Bit, 32 Bit, 48 Bit, 64 Bit, 128 Bit, Different probabilities of reoccuring symbols, ...
@@ -217,16 +217,17 @@ The 24 Bit and 48 Bit Variants allow for run length encoding of common data layo
 
 ### Variants
 #### 8, 16, 24, 32, 48, 64, 128 Bit (Byte Aligned + Symbol Aligned)
-- Extremely Fast (especially decoding files).
+- Extremely Fast.
 - Variants for always aligning with the symbol width or allowing byte-wide repeats even for > 8 bit symbols.
 - Decoder interprets blocks of data to boil down to a highly optimized `memcpy`, `memset`, `memcpy`, `memset` (with various different byte-lengths).
-- 8 bit encoder highly optimized as well, optional variant single symbol encoding.
+- Encoder searches for repeats and their respective lengths using movemask instructions.
+- Optional variant for 8 bit single symbol encoding.
 
 #### 8, 16, 24, 32, 48, 64, 128 Bit Packed (Byte Aligned + Symbol Aligned)
 - Similar to the base variant, but keeps around the previously used RLE symbol which is usually very beneficial to the compression ratio and tries to pack lengths a bit more optimistically.
-- Also Extremely Fast (especially decoding files), whilst providing better compression ratio for many inputs
+- Also Extremely Fast, whilst providing better compression ratio for many inputs
 - Also has those variants for always aligning with the symbol width or allowing byte-wide repeats even for > 8 bit symbols.
-- 8 bit encoder highly optimized as well, optional variant single symbol encoding (only has the optimistic packing, as it already knows what the next symbol is going to be anyways).
+- Optional variant for 8 bit single symbol encoding (only has the optimistic packing, as it already knows what the next symbol is going to be anyways).
 
 #### 1 Sym LUT / 3 Sym LUT / 3 Sym LUT Short / 7 Sym LUT / 7 Sym LUT Short
 - Similar to the base variant, but keeps around one / three / seven of the previously used RLE symbols, usually further improving compression ratios.
