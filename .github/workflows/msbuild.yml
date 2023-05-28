@@ -80,3 +80,20 @@ jobs:
     - name: Test SSE2
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: ./hsrlekit rle_samples/sample0.bin --test --min-time 0 --runs 0 --max-simd sse2
+
+
+  release:
+    runs-on: windows-latest
+    needs: [ build, test ]
+    
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - uses: actions/download-artifact@v3
+      with:
+        name: build-win64
+
+    - name: Add to Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: hsrlekit.exe

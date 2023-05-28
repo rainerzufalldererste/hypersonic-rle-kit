@@ -73,3 +73,27 @@ jobs:
     - name: Test SSE2
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: ./hsrlekit rle_samples/sample0.bin --test --min-time 0 --runs 0 --max-simd sse2
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [ build, test ]
+    
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - uses: actions/download-artifact@v3
+      with:
+        name: build-clang64
+
+    - name: Mark as Executable
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: chmod +x hsrlekit
+
+    - name: Rename to reflect compiler
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: mv hsrlekit hsrlekit-clang
+
+    - name: Add to Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: hsrlekit-clang
