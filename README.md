@@ -133,7 +133,7 @@
 | 64 Bit 7LUT (Byte)            |  **56.10 %** |  **5,933.0 MiB/s** |   16,061.7 MiB/s   |   37.92 %   |
 | 128 Bit Packed (Symbol)       |  **64.32 %** |    5,640.8 MiB/s   | **20,237.7 MiB/s** |   42.35 %   |
 | 128 Bit Packed (Byte)         |  **62.94 %** |    5,650.8 MiB/s   | **20,158.4 MiB/s** |   41.61 %   |
-| Low Entropy                   |    64.19 %   |      383.3 MiB/s   |     ,913.9 MiB/s   |   34.06 %   |
+| Low Entropy                   |    64.19 %   |      383.3 MiB/s   |      913.9 MiB/s   |   34.06 %   |
 | Low Entropy Single            |    89.22 %   |      561.6 MiB/s   |    7,491.0 MiB/s   |   59.50 %   |
 | Low Entropy Short             |    66.17 %   |      394.1 MiB/s   |    1,412.4 MiB/s   |   36.11 %   |
 | Low Entropy Short Single      |    89.65 %   |      576.5 MiB/s   |    9,841.2 MiB/s   |   61.05 %   |
