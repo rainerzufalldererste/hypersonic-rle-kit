@@ -1,5 +1,9 @@
 #if SYMBOL_COUNT != 0 || defined(SINGLE)
-  #define RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT (1 + 1)
+  #if defined(AGGRESSIVE) || defined(UNBOUND)
+    #define RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT (1 + 1)
+  #else
+    #define RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT max((1 + 1), TYPE_SIZE / 8 * 2)
+  #endif
   #ifndef SINGLE
     #define RLE8_XSYMLUT_SHORT_MIN_RANGE_LONG (3 + 4 + 4 + (TYPE_SIZE / 8))
   #else
