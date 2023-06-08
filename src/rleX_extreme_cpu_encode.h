@@ -583,17 +583,17 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, ENCODE_FUNC_NAME))(IN const u
       index += sizeof(uint32_t);
 #endif
 
+      const size_t copySize = i - lastRLE;
+
 #ifdef PREFER_7_BIT_OR_4_BYTE_COPY
-      *((uint32_t *)&pOut[index]) = (uint32_t)((range + 1) << 1) | 1;
+      *((uint32_t *)&pOut[index]) = (uint32_t)((copySize + 1) << 1) | 1;
       index += sizeof(uint32_t);
 #else
       pOut[index] = 0;
       index++;
-      *((uint32_t *)&pOut[index]) = (uint32_t)range + 1;
+      *((uint32_t *)&pOut[index]) = (uint32_t)copySize + 1;
       index += sizeof(uint32_t);
 #endif
-
-      const size_t copySize = i - lastRLE;
 
       memcpy(pOut + index, pIn + lastRLE, copySize);
       index += copySize;

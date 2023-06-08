@@ -473,17 +473,17 @@ uint32_t CONCAT3(rle128_, CODEC, _compress)(IN const uint8_t *pIn, const uint32_
 			index += sizeof(uint32_t);
 #endif
 
+      const size_t copySize = i - lastRLE;
+
 #ifdef PREFER_7_BIT_OR_4_BYTE_COPY
-			*((uint32_t *)&pOut[index]) = (uint32_t)((range + 1) << 1) | 1;
+			*((uint32_t *)&pOut[index]) = (uint32_t)((copySize + 1) << 1) | 1;
 			index += sizeof(uint32_t);
 #else
 			pOut[index] = 0;
 			index++;
-			*((uint32_t *)&pOut[index]) = (uint32_t)range + 1;
+			*((uint32_t *)&pOut[index]) = (uint32_t)copySize + 1;
 			index += sizeof(uint32_t);
 #endif
-
-			const size_t copySize = i - lastRLE;
 
 			memcpy(pOut + index, pIn + lastRLE, copySize);
 			index += copySize;

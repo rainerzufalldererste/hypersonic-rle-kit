@@ -353,14 +353,14 @@ uint32_t CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, FUNC_NAME)(IN const uint8_t 
     }
     else
     {
+      const size_t copySize = i - state.lastRLE;
+
       *((uint16_t *)&pOut[state.index]) = 1 << RLE8_XSYMLUT_RANGE_BITS;
       state.index += sizeof(uint16_t);
       *((uint16_t *)&pOut[state.index]) = 0;
       state.index += sizeof(uint16_t);
-      *((uint32_t *)&pOut[state.index]) = (uint32_t)range + 1;
+      *((uint32_t *)&pOut[state.index]) = (uint32_t)copySize + RLE8_XSYMLUT_RANGE_VALUE_OFFSET;
       state.index += sizeof(uint32_t);
-
-      const size_t copySize = i - state.lastRLE;
 
       memcpy(pOut + state.index, pIn + state.lastRLE, copySize);
       state.index += copySize;
