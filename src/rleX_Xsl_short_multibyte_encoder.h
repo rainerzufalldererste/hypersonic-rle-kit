@@ -374,9 +374,11 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, FUNC_NAME))(IN const uint8_t 
       pOut[state.index] = 0;
       state.index++;
 #endif
-  }
+    }
     else
     {
+      const size_t copySize = i - state.lastRLE;
+
       pOut[state.index] = (RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID << RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED);
       state.index++;
 #if SYMBOL_COUNT == 3
@@ -393,15 +395,13 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, FUNC_NAME))(IN const uint8_t 
       state.index++;
       *((uint16_t *)&pOut[state.index]) = 0;
       state.index += sizeof(uint16_t);
-      *((uint32_t *)&pOut[state.index]) = (uint32_t)range;
+      *((uint32_t *)&pOut[state.index]) = (uint32_t)copySize + RLE8_XSYMLUT_SHORT_RANGE_VALUE_OFFSET;
       state.index += sizeof(uint32_t);
 
 #if SYMBOL_COUNT == 0 && !defined(SINGLE)
       *((symbol_t *)&(pOut[state.index])) = 0;
       state.index += (TYPE_SIZE / 8);
 #endif
-
-      const size_t copySize = i - state.lastRLE;
 
       memcpy(pOut + state.index, pIn + state.lastRLE, copySize);
       state.index += copySize;

@@ -584,12 +584,12 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, ENCODE_FUNC_NAME))(IN const u
 #endif
 
 #ifdef PREFER_7_BIT_OR_4_BYTE_COPY
-      *((uint32_t *)&pOut[index]) = (uint32_t)(range << 1) | 1;
+      *((uint32_t *)&pOut[index]) = (uint32_t)((range + 1) << 1) | 1;
       index += sizeof(uint32_t);
 #else
       pOut[index] = 0;
       index++;
-      *((uint32_t *)&pOut[index]) = (uint32_t)range;
+      *((uint32_t *)&pOut[index]) = (uint32_t)range + 1;
       index += sizeof(uint32_t);
 #endif
 

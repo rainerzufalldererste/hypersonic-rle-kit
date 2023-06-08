@@ -1346,6 +1346,8 @@ __attribute__((target("sse4.1")))
 static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse41))(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
+  uint8_t *pOutInitial = pOut;
+  (void)pOutInitial;
 
 #ifndef SINGLE
   __m128i symbol = _mm_setzero_si128();

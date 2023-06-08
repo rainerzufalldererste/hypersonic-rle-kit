@@ -357,7 +357,7 @@ uint32_t CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, FUNC_NAME)(IN const uint8_t 
       state.index += sizeof(uint16_t);
       *((uint16_t *)&pOut[state.index]) = 0;
       state.index += sizeof(uint16_t);
-      *((uint32_t *)&pOut[state.index]) = (uint32_t)range;
+      *((uint32_t *)&pOut[state.index]) = (uint32_t)range + 1;
       state.index += sizeof(uint32_t);
 
       const size_t copySize = i - state.lastRLE;
