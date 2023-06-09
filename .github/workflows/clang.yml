@@ -74,6 +74,10 @@ jobs:
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: ./hsrlekit rle_samples/sample0.bin --test --min-time 0 --runs 0 --max-simd sse2
 
+    - name: Test sample0 No-SIMD
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: ./hsrlekit rle_samples/sample0.bin --test --min-time 0 --runs 0 --max-simd none
+
     - name: Test sample1 AVX2
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: ./hsrlekit rle_samples/sample1.bin --test --min-time 0 --runs 0 --max-simd avx2
@@ -101,6 +105,10 @@ jobs:
     - name: Test sample1 SSE2
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: ./hsrlekit rle_samples/sample1.bin --test --min-time 0 --runs 0 --max-simd sse2
+
+    - name: Test sample1 No-SIMD
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: ./hsrlekit rle_samples/sample1.bin --test --min-time 0 --runs 0 --max-simd none
 
     - name: Test sample2 AVX2
       working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -130,6 +138,10 @@ jobs:
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: ./hsrlekit rle_samples/sample2.bin --test --min-time 0 --runs 0 --max-simd sse2
 
+    - name: Test sample2 No-SIMD
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: ./hsrlekit rle_samples/sample2.bin --test --min-time 0 --runs 0 --max-simd none
+
     - name: Test sample3 AVX2
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: ./hsrlekit rle_samples/sample3.bin --test --min-time 0 --runs 0 --max-simd avx2
@@ -157,6 +169,10 @@ jobs:
     - name: Test sample3 SSE2
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: ./hsrlekit rle_samples/sample3.bin --test --min-time 0 --runs 0 --max-simd sse2
+
+    - name: Test sample3 No-SIMD
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: ./hsrlekit rle_samples/sample3.bin --test --min-time 0 --runs 0 --max-simd none
 
     - name: Test sample4 AVX2
       working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -186,6 +202,10 @@ jobs:
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: ./hsrlekit rle_samples/sample4.bin --test --min-time 0 --runs 0 --max-simd sse2
 
+    - name: Test sample4 No-SIMD
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: ./hsrlekit rle_samples/sample4.bin --test --min-time 0 --runs 0 --max-simd none
+
     - name: Test sample5 AVX2
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: ./hsrlekit rle_samples/sample5.bin --test --min-time 0 --runs 0 --max-simd avx2
@@ -213,3 +233,7 @@ jobs:
     - name: Test sample5 SSE2
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: ./hsrlekit rle_samples/sample5.bin --test --min-time 0 --runs 0 --max-simd sse2
+
+    - name: Test sample5 No-SIMD
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: ./hsrlekit rle_samples/sample5.bin --test --min-time 0 --runs 0 --max-simd none

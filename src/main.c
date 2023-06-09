@@ -56,6 +56,7 @@ const char ArgumentMaxSimdSSE41[] = "sse4.1";
 const char ArgumentMaxSimdSSSE3[] = "ssse3";
 const char ArgumentMaxSimdSSE3[] = "sse3";
 const char ArgumentMaxSimdSSE2[] = "sse2";
+const char ArgumentMaxSimdNone[] = "none";
 const char ArgumentTest[] = "--test";
 
 #ifdef _WIN32
@@ -547,6 +548,13 @@ int main(int argc, char **pArgv)
           }
 
           sse2Supported = false;
+
+          if (strncmp(pArgv[argIndex + 1], ArgumentMaxSimdNone, sizeof(ArgumentMaxSimdNone)) == 0)
+          {
+            printf("%s %s is only intended for testing purposes and will only restrict some codecs to no SIMD\n", ArgumentMaxSimd, ArgumentMaxSimdNone);
+
+            break;
+          }
 
           printf("Invalid SIMD Variant '%s' specified.", pArgv[argIndex + 1]);
           return 1;
@@ -1589,6 +1597,13 @@ int main(int argc, char **pArgv)
           continue;
         }
 
+        if (!sse2Supported && (currentCodec == MultiMTF128 || currentCodec == MultiMTF256))
+        {
+          printf("\r%s| <SSE2 NOT SUPPORTED BY PLATFORM>\n", codecNames[currentCodec]);
+
+          continue;
+        }
+
         if (isTestRun)
           return -1;
 
@@ -2087,7 +2102,12 @@ int main(int argc, char **pArgv)
         printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | <FAILED TO DECOMRPESS>\n", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
 
         if (isTestRun)
-          return -1;
+        {
+          if (!sse2Supported && (currentCodec == MultiMTF128 || currentCodec == MultiMTF256))
+            puts("<SSE2 NOT SUPPORTED BY PLATFORM>");
+          else
+            return -1;
+        }
 
         continue;
       }
