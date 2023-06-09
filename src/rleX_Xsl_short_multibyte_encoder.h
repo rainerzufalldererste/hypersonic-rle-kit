@@ -8,7 +8,6 @@
   #define FUNC_NAME compress_base
 #endif
 
-// TODO: Ultra Agressive Mode, that prefers to encode occurences of recently occured symbols even if it's only a couple of bytes of it.
 #ifndef _MSC_VER
 #if defined(IMPL_SSSE3)
 __attribute__((target("ssse3")))

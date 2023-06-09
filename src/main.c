@@ -39,6 +39,8 @@ const char ArgumentExtremeSymbolGran[] = "--symbol-aligned";
 const char ArgumentExtremePacked[] = "--packed";
 const char ArgumentExtremeNotPacked[] = "--not-packed";
 const char ArgumentExtremeLutSize[] = "--lut-size";
+const char ArgumentExtremeGreedy[] = "--greedy";
+const char ArgumentExtremeNotGreedy[] = "--not-greedy";
 const char ArgumentMinimumTime[] = "--min-time";
 const char ArgumentExtremeMMTF[] = "--rle-mmtf";
 const char ArgumentMMTF[] = "--mmtf";
@@ -85,10 +87,13 @@ typedef enum
   Extreme16ByteShort,
   Extreme16BytePacked,
   Extreme16Byte_1SLShort,
+  Extreme16Byte_1SLShortGreedy,
   Extreme16Byte_3SL,
   Extreme16Byte_3SLShort,
+  Extreme16Byte_3SLShortGreedy,
   Extreme16Byte_7SL,
   Extreme16Byte_7SLShort,
+  Extreme16Byte_7SLShortGreedy,
   Extreme24Sym,
   Extreme24SymShort,
   Extreme24SymPacked,
@@ -101,10 +106,13 @@ typedef enum
   Extreme24ByteShort,
   Extreme24BytePacked,
   Extreme24Byte_1SLShort,
+  Extreme24Byte_1SLShortGreedy,
   Extreme24Byte_3SL,
   Extreme24Byte_3SLShort,
+  Extreme24Byte_3SLShortGreedy,
   Extreme24Byte_7SL,
   Extreme24Byte_7SLShort,
+  Extreme24Byte_7SLShortGreedy,
   Extreme32Sym,
   Extreme32SymShort,
   Extreme32SymPacked,
@@ -117,10 +125,13 @@ typedef enum
   Extreme32ByteShort,
   Extreme32BytePacked,
   Extreme32Byte_1SLShort,
+  Extreme32Byte_1SLShortGreedy,
   Extreme32Byte_3SL,
   Extreme32Byte_3SLShort,
+  Extreme32Byte_3SLShortGreedy,
   Extreme32Byte_7SL,
   Extreme32Byte_7SLShort,
+  Extreme32Byte_7SLShortGreedy,
   Extreme48Sym,
   Extreme48SymShort,
   Extreme48SymPacked,
@@ -133,10 +144,13 @@ typedef enum
   Extreme48ByteShort,
   Extreme48BytePacked,
   Extreme48Byte_1SLShort,
+  Extreme48Byte_1SLShortGreedy,
   Extreme48Byte_3SL,
   Extreme48Byte_3SLShort,
+  Extreme48Byte_3SLShortGreedy,
   Extreme48Byte_7SL,
   Extreme48Byte_7SLShort,
+  Extreme48Byte_7SLShortGreedy,
   Extreme64Sym,
   Extreme64SymShort,
   Extreme64SymPacked,
@@ -149,10 +163,13 @@ typedef enum
   Extreme64ByteShort,
   Extreme64BytePacked,
   Extreme64Byte_1SLShort,
+  Extreme64Byte_1SLShortGreedy,
   Extreme64Byte_3SL,
   Extreme64Byte_3SLShort,
+  Extreme64Byte_3SLShortGreedy,
   Extreme64Byte_7SL,
   Extreme64Byte_7SLShort,
+  Extreme64Byte_7SLShortGreedy,
   Extreme128Sym,
   Extreme128SymPacked,
   Extreme128Byte,
@@ -201,10 +218,13 @@ static const char *codecNames[] =
   "16 Bit Short (Byte)           ",
   "16 Bit Packed (Byte)          ",
   "16 Bit 1LUT Short (Byte)      ",
+  "16 Bit 1LUT Short Grdy (Byte) ",
   "16 Bit 3LUT (Byte)            ",
   "16 Bit 3LUT Short (Byte)      ",
+  "16 Bit 3LUT Short Grdy (Byte) ",
   "16 Bit 7LUT (Byte)            ",
   "16 Bit 7LUT Short (Byte)      ",
+  "16 Bit 7LUT Short Grdy (Byte) ",
   "24 Bit (Symbol)               ",
   "24 Bit Short (Symbol)         ",
   "24 Bit Packed (Symbol)        ",
@@ -217,10 +237,13 @@ static const char *codecNames[] =
   "24 Bit Short (Byte)           ",
   "24 Bit Packed (Byte)          ",
   "24 Bit 1LUT Short (Byte)      ",
+  "24 Bit 1LUT Short Grdy (Byte) ",
   "24 Bit 3LUT (Byte)            ",
   "24 Bit 3LUT Short (Byte)      ",
+  "24 Bit 3LUT Short Grdy (Byte) ",
   "24 Bit 7LUT (Byte)            ",
   "24 Bit 7LUT Short (Byte)      ",
+  "24 Bit 7LUT Short Grdy (Byte) ",
   "32 Bit (Symbol)               ",
   "32 Bit Short (Symbol)         ",
   "32 Bit Packed (Symbol)        ",
@@ -233,10 +256,13 @@ static const char *codecNames[] =
   "32 Bit Short (Byte)           ",
   "32 Bit Packed (Byte)          ",
   "32 Bit 1LUT Short (Byte)      ",
+  "32 Bit 1LUT Short Grdy (Byte) ",
   "32 Bit 3LUT (Byte)            ",
   "32 Bit 3LUT Short (Byte)      ",
+  "32 Bit 3LUT Short Grdy (Byte) ",
   "32 Bit 7LUT (Byte)            ",
   "32 Bit 7LUT Short (Byte)      ",
+  "32 Bit 7LUT Short Grdy (Byte) ",
   "48 Bit (Symbol)               ",
   "48 Bit Short (Symbol)         ",
   "48 Bit Packed (Symbol)        ",
@@ -249,10 +275,13 @@ static const char *codecNames[] =
   "48 Bit Short (Byte)           ",
   "48 Bit Packed (Byte)          ",
   "48 Bit 1LUT Short (Byte)      ",
+  "48 Bit 1LUT Short Grdy (Byte) ",
   "48 Bit 3LUT (Byte)            ",
   "48 Bit 3LUT Short (Byte)      ",
+  "48 Bit 3LUT Short Grdy (Byte) ",
   "48 Bit 7LUT (Byte)            ",
   "48 Bit 7LUT Short (Byte)      ",
+  "48 Bit 7LUT Short Grdy (Byte) ",
   "64 Bit (Symbol)               ",
   "64 Bit Short (Symbol)         ",
   "64 Bit Packed (Symbol)        ",
@@ -265,10 +294,13 @@ static const char *codecNames[] =
   "64 Bit Short (Byte)           ",
   "64 Bit Packed (Byte)          ",
   "64 Bit 1LUT Short (Byte)      ",
+  "64 Bit 1LUT Short Grdy (Byte) ",
   "64 Bit 3LUT (Byte)            ",
   "64 Bit 3LUT Short (Byte)      ",
+  "64 Bit 3LUT Short Grdy (Byte) ",
   "64 Bit 7LUT (Byte)            ",
   "64 Bit 7LUT Short (Byte)      ",
+  "64 Bit 7LUT Short Grdy (Byte) ",
   "128 Bit (Symbol)              ",
   "128 Bit Packed (Symbol)       ",
   "128 Bit (Byte)                ",
@@ -295,6 +327,7 @@ struct
   bool hasSingleMode, isSingleMode;
   bool hasAlignment, isAlignmentByte;
   bool hasPackedMode, isPacked;
+  bool hasGreedyMode, isGreedy;
   bool hasLutSize;
   size_t lutSize;
   bool hasBitCount;
@@ -321,6 +354,7 @@ int main(int argc, char **pArgv)
     printf("\t\tif '%s': [%s / %s / %s / %s / %s]\n", ArgumentMatch, ArgumentExtreme, ArgumentExtremeMMTF, ArgumentMMTF, ArgumentNormal, ArgumentSH);
     printf("\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentExtremePacked, ArgumentExtremeNotPacked);
     printf("\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentExtremeByteGran, ArgumentExtremeSymbolGran);
+    printf("\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentExtremeGreedy, ArgumentExtremeNotGreedy);
     printf("\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentMulti, ArgumentSingle);
     printf("\t\tif '%s': [%s / %s]\n", ArgumentMatch, ArgumentShort, ArgumentNotShort);
     printf("\t\tif '%s': [%s 0, 1, 3, 7]\n", ArgumentMatch, ArgumentExtremeLutSize);
@@ -626,6 +660,34 @@ int main(int argc, char **pArgv)
 
         _Args.hasShortMode = true;
         _Args.isShortMode = false;
+
+        argIndex += 1;
+        argsRemaining -= 1;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentExtremeGreedy, sizeof(ArgumentExtremeGreedy)) == 0)
+      {
+        if (_Args.hasGreedyMode)
+        {
+          puts("Greedy mode has already been specified.");
+          return 1;
+        }
+
+        _Args.hasGreedyMode = true;
+        _Args.isGreedy = true;
+
+        argIndex += 1;
+        argsRemaining -= 1;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentExtremeNotGreedy, sizeof(ArgumentExtremeNotGreedy)) == 0)
+      {
+        if (_Args.hasGreedyMode)
+        {
+          puts("Greedy mode has already been specified.");
+          return 1;
+        }
+
+        _Args.hasGreedyMode = true;
+        _Args.isGreedy = false;
 
         argIndex += 1;
         argsRemaining -= 1;
@@ -1173,6 +1235,10 @@ int main(int argc, char **pArgv)
           compressedSize = rle16_1symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme16Byte_1SLShortGreedy:
+          compressedSize = rle16_1symlut_byte_short_compress_greedy(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme16Byte_3SL:
           compressedSize = rle16_3symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
@@ -1181,12 +1247,20 @@ int main(int argc, char **pArgv)
           compressedSize = rle16_3symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme16Byte_3SLShortGreedy:
+          compressedSize = rle16_3symlut_byte_short_compress_greedy(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme16Byte_7SL:
           compressedSize = rle16_7symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme16Byte_7SLShort:
           compressedSize = rle16_7symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme16Byte_7SLShortGreedy:
+          compressedSize = rle16_7symlut_byte_short_compress_greedy(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme32SymShort:
@@ -1221,6 +1295,10 @@ int main(int argc, char **pArgv)
           compressedSize = rle32_1symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme32Byte_1SLShortGreedy:
+          compressedSize = rle32_1symlut_byte_short_compress_greedy(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme32Byte_3SL:
           compressedSize = rle32_3symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
@@ -1229,12 +1307,20 @@ int main(int argc, char **pArgv)
           compressedSize = rle32_3symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme32Byte_3SLShortGreedy:
+          compressedSize = rle32_3symlut_byte_short_compress_greedy(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme32Byte_7SL:
           compressedSize = rle32_7symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme32Byte_7SLShort:
           compressedSize = rle32_7symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme32Byte_7SLShortGreedy:
+          compressedSize = rle32_7symlut_byte_short_compress_greedy(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme64SymShort:
@@ -1269,6 +1355,10 @@ int main(int argc, char **pArgv)
           compressedSize = rle64_1symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme64Byte_1SLShortGreedy:
+          compressedSize = rle64_1symlut_byte_short_compress_greedy(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme64Byte_3SL:
           compressedSize = rle64_3symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
@@ -1277,12 +1367,20 @@ int main(int argc, char **pArgv)
           compressedSize = rle64_3symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme64Byte_3SLShortGreedy:
+          compressedSize = rle64_3symlut_byte_short_compress_greedy(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme64Byte_7SL:
           compressedSize = rle64_7symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme64Byte_7SLShort:
           compressedSize = rle64_7symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme64Byte_7SLShortGreedy:
+          compressedSize = rle64_7symlut_byte_short_compress_greedy(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme24SymShort:
@@ -1317,6 +1415,10 @@ int main(int argc, char **pArgv)
           compressedSize = rle24_1symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme24Byte_1SLShortGreedy:
+          compressedSize = rle24_1symlut_byte_short_compress_greedy(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme24Byte_3SL:
           compressedSize = rle24_3symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
@@ -1325,12 +1427,20 @@ int main(int argc, char **pArgv)
           compressedSize = rle24_3symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme24Byte_3SLShortGreedy:
+          compressedSize = rle24_3symlut_byte_short_compress_greedy(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme24Byte_7SL:
           compressedSize = rle24_7symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme24Byte_7SLShort:
           compressedSize = rle24_7symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
+        case Extreme24Byte_7SLShortGreedy:
+          compressedSize = rle24_7symlut_byte_short_compress_greedy(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme48SymShort:
@@ -1365,6 +1475,10 @@ int main(int argc, char **pArgv)
           compressedSize = rle48_1symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme48Byte_1SLShortGreedy:
+          compressedSize = rle48_1symlut_byte_short_compress_greedy(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme48Byte_3SL:
           compressedSize = rle48_3symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
@@ -1373,12 +1487,19 @@ int main(int argc, char **pArgv)
           compressedSize = rle48_3symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
+        case Extreme48Byte_3SLShortGreedy:
+          compressedSize = rle48_3symlut_byte_short_compress_greedy(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+
         case Extreme48Byte_7SL:
           compressedSize = rle48_7symlut_byte_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme48Byte_7SLShort:
           compressedSize = rle48_7symlut_byte_short_compress(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
+          break;
+        case Extreme48Byte_7SLShortGreedy:
+          compressedSize = rle48_7symlut_byte_short_compress_greedy(pUncompressedData, fileSize32, pCompressedData, compressedBufferSize);
           break;
 
         case Extreme8MultiMTF128:
@@ -1658,6 +1779,7 @@ int main(int argc, char **pArgv)
           break;
 
         case Extreme16Byte_1SLShort:
+        case Extreme16Byte_1SLShortGreedy:
           decompressedSize = rle16_1symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
@@ -1666,6 +1788,7 @@ int main(int argc, char **pArgv)
           break;
 
         case Extreme16Byte_3SLShort:
+        case Extreme16Byte_3SLShortGreedy:
           decompressedSize = rle16_3symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
@@ -1674,6 +1797,7 @@ int main(int argc, char **pArgv)
           break;
 
         case Extreme16Byte_7SLShort:
+        case Extreme16Byte_7SLShortGreedy:
           decompressedSize = rle16_7symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
@@ -1706,6 +1830,7 @@ int main(int argc, char **pArgv)
           break;
 
         case Extreme32Byte_1SLShort:
+        case Extreme32Byte_1SLShortGreedy:
           decompressedSize = rle32_1symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
@@ -1714,6 +1839,7 @@ int main(int argc, char **pArgv)
           break;
 
         case Extreme32Byte_3SLShort:
+        case Extreme32Byte_3SLShortGreedy:
           decompressedSize = rle32_3symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
@@ -1722,6 +1848,7 @@ int main(int argc, char **pArgv)
           break;
 
         case Extreme32Byte_7SLShort:
+        case Extreme32Byte_7SLShortGreedy:
           decompressedSize = rle32_7symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
@@ -1754,6 +1881,7 @@ int main(int argc, char **pArgv)
           break;
 
         case Extreme64Byte_1SLShort:
+        case Extreme64Byte_1SLShortGreedy:
           decompressedSize = rle64_1symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
@@ -1762,6 +1890,7 @@ int main(int argc, char **pArgv)
           break;
 
         case Extreme64Byte_3SLShort:
+        case Extreme64Byte_3SLShortGreedy:
           decompressedSize = rle64_3symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
@@ -1770,6 +1899,7 @@ int main(int argc, char **pArgv)
           break;
 
         case Extreme64Byte_7SLShort:
+        case Extreme64Byte_7SLShortGreedy:
           decompressedSize = rle64_7symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
@@ -1802,6 +1932,7 @@ int main(int argc, char **pArgv)
           break;
 
         case Extreme24Byte_1SLShort:
+        case Extreme24Byte_1SLShortGreedy:
           decompressedSize = rle24_1symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
@@ -1810,6 +1941,7 @@ int main(int argc, char **pArgv)
           break;
 
         case Extreme24Byte_3SLShort:
+        case Extreme24Byte_3SLShortGreedy:
           decompressedSize = rle24_3symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
@@ -1818,6 +1950,7 @@ int main(int argc, char **pArgv)
           break;
 
         case Extreme24Byte_7SLShort:
+        case Extreme24Byte_7SLShortGreedy:
           decompressedSize = rle24_7symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
@@ -1850,6 +1983,7 @@ int main(int argc, char **pArgv)
           break;
 
         case Extreme48Byte_1SLShort:
+        case Extreme48Byte_1SLShortGreedy:
           decompressedSize = rle48_1symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
@@ -1858,6 +1992,7 @@ int main(int argc, char **pArgv)
           break;
 
         case Extreme48Byte_3SLShort:
+        case Extreme48Byte_3SLShortGreedy:
           decompressedSize = rle48_3symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
@@ -1866,6 +2001,7 @@ int main(int argc, char **pArgv)
           break;
 
         case Extreme48Byte_7SLShort:
+        case Extreme48Byte_7SLShortGreedy:
           decompressedSize = rle48_7symlut_byte_short_decompress(pCompressedData, compressedSize, pDecompressedData, compressedBufferSize);
           break;
 
@@ -3226,42 +3362,57 @@ bool CodecMatchesArgs(const codec_t codec)
       case Extreme16ByteShort:
       case Extreme16BytePacked:
       case Extreme16Byte_1SLShort:
+      case Extreme16Byte_1SLShortGreedy:
       case Extreme16Byte_3SL:
       case Extreme16Byte_3SLShort:
+      case Extreme16Byte_3SLShortGreedy:
       case Extreme16Byte_7SL:
       case Extreme16Byte_7SLShort:
+      case Extreme16Byte_7SLShortGreedy:
       case Extreme24Byte:
       case Extreme24ByteShort:
       case Extreme24BytePacked:
       case Extreme24Byte_1SLShort:
+      case Extreme24Byte_1SLShortGreedy:
       case Extreme24Byte_3SL:
       case Extreme24Byte_3SLShort:
+      case Extreme24Byte_3SLShortGreedy:
       case Extreme24Byte_7SL:
       case Extreme24Byte_7SLShort:
+      case Extreme24Byte_7SLShortGreedy:
       case Extreme32Byte:
       case Extreme32ByteShort:
       case Extreme32BytePacked:
       case Extreme32Byte_1SLShort:
+      case Extreme32Byte_1SLShortGreedy:
       case Extreme32Byte_3SL:
       case Extreme32Byte_3SLShort:
+      case Extreme32Byte_3SLShortGreedy:
       case Extreme32Byte_7SL:
       case Extreme32Byte_7SLShort:
+      case Extreme32Byte_7SLShortGreedy:
       case Extreme48Byte:
       case Extreme48ByteShort:
       case Extreme48BytePacked:
       case Extreme48Byte_1SLShort:
+      case Extreme48Byte_1SLShortGreedy:
       case Extreme48Byte_3SL:
       case Extreme48Byte_3SLShort:
+      case Extreme48Byte_3SLShortGreedy:
       case Extreme48Byte_7SL:
       case Extreme48Byte_7SLShort:
+      case Extreme48Byte_7SLShortGreedy:
       case Extreme64Byte:
       case Extreme64ByteShort:
       case Extreme64BytePacked:
       case Extreme64Byte_1SLShort:
+      case Extreme64Byte_1SLShortGreedy:
       case Extreme64Byte_3SL:
       case Extreme64Byte_3SLShort:
+      case Extreme64Byte_3SLShortGreedy:
       case Extreme64Byte_7SL:
       case Extreme64Byte_7SLShort:
+      case Extreme64Byte_7SLShortGreedy:
       case Extreme128Byte:
       case Extreme128BytePacked:
         if (!_Args.isAlignmentByte)
@@ -3343,40 +3494,55 @@ bool CodecMatchesArgs(const codec_t codec)
     case Extreme16Sym_7SLShort:
     case Extreme16ByteShort:
     case Extreme16Byte_1SLShort:
+    case Extreme16Byte_1SLShortGreedy:
     case Extreme16Byte_3SLShort:
+    case Extreme16Byte_3SLShortGreedy:
     case Extreme16Byte_7SLShort:
+    case Extreme16Byte_7SLShortGreedy:
     case Extreme24SymShort:
     case Extreme24Sym_1SLShort:
     case Extreme24Sym_3SLShort:
     case Extreme24Sym_7SLShort:
     case Extreme24ByteShort:
     case Extreme24Byte_1SLShort:
+    case Extreme24Byte_1SLShortGreedy:
     case Extreme24Byte_3SLShort:
+    case Extreme24Byte_3SLShortGreedy:
     case Extreme24Byte_7SLShort:
+    case Extreme24Byte_7SLShortGreedy:
     case Extreme32SymShort:
     case Extreme32Sym_1SLShort:
     case Extreme32Sym_3SLShort:
     case Extreme32Sym_7SLShort:
     case Extreme32ByteShort:
     case Extreme32Byte_1SLShort:
+    case Extreme32Byte_1SLShortGreedy:
     case Extreme32Byte_3SLShort:
+    case Extreme32Byte_3SLShortGreedy:
     case Extreme32Byte_7SLShort:
+    case Extreme32Byte_7SLShortGreedy:
     case Extreme48SymShort:
     case Extreme48Sym_1SLShort:
     case Extreme48Sym_3SLShort:
     case Extreme48Sym_7SLShort:
     case Extreme48ByteShort:
     case Extreme48Byte_1SLShort:
+    case Extreme48Byte_1SLShortGreedy:
     case Extreme48Byte_3SLShort:
+    case Extreme48Byte_3SLShortGreedy:
     case Extreme48Byte_7SLShort:
+    case Extreme48Byte_7SLShortGreedy:
     case Extreme64SymShort:
     case Extreme64Sym_1SLShort:
     case Extreme64Sym_3SLShort:
     case Extreme64Sym_7SLShort:
     case Extreme64ByteShort:
     case Extreme64Byte_1SLShort:
+    case Extreme64Byte_1SLShortGreedy:
     case Extreme64Byte_3SLShort:
+    case Extreme64Byte_3SLShortGreedy:
     case Extreme64Byte_7SLShort:
+    case Extreme64Byte_7SLShortGreedy:
     case LowEntropyShort:
     case LowEntropyShortSingle:
       if (!_Args.isShortMode)
@@ -3385,6 +3551,36 @@ bool CodecMatchesArgs(const codec_t codec)
 
     default:
       if (_Args.isShortMode)
+        return false;
+      break;
+    }
+  }
+
+  if (_Args.hasGreedyMode)
+  {
+    switch (codec)
+    {
+    default:
+      if (_Args.isGreedy)
+        return false;
+      break;
+
+    case Extreme16Byte_1SLShortGreedy:
+    case Extreme16Byte_3SLShortGreedy:
+    case Extreme16Byte_7SLShortGreedy:
+    case Extreme24Byte_1SLShortGreedy:
+    case Extreme24Byte_3SLShortGreedy:
+    case Extreme24Byte_7SLShortGreedy:
+    case Extreme32Byte_1SLShortGreedy:
+    case Extreme32Byte_3SLShortGreedy:
+    case Extreme32Byte_7SLShortGreedy:
+    case Extreme48Byte_1SLShortGreedy:
+    case Extreme48Byte_3SLShortGreedy:
+    case Extreme48Byte_7SLShortGreedy:
+    case Extreme64Byte_1SLShortGreedy:
+    case Extreme64Byte_3SLShortGreedy:
+    case Extreme64Byte_7SLShortGreedy:
+      if (!_Args.isGreedy)
         return false;
       break;
     }
@@ -3401,22 +3597,27 @@ bool CodecMatchesArgs(const codec_t codec)
     case Extreme16Sym_1SLShort:
     case Extreme16BytePacked:
     case Extreme16Byte_1SLShort:
+    case Extreme16Byte_1SLShortGreedy:
     case Extreme24SymPacked:
     case Extreme24Sym_1SLShort:
     case Extreme24BytePacked:
     case Extreme24Byte_1SLShort:
+    case Extreme24Byte_1SLShortGreedy:
     case Extreme32SymPacked:
     case Extreme32Sym_1SLShort:
     case Extreme32BytePacked:
     case Extreme32Byte_1SLShort:
+    case Extreme32Byte_1SLShortGreedy:
     case Extreme48SymPacked:
     case Extreme48Sym_1SLShort:
     case Extreme48BytePacked:
     case Extreme48Byte_1SLShort:
+    case Extreme48Byte_1SLShortGreedy:
     case Extreme64SymPacked:
     case Extreme64Sym_1SLShort:
     case Extreme64BytePacked:
     case Extreme64Byte_1SLShort:
+    case Extreme64Byte_1SLShortGreedy:
     case Extreme128SymPacked:
     case Extreme128BytePacked:
       if (_Args.lutSize != 1)
@@ -3429,22 +3630,27 @@ bool CodecMatchesArgs(const codec_t codec)
     case Extreme16Sym_3SLShort:
     case Extreme16Byte_3SL:
     case Extreme16Byte_3SLShort:
+    case Extreme16Byte_3SLShortGreedy:
     case Extreme24Sym_3SL:
     case Extreme24Sym_3SLShort:
     case Extreme24Byte_3SL:
     case Extreme24Byte_3SLShort:
+    case Extreme24Byte_3SLShortGreedy:
     case Extreme32Sym_3SL:
     case Extreme32Sym_3SLShort:
     case Extreme32Byte_3SL:
     case Extreme32Byte_3SLShort:
+    case Extreme32Byte_3SLShortGreedy:
     case Extreme48Sym_3SL:
     case Extreme48Sym_3SLShort:
     case Extreme48Byte_3SL:
     case Extreme48Byte_3SLShort:
+    case Extreme48Byte_3SLShortGreedy:
     case Extreme64Sym_3SL:
     case Extreme64Sym_3SLShort:
     case Extreme64Byte_3SL:
     case Extreme64Byte_3SLShort:
+    case Extreme64Byte_3SLShortGreedy:
       if (_Args.lutSize != 3)
         return false;
       break;
@@ -3455,22 +3661,27 @@ bool CodecMatchesArgs(const codec_t codec)
     case Extreme16Sym_7SLShort:
     case Extreme16Byte_7SL:
     case Extreme16Byte_7SLShort:
+    case Extreme16Byte_7SLShortGreedy:
     case Extreme24Sym_7SL:
     case Extreme24Sym_7SLShort:
     case Extreme24Byte_7SL:
     case Extreme24Byte_7SLShort:
+    case Extreme24Byte_7SLShortGreedy:
     case Extreme32Sym_7SL:
     case Extreme32Sym_7SLShort:
     case Extreme32Byte_7SL:
     case Extreme32Byte_7SLShort:
+    case Extreme32Byte_7SLShortGreedy:
     case Extreme48Sym_7SL:
     case Extreme48Sym_7SLShort:
     case Extreme48Byte_7SL:
     case Extreme48Byte_7SLShort:
+    case Extreme48Byte_7SLShortGreedy:
     case Extreme64Sym_7SL:
     case Extreme64Sym_7SLShort:
     case Extreme64Byte_7SL:
     case Extreme64Byte_7SLShort:
+    case Extreme64Byte_7SLShortGreedy:
       if (_Args.lutSize != 7)
         return false;
       break;
@@ -3519,10 +3730,13 @@ bool CodecMatchesArgs(const codec_t codec)
     case Extreme16ByteShort:
     case Extreme16BytePacked:
     case Extreme16Byte_1SLShort:
+    case Extreme16Byte_1SLShortGreedy:
     case Extreme16Byte_3SL:
     case Extreme16Byte_3SLShort:
+    case Extreme16Byte_3SLShortGreedy:
     case Extreme16Byte_7SL:
     case Extreme16Byte_7SLShort:
+    case Extreme16Byte_7SLShortGreedy:
     case BitMultiMTF16:
       if (_Args.bitCount != 16)
         return false;
@@ -3540,10 +3754,13 @@ bool CodecMatchesArgs(const codec_t codec)
     case Extreme24ByteShort:
     case Extreme24BytePacked:
     case Extreme24Byte_1SLShort:
+    case Extreme24Byte_1SLShortGreedy:
     case Extreme24Byte_3SL:
     case Extreme24Byte_3SLShort:
+    case Extreme24Byte_3SLShortGreedy:
     case Extreme24Byte_7SL:
     case Extreme24Byte_7SLShort:
+    case Extreme24Byte_7SLShortGreedy:
       if (_Args.bitCount != 24)
         return false;
       break;
@@ -3560,10 +3777,13 @@ bool CodecMatchesArgs(const codec_t codec)
     case Extreme32ByteShort:
     case Extreme32BytePacked:
     case Extreme32Byte_1SLShort:
+    case Extreme32Byte_1SLShortGreedy:
     case Extreme32Byte_3SL:
     case Extreme32Byte_3SLShort:
+    case Extreme32Byte_3SLShortGreedy:
     case Extreme32Byte_7SL:
     case Extreme32Byte_7SLShort:
+    case Extreme32Byte_7SLShortGreedy:
       if (_Args.bitCount != 32)
         return false;
       break;
@@ -3580,10 +3800,13 @@ bool CodecMatchesArgs(const codec_t codec)
     case Extreme48ByteShort:
     case Extreme48BytePacked:
     case Extreme48Byte_1SLShort:
+    case Extreme48Byte_1SLShortGreedy:
     case Extreme48Byte_3SL:
     case Extreme48Byte_3SLShort:
+    case Extreme48Byte_3SLShortGreedy:
     case Extreme48Byte_7SL:
     case Extreme48Byte_7SLShort:
+    case Extreme48Byte_7SLShortGreedy:
       if (_Args.bitCount != 48)
         return false;
       break;
@@ -3600,10 +3823,13 @@ bool CodecMatchesArgs(const codec_t codec)
     case Extreme64ByteShort:
     case Extreme64BytePacked:
     case Extreme64Byte_1SLShort:
+    case Extreme64Byte_1SLShortGreedy:
     case Extreme64Byte_3SL:
     case Extreme64Byte_3SLShort:
+    case Extreme64Byte_3SLShortGreedy:
     case Extreme64Byte_7SL:
     case Extreme64Byte_7SLShort:
+    case Extreme64Byte_7SLShortGreedy:
       if (_Args.bitCount != 64)
         return false;
       break;
