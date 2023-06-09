@@ -537,6 +537,55 @@ window.addEventListener("scroll", reveal);
             for (let i = 0; i < inactive_buttons.length; i++)
               inactive_buttons[i].className = inactive_buttons[i].className.replace(" active", "");
           }
+
+          function addSeparators(x) {
+            return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+          }
+
+          function print_pareto(obj) {
+            console.log(obj.id);
+
+            for (let p in obj.points) {
+                var x = obj.points[p];
+                var relevant = (x.pareto_dvr || x.pareto_evr || (x.pareto_dve && x.pareto_eve)) && x.entropy != null;
+
+                if (!relevant)
+                  continue;
+
+                var line = "| " + x.name.padEnd(31, ' ') + " | ";
+
+                line += "".padStart(6 - ("" + x.ratio.toFixed(2)).length);
+
+                if (x.pareto_dvr || x.pareto_evr)
+                  line += "**" + x.ratio.toFixed(2) + " %** | ";
+                else
+                  line += "  " + x.ratio.toFixed(2) + " %   | ";
+
+                line += "".padStart(8 - addSeparators(x.encode.toFixed(1)).length);
+
+                if (x.pareto_evr)
+                  line += "**" + addSeparators(x.encode.toFixed(1)) + " MiB/s** | ";
+                else
+                  line += "  " + addSeparators(x.encode.toFixed(1)) + " MiB/s   | ";
+
+                line += "".padStart(8 - addSeparators(x.decode.toFixed(1)).length);
+
+                if (x.pareto_dvr)
+                  line += "**" + addSeparators(x.decode.toFixed(1)) + " MiB/s** | ";
+                else
+                  line += "  " + addSeparators(x.decode.toFixed(1)) + " MiB/s   | ";
+
+                line += "".padStart(6 - ("" + x.entropy.toFixed(2)).length);
+                
+                if (x.pareto_dve && x.pareto_eve)
+                  line += "**" + x.entropy.toFixed(2) + " %** |";
+                else
+                  line += "  " + x.entropy.toFixed(2) + " %   |";
+
+                console.log(line);
+            }
+
+          }
       </script>
       <hr/>
       <h2>benchmarks</h2>
