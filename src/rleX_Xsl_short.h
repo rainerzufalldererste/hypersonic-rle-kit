@@ -686,7 +686,6 @@ static int64_t CONCAT3(rle8_, CODEC, compress_avx2)(IN const uint8_t *pIn, const
 
 #include "rleX_Xsl_short_multibyte_encoder.h"
 
-// TODO: Ultra Agressive Mode, that prefers to encode occurences of recently occured symbols even if it's only a couple of bytes of it.
 uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress))(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
   if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle_compress_bounds(inSize))

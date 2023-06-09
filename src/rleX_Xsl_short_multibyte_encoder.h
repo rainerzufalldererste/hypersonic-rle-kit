@@ -208,7 +208,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, FUNC_NAME))(IN const uint8_t 
             i++;
           }
 #elif TYPE_SIZE == 32 || TYPE_SIZE == 24
-          const symbol_t diff = state.symbol ^ *(symbol_t *)&pIn[i];
+          const symbol_t diff = state.symbol ^ next;
 
 #ifdef _MSC_VER
           unsigned long offset;
@@ -220,7 +220,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, FUNC_NAME))(IN const uint8_t 
           i += (offset / 8);
           state.count += (offset / 8);
 #elif TYPE_SIZE == 64 || TYPE_SIZE == 48
-          const symbol_t diff = state.symbol ^ *(symbol_t *)&pIn[i];
+          const symbol_t diff = state.symbol ^ next;
 
 #ifdef _MSC_VER
           unsigned long offset;
@@ -232,12 +232,12 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, FUNC_NAME))(IN const uint8_t 
           i += (offset / 8);
           state.count += (offset / 8);
 #else // backup
-          uint8_t symBytes[sizeof(state.symbol)];
-          memcpy(symBytes, &state.symbol, sizeof(state.symbol));
+          uint8_t symBytes[sizeof(TYPE_SIZE / 8 - 1)];
+          memcpy(symBytes, &state.symbol, sizeof(TYPE_SIZE / 8 - 1));
 
-          for (size_t j = 0; j < (sizeof(state.symbol) - 1); j++) // can't reach the absolute max.
+          for (size_t j = 0; j < (TYPE_SIZE / 8 - 1); j++) // can't reach the absolute max.
           {
-            if (pIn[i] != symBytes[j])
+            if (pIn[i + j] != symBytes[j])
               break;
 
             state.count++;
