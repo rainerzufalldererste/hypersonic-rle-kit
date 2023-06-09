@@ -12,6 +12,9 @@
 
 ### Benchmark
 **See [Full Benchmark with Graphs](https://rainerzufalldererste.github.io/hypersonic-rle-kit/), the tables below only contain a tiny selection of the _100+ codecs_.**
+
+  <a href="https://rainerzufalldererste.github.io/hypersonic-rle-kit/"><img src="https://raw.githubusercontent.com/rainerzufalldererste/hypersonic-rle-kit/master/docs/screenshot.png" alt="hypersonic rle kit pareto graph screenshot" style="width: 100%;"></a>
+  <br>
  
  - Single-Threaded
  - Running on an `AMD Ryzen 9 7950X`, `32 GB DDR5-6000 CL30` on Windows 11.
