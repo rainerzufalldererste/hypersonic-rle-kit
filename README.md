@@ -203,12 +203,12 @@ The 24 Bit and 48 Bit Variants allow for run length encoding of common data layo
 | 48 Bit Short (Byte)             |   3.20 %   |   23,439.2 MiB/s   |   32,689.1 MiB/s   |    2.48 %   |
 | 48 Bit Packed (Byte)            |   3.35 %   |   25,371.9 MiB/s   |   32,548.7 MiB/s   |    2.40 %   |
 | 48 Bit 1LUT Short (Byte)        |   3.20 %   |   20,935.0 MiB/s   |   32,603.2 MiB/s   |    2.48 %   |
+| 48 Bit 1LUT Short Greedy (Byte) |   3.20 %   |    9,723.8 MiB/s   |   32,490.3 MiB/s   |    2.48 %   |
 | 48 Bit 3LUT (Byte)              |   1.98 %   |   22,790.5 MiB/s   |   32,861.4 MiB/s   |    1.49 %   |
 | 48 Bit 3LUT Short (Byte)        |   2.13 %   |   20,273.7 MiB/s   |   32,717.9 MiB/s   |    1.62 %   |
+| 48 Bit 3LUT Short Greedy (Byte) |   2.13 %   |    8,178.3 MiB/s   |   32,537.9 MiB/s   |    1.62 %   |
 | 48 Bit 7LUT (Byte)              |   1.76 %   |   21,776.5 MiB/s   |   32,615.9 MiB/s   |    1.34 %   |
 | 48 Bit 7LUT Short (Byte)        |   1.90 %   |   20,145.3 MiB/s   |   31,847.6 MiB/s   |    1.35 %   |
-| 48 Bit 1LUT Short Greedy (Byte) |   3.20 %   |    9,723.8 MiB/s   |   32,490.3 MiB/s   |    2.48 %   |
-| 48 Bit 3LUT Short Greedy (Byte) |   2.13 %   |    8,178.3 MiB/s   |   32,537.9 MiB/s   |    1.62 %   |
 | 48 Bit 7LUT Short Greedy (Byte) |   1.90 %   |    7,895.9 MiB/s   |   31,782.1 MiB/s   |    1.35 %   |
 | 64 Bit (Symbol)                 |  99.99 %   |   14,820.8 MiB/s   |   19,040.6 MiB/s   |   75.87 %   |
 | 64 Bit 7LUT (Byte)              |  99.99 %   |   14,692.8 MiB/s   |   19,217.2 MiB/s   |   75.78 %   |
@@ -218,7 +218,7 @@ The 24 Bit and 48 Bit Variants allow for run length encoding of common data layo
 | Bit MMTF 8 Bit (Transform)      | 100.00 %   |    1,861.6 MiB/s   |    1,984.2 MiB/s   |   73.85 %   |
 | Bit MMTF 16 Bit (Transform)     | 100.00 %   |    2,340.1 MiB/s   |    2,293.9 MiB/s   |   72.48 %   |
 | - | - | - | - | - |
-| memcpy                         | 100.00 %   |   28,288.5 MiB/s   |   28,261.3 MiB/s   |   77.03 %   |
+| memcpy                          | 100.00 %   |   28,288.5 MiB/s   |   28,261.3 MiB/s   |   77.03 %   |
 | trle    | 100.0 % |   433.10 MiB/s |  5,558.8 MiB/s | - |
 | srle 0  | 100.0 % |   437.91 MiB/s | 19,632.5 MiB/s | - |
 | srle 8  | 100.0 % |   478.14 MiB/s | 19,482.1 MiB/s | - |
