@@ -707,7 +707,10 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress))(IN const uint8_t *
 
   #if defined(UNBOUND) && SYMBOL_COUNT > 0
 
-inline size_t CONCAT3(rleX_Xsl_short_get_match_length, CODEC, TYPE_SIZE)(const uintXX_t a, const uintXX_t b)
+#ifdef _MSC_VER
+inline
+#endif
+size_t CONCAT3(rleX_Xsl_short_get_match_length, CODEC, TYPE_SIZE)(const uintXX_t a, const uintXX_t b)
 {
   if (a == b)
     return (TYPE_SIZE / 8);
@@ -897,12 +900,47 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress_greedy))(IN const ui
           for (size_t j = 0; j < SYMBOL_COUNT; j++)
           {
 #if TYPE_SIZE != 16
-            size_t possibleSymbolCount = CONCAT3(rleX_Xsl_short_get_match_length, CODEC, TYPE_SIZE)(state.lastSymbols[j], next);
+            size_t possibleSymbolCount = 0;
 
-            if (possibleSymbolCount > possibleCount)
+            if (next == state.lastSymbols[j])
             {
               possibleIndex = j;
-              possibleCount = possibleSymbolCount;
+              possibleCount = (TYPE_SIZE / 8);
+              break;
+            }
+            else
+            {
+#if TYPE_SIZE == 32 || TYPE_SIZE == 24
+              const uintXX_t diff = next ^ state.lastSymbols[j];
+
+#ifdef _MSC_VER
+              unsigned long offset;
+              _BitScanForward(&offset, diff);
+#else
+              const uint32_t offset = __builtin_ctz(diff);
+#endif
+
+              possibleSymbolCount = (offset / 8);
+#elif TYPE_SIZE == 64 || TYPE_SIZE == 48
+              const uintXX_t diff = next ^ state.lastSymbols[j];
+
+#ifdef _MSC_VER
+              unsigned long offset;
+              _BitScanForward64(&offset, diff);
+#else
+              const uint32_t offset = __builtin_ctzl(diff);
+#endif
+
+              possibleSymbolCount = (offset / 8);
+#else // backup
+              #fail NOT IMPLEMENTED
+#endif
+
+              if (possibleSymbolCount > possibleCount)
+              {
+                possibleIndex = j;
+                possibleCount = possibleSymbolCount;
+              }
             }
 #else
             if (state.lastSymbols[j] == next)
