@@ -161,6 +161,7 @@ bool CONCAT3(_rle, TYPE_SIZE, CONCAT3(_, CODEC, process_symbol))(IN const uint8_
   for (; symbolMatchIndex < SYMBOL_COUNT; symbolMatchIndex++)
     if (pState->symbol == pState->lastSymbols[symbolMatchIndex])
       break;
+
 #elif SYMBOL_COUNT == 1
   const size_t symbolMatchIndex = (size_t)(pState->symbol != pState->lastSymbol);
 #endif
@@ -484,6 +485,8 @@ uint32_t CONCAT3(rle8_, CODEC, compress)(IN const uint8_t *pIn, const uint32_t i
     }
     else
     {
+      const size_t copySize = i - state.lastRLE;
+
       pOut[state.index] = (RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID << RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED);
       state.index++;
 #if SYMBOL_COUNT == 3
@@ -500,15 +503,13 @@ uint32_t CONCAT3(rle8_, CODEC, compress)(IN const uint8_t *pIn, const uint32_t i
       state.index++;
       *((uint16_t *)&pOut[state.index]) = 0;
       state.index += sizeof(uint16_t);
-      *((uint32_t *)&pOut[state.index]) = (uint32_t)range;
+      *((uint32_t *)&pOut[state.index]) = (uint32_t)copySize + RLE8_XSYMLUT_SHORT_RANGE_VALUE_OFFSET;
       state.index += sizeof(uint32_t);
 
 #if SYMBOL_COUNT == 0 && !defined(SINGLE)
       pOut[state.index] = 0;
       state.index++;
 #endif
-
-      const size_t copySize = i - state.lastRLE;
 
       memcpy(pOut + state.index, pIn + state.lastRLE, copySize);
       state.index += copySize;
@@ -681,7 +682,6 @@ static int64_t CONCAT3(rle8_, CODEC, compress_avx2)(IN const uint8_t *pIn, const
 
 #include "rleX_Xsl_short_multibyte_encoder.h"
 
-// TODO: Ultra Agressive Mode, that prefers to encode occurences of recently occured symbols even if it's only a couple of bytes of it.
 uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress))(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
   if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle_compress_bounds(inSize))
@@ -700,6 +700,357 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress))(IN const uint8_t *
   else
     return CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress_base))(pIn, inSize, pOut, outSize);
 }
+
+  #if defined(UNBOUND) && SYMBOL_COUNT > 0
+
+#ifdef _MSC_VER
+inline
+#endif
+size_t CONCAT3(rleX_Xsl_short_get_match_length, CODEC, TYPE_SIZE)(const uintXX_t a, const uintXX_t b)
+{
+  if (a == b)
+    return (TYPE_SIZE / 8);
+
+#if TYPE_SIZE == 16
+  if ((a & 0xFF) == (b & 0xFF))
+    return 1;
+#elif TYPE_SIZE == 32 || TYPE_SIZE == 24
+  const uintXX_t diff = a ^ b;
+
+#ifdef _MSC_VER
+  unsigned long offset;
+  _BitScanForward(&offset, diff);
+#else
+  const uint32_t offset = __builtin_ctz(diff);
+#endif
+
+  return (offset / 8);
+#elif TYPE_SIZE == 64 || TYPE_SIZE == 48
+  const uintXX_t diff = a ^ b;
+
+#ifdef _MSC_VER
+  unsigned long offset;
+  _BitScanForward64(&offset, diff);
+#else
+  const uint32_t offset = __builtin_ctzl(diff);
+#endif
+
+  return (offset / 8);
+#else // backup
+#fail NOT IMPLEMENTED
+#endif
+}
+
+uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress_greedy))(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
+{
+  if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle_compress_bounds(inSize))
+    return 0;
+
+  ((uint32_t *)pOut)[0] = (uint32_t)inSize;
+
+  CONCAT3(rle8, TYPE_SIZE, CONCAT3(_, CODEC, compress_state_t)) state;
+  memset(&state, 0, sizeof(state));
+  state.index = sizeof(uint32_t) * 2;
+
+  typedef uintXX_t symbol_t;
+
+#if SYMBOL_COUNT != 0
+#if SYMBOL_COUNT != 1
+  state.lastSymbols[0] = 0x00 * VALUE_BROADCAST;
+  state.lastSymbols[1] = 0x7F * VALUE_BROADCAST;
+  state.lastSymbols[2] = 0xFF * VALUE_BROADCAST;
+#if SYMBOL_COUNT == 7
+  state.lastSymbols[3] = 0x01 * VALUE_BROADCAST;
+  state.lastSymbols[4] = 0x7E * VALUE_BROADCAST;
+  state.lastSymbols[5] = 0x80 * VALUE_BROADCAST;
+  state.lastSymbols[6] = 0xFE * VALUE_BROADCAST;
+#endif
+#else
+  state.lastSymbol = 0;
+#endif
+#endif
+
+  state.symbol = ~(*((symbol_t *)(pIn)));
+
+#ifdef SYMBOL_MASK
+  state.symbol &= SYMBOL_MASK;
+#endif
+
+  size_t i = 0;
+
+  while (i < inSize)
+  {
+    if (state.count)
+    {
+      if (i + (TYPE_SIZE / 8) <= inSize)
+      {
+#ifndef SYMBOL_MASK
+        const symbol_t next = *(symbol_t *)&pIn[i];
+#else
+        const symbol_t next = *(symbol_t *)&pIn[i] & SYMBOL_MASK;
+#endif
+
+        if (next == state.symbol)
+        {
+          state.count += (TYPE_SIZE / 8);
+          i += (TYPE_SIZE / 8);
+          continue;
+        }
+#ifdef UNBOUND
+        else
+        {
+#if TYPE_SIZE == 16
+          uint8_t symBytes[sizeof(state.symbol)];
+          memcpy(symBytes, &state.symbol, sizeof(state.symbol));
+
+          if (symBytes[0] == pIn[i])
+          {
+            state.count++;
+            i++;
+          }
+#elif TYPE_SIZE == 32 || TYPE_SIZE == 24
+          const symbol_t diff = state.symbol ^ *(symbol_t *)&pIn[i];
+
+#ifdef _MSC_VER
+          unsigned long offset;
+          _BitScanForward(&offset, diff);
+#else
+          const uint32_t offset = __builtin_ctz(diff);
+#endif
+
+          i += (offset / 8);
+          state.count += (offset / 8);
+#elif TYPE_SIZE == 64 || TYPE_SIZE == 48
+          const symbol_t diff = state.symbol ^ *(symbol_t *)&pIn[i];
+
+#ifdef _MSC_VER
+          unsigned long offset;
+          _BitScanForward64(&offset, diff);
+#else
+          const uint32_t offset = __builtin_ctzl(diff);
+#endif
+
+          i += (offset / 8);
+          state.count += (offset / 8);
+#else // backup
+          uint8_t symBytes[TYPE_SIZE / 8];
+          memcpy(symBytes, &state.symbol, TYPE_SIZE / 8);
+
+          for (size_t j = 0; j < (TYPE_SIZE / 8 - 1); j++) // can't reach the absolute max.
+          {
+            if (pIn[i + j] != symBytes[j])
+              break;
+
+            state.count++;
+            i++;
+          }
+#endif
+        }
+#endif
+      }
+    }
+
+  not_a_full_match_but_a_match:
+    {
+      CONCAT3(_rle, TYPE_SIZE, CONCAT3(_, CODEC, process_symbol))(pIn, pOut, i, &state);
+
+#ifndef SYMBOL_MASK
+      state.symbol = *(symbol_t *)(&pIn[i]);
+#else
+      state.symbol = *(symbol_t *)(&pIn[i]) & SYMBOL_MASK;
+#endif
+
+      const bool symbolWouldFit = i + (TYPE_SIZE / 8) <= inSize;
+
+#ifndef SYMBOL_MASK
+      if (symbolWouldFit && ((symbol_t *)(&pIn[i]))[1] == state.symbol)
+#else
+      if (symbolWouldFit && (*((symbol_t *)(&pIn[i + (TYPE_SIZE / 8)])) & SYMBOL_MASK) == state.symbol)
+#endif
+      {
+        state.count = (TYPE_SIZE / 8) * 2;
+        i += (TYPE_SIZE / 8) * 2;
+      }
+      else
+      {
+        if (symbolWouldFit)
+        {
+#ifndef SYMBOL_MASK
+          const symbol_t next = *(symbol_t *)&pIn[i];
+#else
+          const symbol_t next = *(symbol_t *)&pIn[i] & SYMBOL_MASK;
+#endif
+
+          size_t possibleCount = 0;
+
+#if SYMBOL_COUNT == 1
+#if TYPE_SIZE != 16
+          possibleCount = CONCAT3(rleX_Xsl_short_get_match_length, CODEC, TYPE_SIZE)(state.lastSymbol, next);
+#else
+          if (state.lastSymbol == next)
+            possibleCount = 2;
+#endif
+#else
+          size_t possibleIndex = 0;
+
+          for (size_t j = 0; j < SYMBOL_COUNT; j++)
+          {
+#if TYPE_SIZE != 16
+            size_t possibleSymbolCount = 0;
+
+            if (next == state.lastSymbols[j])
+            {
+              possibleIndex = j;
+              possibleCount = (TYPE_SIZE / 8);
+              break;
+            }
+            else
+            {
+#if TYPE_SIZE == 32 || TYPE_SIZE == 24
+              const uintXX_t diff = next ^ state.lastSymbols[j];
+
+#ifdef _MSC_VER
+              unsigned long offset;
+              _BitScanForward(&offset, diff);
+#else
+              const uint32_t offset = __builtin_ctz(diff);
+#endif
+
+              possibleSymbolCount = (offset / 8);
+#elif TYPE_SIZE == 64 || TYPE_SIZE == 48
+              const uintXX_t diff = next ^ state.lastSymbols[j];
+
+#ifdef _MSC_VER
+              unsigned long offset;
+              _BitScanForward64(&offset, diff);
+#else
+              const uint32_t offset = __builtin_ctzl(diff);
+#endif
+
+              possibleSymbolCount = (offset / 8);
+#else // backup
+              #fail NOT IMPLEMENTED
+#endif
+
+              if (possibleSymbolCount > possibleCount)
+              {
+                possibleIndex = j;
+                possibleCount = possibleSymbolCount;
+              }
+            }
+#else
+            if (state.lastSymbols[j] == next)
+            {
+              possibleCount = 2;
+              possibleIndex = j;
+              break;
+            }
+#endif
+          }
+#endif
+
+#if TYPE_SIZE != 16
+          if (possibleCount >= RLE8_XSYMLUT_SHORT_MIN_RANGE_SHORT)
+#else
+          if (possibleCount)
+#endif
+          {
+
+            state.count = possibleCount;
+            i += possibleCount;
+#if SYMBOL_COUNT == 1
+            state.symbol = state.lastSymbol;
+#else
+            state.symbol = state.lastSymbols[possibleIndex];
+#endif
+
+#if TYPE_SIZE != 16
+            if (state.count < TYPE_SIZE / 8)
+              goto not_a_full_match_but_a_match;
+#endif
+          }
+          else
+          {
+            state.count = 0;
+            i++;
+          }
+        }
+        else
+        {
+          state.count = 0;
+          i++;
+        }
+      }
+    }
+  }
+
+  // Copy / Encode remaining bytes.
+  {
+    const int64_t range = i - state.lastRLE - state.count + 2;
+
+    if (CONCAT3(_rle, TYPE_SIZE, CONCAT3(_, CODEC, process_symbol))(pIn, pOut, i, &state))
+    {
+      pOut[state.index] = (RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID << RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED);
+      state.index++;
+#if SYMBOL_COUNT == 3
+      pOut[state.index] = 0b00000100;
+#elif SYMBOL_COUNT == 1
+      pOut[state.index] = 0b00001000;
+#elif SYMBOL_COUNT == 0
+      pOut[state.index] = 0b00001000;
+#else
+      pOut[state.index] = 0b00000010;
+#endif
+      state.index++;
+      pOut[state.index] = 1;
+      state.index++;
+      *((uint16_t *)&pOut[state.index]) = 0;
+      state.index += sizeof(uint16_t);
+      *((uint16_t *)&pOut[state.index]) = 0;
+      state.index += sizeof(uint16_t);
+
+#if SYMBOL_COUNT == 0 && !defined(SINGLE)
+      pOut[state.index] = 0;
+      state.index++;
+#endif
+    }
+    else
+    {
+      const size_t copySize = i - state.lastRLE;
+
+      pOut[state.index] = (RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID << RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED);
+      state.index++;
+#if SYMBOL_COUNT == 3
+      pOut[state.index] = 0b00000100;
+#elif SYMBOL_COUNT == 1
+      pOut[state.index] = 0b00001000;
+#elif SYMBOL_COUNT == 0
+      pOut[state.index] = 0b00001000;
+#else
+      pOut[state.index] = 0b00000010;
+#endif
+      state.index++;
+      pOut[state.index] = 0;
+      state.index++;
+      *((uint16_t *)&pOut[state.index]) = 0;
+      state.index += sizeof(uint16_t);
+      *((uint32_t *)&pOut[state.index]) = (uint32_t)copySize + RLE8_XSYMLUT_SHORT_RANGE_VALUE_OFFSET;
+      state.index += sizeof(uint32_t);
+
+#if SYMBOL_COUNT == 0 && !defined(SINGLE)
+      *((symbol_t *)&(pOut[state.index])) = 0;
+      state.index += (TYPE_SIZE / 8);
+#endif
+
+      memcpy(pOut + state.index, pIn + state.lastRLE, copySize);
+      state.index += copySize;
+    }
+  }
+
+  // Store compressed length.
+  return ((uint32_t *)pOut)[1] = (uint32_t)state.index;
+}
+  #endif
 #endif
 
 //////////////////////////////////////////////////////////////////////////
@@ -1342,6 +1693,8 @@ __attribute__((target("sse4.1")))
 static void CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, decompress_sse41))(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {
   size_t offset, symbolCount;
+  uint8_t *pOutInitial = pOut;
+  (void)pOutInitial;
 
 #ifndef SINGLE
   __m128i symbol = _mm_setzero_si128();
