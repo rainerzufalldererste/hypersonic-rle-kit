@@ -1569,9 +1569,9 @@ int main(int argc, char **pArgv)
         {
           const uint64_t sinceSleepNs = TicksToNs(GetCurrentTimeTicks() - lastSleepTicks);
 
-          if (sinceSleepNs > 500 * 1000 * 1000) // Prevent thermal saturation.
+          if (sinceSleepNs > 250 * 1000 * 1000) // Prevent thermal saturation.
           {
-            SleepNs(min(sinceSleepNs / 4, 2 * 1000 * 1000 * 1000));
+            SleepNs(min(sinceSleepNs / 2, 2 * 1000 * 1000 * 1000));
             lastSleepTicks = GetCurrentTimeTicks();
           }
         }
@@ -1599,6 +1599,14 @@ int main(int argc, char **pArgv)
       uint64_t decompressionTime = 0;
       uint64_t fastestDecompresionTime = UINT64_MAX;
       uint32_t decompressedSize = 0;
+
+      if (isTestRun || (!isTestRun & !noDelays))
+      {
+        for (size_t i = compressedSize; i < compressedBufferSize; i++)
+          pCompressedData[i] = ~pCompressedData[i];
+
+        memset(pDecompressedData, 0, decompressedSize);
+      }
 
       if (noDelays)
         decompressionRuns = 0; // Skip dry run.
@@ -2066,9 +2074,9 @@ int main(int argc, char **pArgv)
         {
           const uint64_t sinceSleepNs = TicksToNs(GetCurrentTimeTicks() - lastSleepTicks);
 
-          if (sinceSleepNs > 500 * 1000 * 1000) // Prevent thermal saturation.
+          if (sinceSleepNs > 250 * 1000 * 1000) // Prevent thermal saturation.
           {
-            SleepNs(min(sinceSleepNs / 4, 2 * 1000 * 1000 * 1000));
+            SleepNs(min(sinceSleepNs / 2, 2 * 1000 * 1000 * 1000));
             lastSleepTicks = GetCurrentTimeTicks();
           }
         }
