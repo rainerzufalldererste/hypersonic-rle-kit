@@ -2,12 +2,13 @@
   <br>
 
 ### What is it?
-- A selection of 100+ RLE and related codecs optimized for all kinds of different inputs and scenarios.
+- A collection of 100+ RLE and related codecs optimized for all kinds of different inputs and scenarios.
 - Usually the fastest run length en/decoder by far. **Single Core Decompression Speeds > 34 GB/s and Compression Speeds > 28 GB/s have been observed with large files.** (small files can exceed 120 GB/s decode, 60 GB/s encode)
 - Written in C.
 - SIMD Variants for AVX-512F, AVX2, AVX, SSE4.1, SSSE3 and SSE2 variants are available for various decoders and encoders. Automatically picked at runtime based on the extensions available on the current platform.
 - Variants include: Single RLE Symbol, Short Strings of RLE Symbols, Byte Alignmed, Symbol Aligned, 8 Bit, 16 Bit, 24 Bit, 32 Bit, 48 Bit, 64 Bit, 128 Bit, Different probabilities of reoccuring symbols, ...
 - `OpenCL` variant available for some of the decoders.
+- Licensed under Two Clause BSD.
 
 ### Benchmark
 **See [Full Benchmark with Graphs](https://rainerzufalldererste.github.io/hypersonic-rle-kit/), the tables below only contain a tiny selection of the _100+ codecs_.**
@@ -156,54 +157,60 @@ The 24 Bit and 48 Bit Variants allow for run length encoding of common data layo
 #### [Pixel Art Bitmap Image](https://i.redd.it/tj5oyhhuehv11.png) (PNG converted to BMP, 123,710,454 Bytes)
 | Type | Ratio | Encoding Speed | Decoding Speed | Entropy<br/>Compressible To |
 | -- | --: | --: | --: | --: |
-| 8 Bit                          |  99.99 %   |    6,995.3 MiB/s   |   18,357.0 MiB/s   |   76.10 %   |
-| 8 Bit 1LUT Short               |  99.98 %   |    6,974.3 MiB/s   |   18,023.2 MiB/s   |   75.63 %   |
-| 8 Bit 3LUT                     |  99.99 %   |    6,936.1 MiB/s   |   18,595.7 MiB/s   |   75.94 %   |
-| 8 Bit 7LUT Short               |  99.98 %   |    6,760.8 MiB/s   |   18,196.6 MiB/s   |   75.78 %   |
-| 8 Bit Single                   | 100.00 %   |    3,512.8 MiB/s   |   18,470.1 MiB/s   |   77.03 %   |
-| 16 Bit Short (Byte)            |  99.99 %   |   18,127.2 MiB/s   |   18,953.0 MiB/s   |   75.56 %   |
-| 16 Bit 3LUT Short (Byte)       |  99.99 %   |   17,991.9 MiB/s   |   19,252.9 MiB/s   |   75.71 %   |
-| 24 Bit (Symbol)                | **1.84 %** | **24,537.1 MiB/s** |   33,067.5 MiB/s   |    1.32 %   |
-| 24 Bit Short (Symbol)          |   2.08 %   |   21,904.2 MiB/s   |   32,713.6 MiB/s   |    1.52 %   |
-| 24 Bit Packed (Symbol)         |   2.00 %   |   23,590.4 MiB/s   |   32,955.6 MiB/s   |    1.39 %   |
-| 24 Bit 1LUT Short (Symbol)     |   2.08 %   |   19,894.5 MiB/s   |   32,751.7 MiB/s   |    1.51 %   |
-| 24 Bit 3LUT (Symbol)           | **1.31 %** | **21,232.5 MiB/s** | **33,073.5 MiB/s** |  **0.93 %** |
-| 24 Bit 3LUT Short (Symbol)     |   1.53 %   |   19,147.7 MiB/s   |   32,890.5 MiB/s   |    1.04 %   |
-| 24 Bit 7LUT (Symbol)           | **1.20 %** | **20,599.0 MiB/s** | **32,846.9 MiB/s** |  **0.83 %** |
-| 24 Bit 7LUT Short (Symbol)     |   1.41 %   |   18,916.5 MiB/s   |   31,750.2 MiB/s   |    0.92 %   |
-| 24 Bit (Byte)                  | **2.13 %** | **25,939.7 MiB/s** | **33,113.4 MiB/s** |  **1.44 %** |
-| 24 Bit Short (Byte)            |   2.17 %   |   23,579.9 MiB/s   |   32,825.6 MiB/s   |    1.58 %   |
-| 24 Bit Packed (Byte)           | **2.32 %** | **26,738.2 MiB/s** |   32,812.0 MiB/s   |    1.51 %   |
-| 24 Bit 1LUT Short (Byte)       |   2.17 %   |   21,550.6 MiB/s   |   32,835.9 MiB/s   |    1.59 %   |
-| 24 Bit 3LUT (Byte)             | **1.49 %** | **23,408.0 MiB/s** |   33,010.6 MiB/s   |    1.03 %   |
-| 24 Bit 3LUT Short (Byte)       |   1.63 %   |   21,063.2 MiB/s   |   32,713.6 MiB/s   |    1.14 %   |
-| 24 Bit 7LUT (Byte)             | **1.37 %** | **22,589.6 MiB/s** |   32,629.3 MiB/s   |    0.98 %   |
-| 24 Bit 7LUT Short (Byte)       |   1.52 %   |   20,560.6 MiB/s   |   31,915.9 MiB/s   |    0.97 %   |
-| 32 Bit Packed (Byte)           |  99.99 %   |   16,961.2 MiB/s   |   19,048.9 MiB/s   |   75.71 %   |
-| 32 Bit 7LUT Short (Byte)       |  99.99 %   |   16,887.8 MiB/s   |   19,240.9 MiB/s   |   75.79 %   |
-| 48 Bit (Symbol)                |   2.78 %   |   23,645.9 MiB/s   |   32,870.0 MiB/s   |    2.12 %   |
-| 48 Bit Short (Symbol)          |   2.79 %   |   21,386.8 MiB/s   |   32,833.3 MiB/s   |    2.26 %   |
-| 48 Bit Packed (Symbol)         |   2.87 %   |   22,575.5 MiB/s   |   32,913.6 MiB/s   |    2.17 %   |
-| 48 Bit 1LUT Short (Symbol)     |   3.09 %   |   19,362.4 MiB/s   |   32,750.9 MiB/s   |    2.41 %   |
-| 48 Bit 3LUT (Symbol)           |   1.71 %   |   20,826.5 MiB/s   |   32,843.5 MiB/s   |    1.33 %   |
-| 48 Bit 3LUT Short (Symbol)     |   1.99 %   |   18,834.0 MiB/s   |   32,717.0 MiB/s   |    1.47 %   |
-| 48 Bit 7LUT (Symbol)           |   1.49 %   |   20,185.7 MiB/s   |   32,619.2 MiB/s   |    1.15 %   |
-| 48 Bit 7LUT Short (Symbol)     |   1.77 %   |   18,184.3 MiB/s   |   31,846.0 MiB/s   |    1.26 %   |
-| 48 Bit (Byte)                  |   3.16 %   |   25,473.5 MiB/s   |   32,911.9 MiB/s   |    2.31 %   |
-| 48 Bit Short (Byte)            |   3.20 %   |   23,439.2 MiB/s   |   32,689.1 MiB/s   |    2.48 %   |
-| 48 Bit Packed (Byte)           |   3.35 %   |   25,371.9 MiB/s   |   32,548.7 MiB/s   |    2.40 %   |
-| 48 Bit 1LUT Short (Byte)       |   3.20 %   |   20,935.0 MiB/s   |   32,603.2 MiB/s   |    2.48 %   |
-| 48 Bit 3LUT (Byte)             |   1.98 %   |   22,790.5 MiB/s   |   32,861.4 MiB/s   |    1.49 %   |
-| 48 Bit 3LUT Short (Byte)       |   2.13 %   |   20,273.7 MiB/s   |   32,717.9 MiB/s   |    1.62 %   |
-| 48 Bit 7LUT (Byte)             |   1.76 %   |   21,776.5 MiB/s   |   32,615.9 MiB/s   |    1.34 %   |
-| 48 Bit 7LUT Short (Byte)       |   1.90 %   |   20,145.3 MiB/s   |   31,847.6 MiB/s   |    1.35 %   |
-| 64 Bit (Symbol)                |  99.99 %   |   14,820.8 MiB/s   |   19,040.6 MiB/s   |   75.87 %   |
-| 64 Bit 7LUT (Byte)             |  99.99 %   |   14,692.8 MiB/s   |   19,217.2 MiB/s   |   75.78 %   |
-| 8 Bit MMTF 128                 |  17.70 %   |    5,287.0 MiB/s   |    2,978.1 MiB/s   |   12.31 %   |
-| Multi MTF 128 Bit (Transform)  | 100.00 %   |    3,474.5 MiB/s   |    3,482.1 MiB/s   |   19.94 %   |
-| Multi MTF 256 Bit (Transform)  | 100.00 %   |    5,030.6 MiB/s   |    5,028.6 MiB/s   |   27.52 %   |
-| Bit MMTF 8 Bit (Transform)     | 100.00 %   |    1,861.6 MiB/s   |    1,984.2 MiB/s   |   73.85 %   |
-| Bit MMTF 16 Bit (Transform)    | 100.00 %   |    2,340.1 MiB/s   |    2,293.9 MiB/s   |   72.48 %   |
+| 8 Bit                           |  99.99 %   |    6,995.3 MiB/s   |   18,357.0 MiB/s   |   76.10 %   |
+| 8 Bit 1LUT Short                |  99.98 %   |    6,974.3 MiB/s   |   18,023.2 MiB/s   |   75.63 %   |
+| 8 Bit 3LUT                      |  99.99 %   |    6,936.1 MiB/s   |   18,595.7 MiB/s   |   75.94 %   |
+| 8 Bit 7LUT Short                |  99.98 %   |    6,760.8 MiB/s   |   18,196.6 MiB/s   |   75.78 %   |
+| 8 Bit Single                    | 100.00 %   |    3,512.8 MiB/s   |   18,470.1 MiB/s   |   77.03 %   |
+| 16 Bit Short (Byte)             |  99.99 %   |   18,127.2 MiB/s   |   18,953.0 MiB/s   |   75.56 %   |
+| 16 Bit 3LUT Short (Byte)        |  99.99 %   |   17,991.9 MiB/s   |   19,252.9 MiB/s   |   75.71 %   |
+| 24 Bit (Symbol)                 | **1.84 %** | **24,537.1 MiB/s** |   33,067.5 MiB/s   |    1.32 %   |
+| 24 Bit Short (Symbol)           |   2.08 %   |   21,904.2 MiB/s   |   32,713.6 MiB/s   |    1.52 %   |
+| 24 Bit Packed (Symbol)          |   2.00 %   |   23,590.4 MiB/s   |   32,955.6 MiB/s   |    1.39 %   |
+| 24 Bit 1LUT Short (Symbol)      |   2.08 %   |   19,894.5 MiB/s   |   32,751.7 MiB/s   |    1.51 %   |
+| 24 Bit 3LUT (Symbol)            | **1.31 %** | **21,232.5 MiB/s** | **33,073.5 MiB/s** |  **0.93 %** |
+| 24 Bit 3LUT Short (Symbol)      |   1.53 %   |   19,147.7 MiB/s   |   32,890.5 MiB/s   |    1.04 %   |
+| 24 Bit 7LUT (Symbol)            | **1.20 %** | **20,599.0 MiB/s** | **32,846.9 MiB/s** |  **0.83 %** |
+| 24 Bit 7LUT Short (Symbol)      |   1.41 %   |   18,916.5 MiB/s   |   31,750.2 MiB/s   |    0.92 %   |
+| 24 Bit (Byte)                   | **2.13 %** | **25,939.7 MiB/s** | **33,113.4 MiB/s** |  **1.44 %** |
+| 24 Bit Short (Byte)             |   2.17 %   |   23,579.9 MiB/s   |   32,825.6 MiB/s   |    1.58 %   |
+| 24 Bit Packed (Byte)            | **2.32 %** | **26,738.2 MiB/s** |   32,812.0 MiB/s   |    1.51 %   |
+| 24 Bit 1LUT Short (Byte)        |   2.17 %   |   21,550.6 MiB/s   |   32,835.9 MiB/s   |    1.59 %   |
+| 24 Bit 1LUT Short Greedy (Byte) |   2.17 %   |    5,534.5 MiB/s   |   32,679.0 MiB/s   |    1.59 %   |
+| 24 Bit 3LUT (Byte)              | **1.49 %** | **23,408.0 MiB/s** |   33,010.6 MiB/s   |    1.03 %   |
+| 24 Bit 3LUT Short (Byte)        |   1.63 %   |   21,063.2 MiB/s   |   32,713.6 MiB/s   |    1.14 %   |
+| 24 Bit 3LUT Short Greedy (Byte) |   1.63 %   |    5,403.1 MiB/s   |   32,578.9 MiB/s   |    1.14 %   |
+| 24 Bit 7LUT (Byte)              | **1.37 %** | **22,589.6 MiB/s** |   32,629.3 MiB/s   |    0.98 %   |
+| 24 Bit 7LUT Short (Byte)        |   1.52 %   |   20,560.6 MiB/s   |   31,915.9 MiB/s   |    0.97 %   |
+| 24 Bit 7LUT Short Greedy (Byte) |   1.52 %   |    5,436.8 MiB/s   |   32,009.5 MiB/s   |    0.97 %   |
+| 32 Bit Packed (Byte)            |  99.99 %   |   16,961.2 MiB/s   |   19,048.9 MiB/s   |   75.71 %   |
+| 32 Bit 7LUT Short (Byte)        |  99.99 %   |   16,887.8 MiB/s   |   19,240.9 MiB/s   |   75.79 %   |
+| 48 Bit (Symbol)                 |   2.78 %   |   23,645.9 MiB/s   |   32,870.0 MiB/s   |    2.12 %   |
+| 48 Bit Short (Symbol)           |   2.79 %   |   21,386.8 MiB/s   |   32,833.3 MiB/s   |    2.26 %   |
+| 48 Bit Packed (Symbol)          |   2.87 %   |   22,575.5 MiB/s   |   32,913.6 MiB/s   |    2.17 %   |
+| 48 Bit 1LUT Short (Symbol)      |   3.09 %   |   19,362.4 MiB/s   |   32,750.9 MiB/s   |    2.41 %   |
+| 48 Bit 3LUT (Symbol)            |   1.71 %   |   20,826.5 MiB/s   |   32,843.5 MiB/s   |    1.33 %   |
+| 48 Bit 3LUT Short (Symbol)      |   1.99 %   |   18,834.0 MiB/s   |   32,717.0 MiB/s   |    1.47 %   |
+| 48 Bit 7LUT (Symbol)            |   1.49 %   |   20,185.7 MiB/s   |   32,619.2 MiB/s   |    1.15 %   |
+| 48 Bit 7LUT Short (Symbol)      |   1.77 %   |   18,184.3 MiB/s   |   31,846.0 MiB/s   |    1.26 %   |
+| 48 Bit (Byte)                   |   3.16 %   |   25,473.5 MiB/s   |   32,911.9 MiB/s   |    2.31 %   |
+| 48 Bit Short (Byte)             |   3.20 %   |   23,439.2 MiB/s   |   32,689.1 MiB/s   |    2.48 %   |
+| 48 Bit Packed (Byte)            |   3.35 %   |   25,371.9 MiB/s   |   32,548.7 MiB/s   |    2.40 %   |
+| 48 Bit 1LUT Short (Byte)        |   3.20 %   |   20,935.0 MiB/s   |   32,603.2 MiB/s   |    2.48 %   |
+| 48 Bit 3LUT (Byte)              |   1.98 %   |   22,790.5 MiB/s   |   32,861.4 MiB/s   |    1.49 %   |
+| 48 Bit 3LUT Short (Byte)        |   2.13 %   |   20,273.7 MiB/s   |   32,717.9 MiB/s   |    1.62 %   |
+| 48 Bit 7LUT (Byte)              |   1.76 %   |   21,776.5 MiB/s   |   32,615.9 MiB/s   |    1.34 %   |
+| 48 Bit 7LUT Short (Byte)        |   1.90 %   |   20,145.3 MiB/s   |   31,847.6 MiB/s   |    1.35 %   |
+| 48 Bit 1LUT Short Greedy (Byte) |   3.20 %   |    9,723.8 MiB/s   |   32,490.3 MiB/s   |    2.48 %   |
+| 48 Bit 3LUT Short Greedy (Byte) |   2.13 %   |    8,178.3 MiB/s   |   32,537.9 MiB/s   |    1.62 %   |
+| 48 Bit 7LUT Short Greedy (Byte) |   1.90 %   |    7,895.9 MiB/s   |   31,782.1 MiB/s   |    1.35 %   |
+| 64 Bit (Symbol)                 |  99.99 %   |   14,820.8 MiB/s   |   19,040.6 MiB/s   |   75.87 %   |
+| 64 Bit 7LUT (Byte)              |  99.99 %   |   14,692.8 MiB/s   |   19,217.2 MiB/s   |   75.78 %   |
+| 8 Bit MMTF 128                  |  17.70 %   |    5,287.0 MiB/s   |    2,978.1 MiB/s   |   12.31 %   |
+| Multi MTF 128 Bit (Transform)   | 100.00 %   |    3,474.5 MiB/s   |    3,482.1 MiB/s   |   19.94 %   |
+| Multi MTF 256 Bit (Transform)   | 100.00 %   |    5,030.6 MiB/s   |    5,028.6 MiB/s   |   27.52 %   |
+| Bit MMTF 8 Bit (Transform)      | 100.00 %   |    1,861.6 MiB/s   |    1,984.2 MiB/s   |   73.85 %   |
+| Bit MMTF 16 Bit (Transform)     | 100.00 %   |    2,340.1 MiB/s   |    2,293.9 MiB/s   |   72.48 %   |
 | - | - | - | - | - |
 | memcpy                         | 100.00 %   |   28,288.5 MiB/s   |   28,261.3 MiB/s   |   77.03 %   |
 | trle    | 100.0 % |   433.10 MiB/s |  5,558.8 MiB/s | - |
