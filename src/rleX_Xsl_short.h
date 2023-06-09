@@ -707,6 +707,42 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress))(IN const uint8_t *
 }
 
   #if defined(UNBOUND) && SYMBOL_COUNT > 0
+
+inline size_t CONCAT3(rleX_Xsl_short_get_match_length, CODEC, TYPE_SIZE)(const uintXX_t a, const uintXX_t b)
+{
+  if (a == b)
+    return (TYPE_SIZE / 8);
+
+#if TYPE_SIZE == 16
+  if ((a & 0xFF) == (b & 0xFF))
+    return 1;
+#elif TYPE_SIZE == 32 || TYPE_SIZE == 24
+  const uintXX_t diff = a ^ b;
+
+#ifdef _MSC_VER
+  unsigned long offset;
+  _BitScanForward(&offset, diff);
+#else
+  const uint32_t offset = __builtin_ctz(diff);
+#endif
+
+  return (offset / 8);
+#elif TYPE_SIZE == 64 || TYPE_SIZE == 48
+  const uintXX_t diff = a ^ b;
+
+#ifdef _MSC_VER
+  unsigned long offset;
+  _BitScanForward64(&offset, diff);
+#else
+  const uint32_t offset = __builtin_ctzl(diff);
+#endif
+
+  return (offset / 8);
+#else // backup
+#fail NOT IMPLEMENTED
+#endif
+}
+
 uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress_greedy))(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
   if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle_compress_bounds(inSize))
@@ -841,27 +877,19 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress_greedy))(IN const ui
       {
         if (symbolWouldFit)
         {
-          size_t possibleCount = 0;
-#if TYPE_SIZE != 16
-          uint8_t symBytes[TYPE_SIZE / 8];
+#ifndef SYMBOL_MASK
+          const symbol_t next = *(symbol_t *)&pIn[i];
 #else
-          uint16_t inValue16;
-          memcpy(&inValue16, pIn + i, 2);
+          const symbol_t next = *(symbol_t *)&pIn[i] & SYMBOL_MASK;
 #endif
+
+          size_t possibleCount = 0;
 
 #if SYMBOL_COUNT == 1
 #if TYPE_SIZE != 16
-          memcpy(symBytes, &state.lastSymbol, sizeof(symBytes));
-
-          for (size_t j = 0; j < (TYPE_SIZE / 8); j++)
-          {
-            if (pIn[i + j] != symBytes[j])
-              break;
-
-            possibleCount++;
-          }
+          possibleCount = CONCAT3(rleX_Xsl_short_get_match_length, CODEC, TYPE_SIZE)(state.lastSymbol, next);
 #else
-          if (state.lastSymbol == inValue16)
+          if (state.lastSymbol == next)
             possibleCount = 2;
 #endif
 #else
@@ -870,16 +898,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress_greedy))(IN const ui
           for (size_t j = 0; j < SYMBOL_COUNT; j++)
           {
 #if TYPE_SIZE != 16
-            size_t possibleSymbolCount = 0;
-            memcpy(symBytes, &state.lastSymbols[j], sizeof(symBytes));
-
-            for (size_t k = 0; k < (TYPE_SIZE / 8); k++)
-            {
-              if (pIn[i + k] != symBytes[k])
-                break;
-
-              possibleSymbolCount++;
-            }
+            size_t possibleSymbolCount = CONCAT3(rleX_Xsl_short_get_match_length, CODEC, TYPE_SIZE)(state.lastSymbols[j], next);
 
             if (possibleSymbolCount > possibleCount)
             {
@@ -887,7 +906,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress_greedy))(IN const ui
               possibleCount = possibleSymbolCount;
             }
 #else
-            if (state.lastSymbols[j] == inValue16)
+            if (state.lastSymbols[j] == next)
             {
               possibleCount = 2;
               possibleIndex = j;
