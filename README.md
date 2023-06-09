@@ -245,6 +245,11 @@ The 24 Bit and 48 Bit Variants allow for run length encoding of common data layo
 - Similar to the base variant, but keeps around one / three / seven of the previously used RLE symbols, usually further improving compression ratios.
 - Short Variant: Packs Range & Count Bits to fit the entire RLE command into just one byte for short ranges.
 
+#### 1 Sym LUT Short Greedy / 3 Sym LUT Short Greedy / 7 Sym LUT Short Greedy
+- Similar to n-Sym LUT Short (actually uses the exact same decoder), but tries to even compress partial occurences of a symbol if that would save space
+- Only available when byte-aligned for 16, 24, 32, 48, 64 Bit Variants
+- Comparably slow to en/decode
+
 #### Low Entropy / Low Entropy Short
 - Tries to keep symbol general symbol frequency to improve compression ratio of an entropy encoder that could go after the Run Length Encoding like ANS, Arithmetic Coding or Huffman.
 - Parses the output for run-length-encodable symbols, which are specified in the header.
