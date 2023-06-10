@@ -545,12 +545,19 @@ window.addEventListener("scroll", reveal);
           function print_pareto(obj) {
             console.log(obj.id);
 
+            var any_foreign = false;
+
             for (let p in obj.points) {
                 var x = obj.points[p];
-                var relevant = (x.pareto_dvr || x.pareto_evr || (x.pareto_dve && x.pareto_eve)) && x.entropy != null;
+                var relevant = (x.pareto_dvr || x.pareto_evr || (x.pareto_dve && x.pareto_eve)) || x.foreign;
 
                 if (!relevant)
                   continue;
+
+                if (!any_foreign && x.foreign) {
+                  any_foreign = true;
+                  console.log("-------------------------------------------------------");
+                }
 
                 var line = "| " + x.name.padEnd(31, ' ') + " | ";
 
@@ -575,12 +582,16 @@ window.addEventListener("scroll", reveal);
                 else
                   line += "  " + addSeparators(x.decode.toFixed(1)) + " MiB/s   | ";
 
-                line += "".padStart(6 - ("" + x.entropy.toFixed(2)).length);
-                
-                if (x.pareto_dve && x.pareto_eve)
+                if (x.foreign) {
+                  line += " -  |"
+                } else {
+                  line += "".padStart(6 - ("" + x.entropy.toFixed(2)).length);
+                  
+                  if (x.pareto_dve && x.pareto_eve)
                   line += "**" + x.entropy.toFixed(2) + " %** |";
-                else
+                  else
                   line += "  " + x.entropy.toFixed(2) + " %   |";
+                }
 
                 console.log(line);
             }
@@ -729,13 +740,13 @@ window.addEventListener("scroll", reveal);
             //add_point(obj,  2294.7, 100.00,  2426.7, 15.5598593, "Bit MMTF 16 Bit (Transform)");
             //add_point(obj, 28667.8, 100.00, 28590.1, 14.0253211, "memcpy");
 
-            add_point_no_entropy(obj,  4109.9, 16.0, 1124.6, "trle", true);
-            add_point_no_entropy(obj,  9175.2, 17.8, 1107.6, "srle 0", true);
-            add_point_no_entropy(obj,  9198.3, 18.7, 1801.2, "srle 8", true);
-            add_point_no_entropy(obj, 10667.0, 21.3, 1649.2, "srle 16", true);
-            add_point_no_entropy(obj, 14922.9, 24.2, 2950.6, "srle 32", true);
-            add_point_no_entropy(obj, 20526.3, 27.5, 5003.2, "srle 64", true);
-            add_point_no_entropy(obj,  2570.0, 19.7,  427.6, "mrle", true);
+            add_point_no_entropy(obj,  5355.96, 16.0, 1177.69, "trle", true);
+            add_point_no_entropy(obj, 11214.70, 17.8, 1182.30, "srle 0", true);
+            add_point_no_entropy(obj, 12300.17, 18.7, 2044.26, "srle 8", true);
+            add_point_no_entropy(obj, 15478.95, 21.3, 1997.05, "srle 16", true);
+            add_point_no_entropy(obj, 18975.81, 24.2, 3782.24, "srle 32", true);
+            add_point_no_entropy(obj, 23128.25, 27.5, 6581.41, "srle 64", true);
+            add_point_no_entropy(obj,  3168.42, 19.7,  450.30, "mrle", true);
 
             add_line(obj, ["8 Bit", "16 Bit (Symbol)", "24 Bit (Symbol)", "32 Bit (Symbol)", "48 Bit (Symbol)", "64 Bit (Symbol)", "128 Bit (Symbol)"], getColor());
             add_line(obj, ["8 Bit", "16 Bit (Byte)", "24 Bit (Byte)", "32 Bit (Byte)", "48 Bit (Byte)", "64 Bit (Byte)", "128 Bit (Byte)"], getColor());
@@ -911,13 +922,13 @@ window.addEventListener("scroll", reveal);
             //add_point(obj,  2290.6, 100.00,  2343.3, 16.7890417, "Bit MMTF 16 Bit (Transform)");
             //add_point(obj, 27304.6, 100.00, 26689.1, 16.7581665, "memcpy");
 
-            add_point_no_entropy(obj,  4291.4, 17.4, 1137.2, "trle", true);
-            add_point_no_entropy(obj,  9113.0, 20.2, 1130.2, "srle 0", true);
-            add_point_no_entropy(obj,  9092.7, 22.0, 1863.1, "srle 8", true);
-            add_point_no_entropy(obj, 10108.9, 27.1, 1657.0, "srle 16", true);
-            add_point_no_entropy(obj, 13160.2, 32.7, 2910.3, "srle 32", true);
-            add_point_no_entropy(obj, 19314.2, 39.5, 4990.2, "srle 64", true);
-            add_point_no_entropy(obj,  3182.7, 21.0,  461.4, "mrle", true);
+            add_point_no_entropy(obj,  4097.39, 17.4, 1112.76, "trle", true);
+            add_point_no_entropy(obj,  8027.68, 20.2, 1080.30, "srle 0", true);
+            add_point_no_entropy(obj,  8802.34, 22.0, 1816.45, "srle 8", true);
+            add_point_no_entropy(obj,  9915.13, 27.1, 1644.20, "srle 16", true);
+            add_point_no_entropy(obj, 13289.66, 32.7, 2870.41, "srle 32", true);
+            add_point_no_entropy(obj, 18966.41, 39.5, 4763.86, "srle 64", true);
+            add_point_no_entropy(obj,  3115.40, 21.0,  446.92, "mrle", true);
 
             add_line(obj, ["8 Bit", "16 Bit (Symbol)", "24 Bit (Symbol)", "32 Bit (Symbol)", "48 Bit (Symbol)", "64 Bit (Symbol)", "128 Bit (Symbol)"], getColor());
             add_line(obj, ["8 Bit", "16 Bit (Byte)", "24 Bit (Byte)", "32 Bit (Byte)", "48 Bit (Byte)", "64 Bit (Byte)", "128 Bit (Byte)"], getColor());
@@ -954,7 +965,7 @@ window.addEventListener("scroll", reveal);
         </script>
       </div>
       <div class="graph_container">
-        <h3>enwiki.btw (wikipedia extract encoded using libdivsufsort)</h3>
+        <h3>enwiki.bwt (wikipedia extract encoded using libdivsufsort)</h3>
         <div class="graph_metric_container">
           <a class="graph_metricY r" onclick="javascript:setYMetric('entropy')">entropy</a>
           <a class="graph_metricY l active" onclick="javascript:setYMetric('ratio')">ratio</a>
@@ -1094,13 +1105,13 @@ window.addEventListener("scroll", reveal);
           //add_point(obj,  2272.9, 100.00,  2309.8, 38.3361702, "Bit MMTF 16 Bit (Transform)");
           //add_point(obj, 27041.2, 100.00, 26973.3, 65.9382889, "memcpy");
 
-            add_point_no_entropy(obj,  2341.0, 42.4,  697.6, "trle", true);
-            add_point_no_entropy(obj,  6341.4, 46.9,  680.6, "srle 0", true);
-            add_point_no_entropy(obj,  6310.3, 46.9,  858.6, "srle 8", true);
-            add_point_no_entropy(obj,  8818.9, 54.4,  906.4, "srle 16", true);
-            add_point_no_entropy(obj, 13030.9, 61.0, 1766.0, "srle 32", true);
-            add_point_no_entropy(obj, 18660.4, 66.8, 3289.0, "srle 64", true);
-            add_point_no_entropy(obj,  1131.5, 64.1,  320.2, "mrle", true);
+            add_point_no_entropy(obj,  2062.90, 42.0,  697.6, "trle", true);
+            add_point_no_entropy(obj,  5004.50, 46.4,  680.6, "srle 0", true);
+            add_point_no_entropy(obj,  6095.11, 46.9,  858.6, "srle 8", true);
+            add_point_no_entropy(obj,  8675.95, 54.4,  906.4, "srle 16", true);
+            add_point_no_entropy(obj, 13019.66, 61.0, 1766.0, "srle 32", true);
+            add_point_no_entropy(obj, 18491.57, 66.8, 3289.0, "srle 64", true);
+            add_point_no_entropy(obj,  1103.98, 64.1,  320.2, "mrle", true);
 
             add_line(obj, ["8 Bit", "16 Bit (Symbol)", "24 Bit (Symbol)", "32 Bit (Symbol)", "48 Bit (Symbol)", "64 Bit (Symbol)", "128 Bit (Symbol)"], getColor());
             add_line(obj, ["8 Bit", "16 Bit (Byte)", "24 Bit (Byte)", "32 Bit (Byte)", "48 Bit (Byte)", "64 Bit (Byte)", "128 Bit (Byte)"], getColor());
