@@ -19,7 +19,7 @@
  - Single-Threaded
  - Running on an `AMD Ryzen 9 7950X`, `32 GB DDR5-6000 CL30` on Windows 11.
  - Compiled with `Visual Studio 2022`.
- - Compared to [TurboRLE](https://github.com/powturbo/TurboRLE) and [MRLE](https://encode.su/threads/2121-No-more-encoding-overhead-in-Run-Length-Encoding-Read-about-Mespotine-RLE-here-) (with AVX2 enabled; benchmarking results have been converted from MB/s to MiB/s)
+ - Compared to [TurboRLE](https://github.com/powturbo/TurboRLE) and [MRLE](https://encode.su/threads/2121-No-more-encoding-overhead-in-Run-Length-Encoding-Read-about-Mespotine-RLE-here-) (with AVX2 enabled; benchmarking results have been converted from MB/s to MiB/s) (7f6e486, April 2023)
  - Contained Codecs w/ Compression / Decompression Speed vs. Ratio Pareto + Notable Entropy Highlighted
 
 #### [video-frame.raw](https://www.dropbox.com/s/yvsl1lg98c4maq1/video_frame.raw?dl=1) (heavily quantized video frame DCTs, 88,473,600 Bytes)
@@ -61,13 +61,13 @@
 | Low Entropy Single              |    19.96 %   |      802.4 MiB/s   |    4,389.0 MiB/s   |   **9.10 %** |
 | - | - | - | - | - | 
 | memcpy                          |   100.00 %   |   28,667.8 MiB/s   |   28,590.1 MiB/s   |    14.03 %   |
-| trle    | 16.0 % | 1,124.6 MiB/s |  4,109.9 MiB/s | - |
-| srle 0  | 17.8 % | 1,107.6 MiB/s |  9,175.2 MiB/s | - |
-| srle 8  | 18.7 % | 1,801.2 MiB/s |  9,198.3 MiB/s | - |
-| srle 16 | 21.3 % | 1,649.2 MiB/s | 10,667.0 MiB/s | - |
-| srle 32 | 24.2 % | 2,950.6 MiB/s | 14,922.9 MiB/s | - |
-| srle 64 | 27.5 % | 5,003.2 MiB/s | 20,526.3 MiB/s | - |
-| mrle    | 19.7 % |   427.6 MiB/s |  2,570.0 MiB/s | - |
+| trle                            |    16.0 %    |    1,177.7 MiB/s   |    5,356.0 MiB/s   |  -  |
+| srle 0                          |    17.8 %    |    1,182.3 MiB/s   |   11,214.7 MiB/s   |  -  |
+| srle 8                          |    18.7 %    |    2,044.3 MiB/s   |   12,300.2 MiB/s   |  -  |
+| srle 16                         |    21.3 %    |    1,997.0 MiB/s   |   15,479.0 MiB/s   |  -  |
+| srle 32                         |    24.2 %    |    3,782.2 MiB/s   |   18,975.8 MiB/s   |  -  |
+| srle 64                         |    27.5 %    |    6,581.4 MiB/s   |   23,128.3 MiB/s   |  -  |
+| mrle                            |    19.7 %    |      450.3 MiB/s   |    3,168.4 MiB/s   |  -  |
 
 #### [1034.db](http://encode.su/threads/2077-EGTB-compression?p=41392&viewfull=1#post41392) (Checkers program "End Game Table Base", 419,225,625 Bytes)
 | Type | Ratio | Encoding Speed | Decoding Speed | Entropy<br/>Compressible To |
@@ -101,13 +101,13 @@
 | Low Entropy Single              |    21.15 %   |      765.9 MiB/s   |    4,292.2 MiB/s   |    10.37 %   |
 | - | - | - | - | - |
 | memcpy                          |   100.00 %   |   26,689.1 MiB/s   |   27,304.6 MiB/s   |    16.76 %   |
-| trle    | 17.4 % | 1,137.2 MiB/s |   4,291.4 MiB/s | - |
-| srle 0  | 20.2 % | 1,130.2 MiB/s |   9,113.0 MiB/s | - |
-| srle 8  | 22.0 % | 1,863.1 MiB/s |   9,092.7 MiB/s | - |
-| srle 16 | 27.1 % | 1,657.0 MiB/s |  10,108.9 MiB/s | - |
-| srle 32 | 32.7 % | 2,910.3 MiB/s |  13,160.2 MiB/s | - |
-| srle 64 | 39.5 % | 4,990.2 MiB/s |  19,314.2 MiB/s | - |
-| mrle    | 21.0 % |   461.4 MiB/s |   3,182.7 MiB/s | - |
+| trle                            |    17.4 %    |    1,112.8 MiB/s   |    4,097.4 MiB/s   |  -  |
+| srle 0                          |    20.2 %    |    1,080.3 MiB/s   |    8,027.7 MiB/s   |  -  |
+| srle 8                          |    22.0 %    |    1,816.5 MiB/s   |    8,802.3 MiB/s   |  -  |
+| srle 16                         |    27.1 %    |    1,644.2 MiB/s   |    9,915.1 MiB/s   |  -  |
+| srle 32                         |    32.7 %    |    2,870.4 MiB/s   |   13,289.7 MiB/s   |  -  |
+| srle 64                         |    39.5 %    |    4,763.9 MiB/s   |   18,966.4 MiB/s   |  -  |
+| mrle                            |    21.0 %    |      446.9 MiB/s   |    3,115.4 MiB/s   |  -  |
 
 #### `enwik9.bwt` (Wikipedia extract [enwiki9](http://mattmahoney.net/dc/textdata.html) encoded using [libdivsufsort](https://github.com/y-256/libdivsufsort), 1,000,000,124 Bytes)
 | Type | Ratio | Encoding Speed | Decoding Speed | Entropy<br/>Compressible To |
@@ -154,13 +154,13 @@
 | Bit MMTF 16 Bit (Transform)     |   100.00 %   |    2,309.8 MiB/s   |    2,272.9 MiB/s   |    38.34 %   |
 | - | - | - | - | - |
 | memcpy                          |   100.00 %   |   26,973.3 MiB/s   |   27,041.2 MiB/s   |    65.94 %   |
-| trle    | 42.4 % |   697.6 MiB/s |  2,341.0 MiB/s | - |
-| srle 0  | 46.9 % |   680.6 MiB/s |  6,341.4 MiB/s | - |
-| srle 8  | 46.9 % |   858.6 MiB/s |  6,310.3 MiB/s | - |
-| srle 16 | 54.4 % |   906.4 MiB/s |  8,818.9 MiB/s | - |
-| srle 32 | 61.0 % | 1,766.0 MiB/s | 13,030.9 MiB/s | - |
-| srle 64 | 66.8 % | 3,289.0 MiB/s | 18,660.4 MiB/s | - |
-| mrle    | 64.1 % |   320.2 MiB/s |  1,131.5 MiB/s | - |
+| trle                            |    42.0 %    |      697.6 MiB/s   |    2,062.9 MiB/s   |  -  |
+| srle 0                          |    46.4 %    |      680.6 MiB/s   |    5,004.5 MiB/s   |  -  |
+| srle 8                          |    46.9 %    |      858.6 MiB/s   |    6,095.1 MiB/s   |  -  |
+| srle 16                         |    54.4 %    |      906.4 MiB/s   |    8,676.0 MiB/s   |  -  |
+| srle 32                         |    61.0 %    |    1,766.0 MiB/s   |   13,019.7 MiB/s   |  -  |
+| srle 64                         |    66.8 %    |    3,289.0 MiB/s   |   18,491.6 MiB/s   |  -  |
+| mrle                            |    64.1 %    |      320.2 MiB/s   |    1,104.0 MiB/s   |  -  |
 
 The 24 Bit and 48 Bit Variants allow for run length encoding of common data layouts that are usually not covered by RLE implementations:
 
@@ -222,13 +222,13 @@ The 24 Bit and 48 Bit Variants allow for run length encoding of common data layo
 | Bit MMTF 16 Bit (Transform)     | 100.00 %   |    2,340.1 MiB/s   |    2,293.9 MiB/s   |   72.48 %   |
 | - | - | - | - | - |
 | memcpy                          | 100.00 %   |   28,288.5 MiB/s   |   28,261.3 MiB/s   |   77.03 %   |
-| trle    | 100.0 % |   433.10 MiB/s |  5,558.8 MiB/s | - |
-| srle 0  | 100.0 % |   437.91 MiB/s | 19,632.5 MiB/s | - |
-| srle 8  | 100.0 % |   478.14 MiB/s | 19,482.1 MiB/s | - |
-| srle 16 | 100.0 % |   593.47 MiB/s | 20,315.8 MiB/s | - |
-| srle 32 | 100.0 % | 1,249.68 MiB/s | 20,287.0 MiB/s | - |
-| srle 64 | 100.0 % | 2,456.70 MiB/s | 19,643.0 MiB/s | - |
-| mrle    | 100.0 % |   394.79 MiB/s |  2,595.1 MiB/s | - |
+| trle    | 100.0 % |   420.41 MiB/s |  5,473.00 MiB/s | - |
+| srle 0  | 100.0 % |   329.09 MiB/s | 18,106.88 MiB/s | - |
+| srle 8  | 100.0 % |   468.74 MiB/s | 17,951.84 MiB/s | - |
+| srle 16 | 100.0 % |   575.39 MiB/s | 20,198.96 MiB/s | - |
+| srle 32 | 100.0 % | 1,195.77 MiB/s | 18,437.51 MiB/s | - |
+| srle 64 | 100.0 % | 2,294.94 MiB/s | 19,407.80 MiB/s | - |
+| mrle    | 100.0 % |   383.18 MiB/s |  2,551.12 MiB/s | - |
 
 ### Variants
 #### 8, 16, 24, 32, 48, 64, 128 Bit (Byte Aligned + Symbol Aligned)
