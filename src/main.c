@@ -22,6 +22,7 @@
 
 #include "rle.h"
 #include "simd_platform.h"
+#include "codec_funcs.h"
 
 const char ArgumentTo[] = "--to";
 const char ArgumentSubSections[] = "--sub-sections";
@@ -58,268 +59,11 @@ const char ArgumentMaxSimdSSE3[] = "sse3";
 const char ArgumentMaxSimdSSE2[] = "sse2";
 const char ArgumentMaxSimdNone[] = "none";
 const char ArgumentTest[] = "--test";
+const char ArgumentFuzz[] = "--fuzz";
 
 #ifdef _WIN32
 const char ArgumentCpuCore[] = "--cpu-core";
 #endif
-
-typedef enum
-{
-  Extreme8,
-  Extreme8Short,
-  Extreme8Packed,
-  Extreme8_1SLShort,
-  Extreme8_3SL,
-  Extreme8_3SLShort,
-  Extreme8_7SL,
-  Extreme8_7SLShort,
-  Extreme8Single,
-  Extreme8SingleShort,
-  Extreme8PackedSingle,
-  Extreme16Sym,
-  Extreme16SymShort,
-  Extreme16SymPacked,
-  Extreme16Sym_1SLShort,
-  Extreme16Sym_3SL,
-  Extreme16Sym_3SLShort,
-  Extreme16Sym_7SL,
-  Extreme16Sym_7SLShort,
-  Extreme16Byte,
-  Extreme16ByteShort,
-  Extreme16BytePacked,
-  Extreme16Byte_1SLShort,
-  Extreme16Byte_1SLShortGreedy,
-  Extreme16Byte_3SL,
-  Extreme16Byte_3SLShort,
-  Extreme16Byte_3SLShortGreedy,
-  Extreme16Byte_7SL,
-  Extreme16Byte_7SLShort,
-  Extreme16Byte_7SLShortGreedy,
-  Extreme24Sym,
-  Extreme24SymShort,
-  Extreme24SymPacked,
-  Extreme24Sym_1SLShort,
-  Extreme24Sym_3SL,
-  Extreme24Sym_3SLShort,
-  Extreme24Sym_7SL,
-  Extreme24Sym_7SLShort,
-  Extreme24Byte,
-  Extreme24ByteShort,
-  Extreme24BytePacked,
-  Extreme24Byte_1SLShort,
-  Extreme24Byte_1SLShortGreedy,
-  Extreme24Byte_3SL,
-  Extreme24Byte_3SLShort,
-  Extreme24Byte_3SLShortGreedy,
-  Extreme24Byte_7SL,
-  Extreme24Byte_7SLShort,
-  Extreme24Byte_7SLShortGreedy,
-  Extreme32Sym,
-  Extreme32SymShort,
-  Extreme32SymPacked,
-  Extreme32Sym_1SLShort,
-  Extreme32Sym_3SL,
-  Extreme32Sym_3SLShort,
-  Extreme32Sym_7SL,
-  Extreme32Sym_7SLShort,
-  Extreme32Byte,
-  Extreme32ByteShort,
-  Extreme32BytePacked,
-  Extreme32Byte_1SLShort,
-  Extreme32Byte_1SLShortGreedy,
-  Extreme32Byte_3SL,
-  Extreme32Byte_3SLShort,
-  Extreme32Byte_3SLShortGreedy,
-  Extreme32Byte_7SL,
-  Extreme32Byte_7SLShort,
-  Extreme32Byte_7SLShortGreedy,
-  Extreme48Sym,
-  Extreme48SymShort,
-  Extreme48SymPacked,
-  Extreme48Sym_1SLShort,
-  Extreme48Sym_3SL,
-  Extreme48Sym_3SLShort,
-  Extreme48Sym_7SL,
-  Extreme48Sym_7SLShort,
-  Extreme48Byte,
-  Extreme48ByteShort,
-  Extreme48BytePacked,
-  Extreme48Byte_1SLShort,
-  Extreme48Byte_1SLShortGreedy,
-  Extreme48Byte_3SL,
-  Extreme48Byte_3SLShort,
-  Extreme48Byte_3SLShortGreedy,
-  Extreme48Byte_7SL,
-  Extreme48Byte_7SLShort,
-  Extreme48Byte_7SLShortGreedy,
-  Extreme64Sym,
-  Extreme64SymShort,
-  Extreme64SymPacked,
-  Extreme64Sym_1SLShort,
-  Extreme64Sym_3SL,
-  Extreme64Sym_3SLShort,
-  Extreme64Sym_7SL,
-  Extreme64Sym_7SLShort,
-  Extreme64Byte,
-  Extreme64ByteShort,
-  Extreme64BytePacked,
-  Extreme64Byte_1SLShort,
-  Extreme64Byte_1SLShortGreedy,
-  Extreme64Byte_3SL,
-  Extreme64Byte_3SLShort,
-  Extreme64Byte_3SLShortGreedy,
-  Extreme64Byte_7SL,
-  Extreme64Byte_7SLShort,
-  Extreme64Byte_7SLShortGreedy,
-  Extreme128Sym,
-  Extreme128SymPacked,
-  Extreme128Byte,
-  Extreme128BytePacked,
-
-  Rle8SH,
-  Extreme8MultiMTF128,
-
-  LowEntropy,
-  LowEntropySingle,
-  LowEntropyShort,
-  LowEntropyShortSingle,
-
-  MultiMTF128,
-  MultiMTF256,
-  BitMultiMTF8,
-  BitMultiMTF16,
-
-  MemCopy,
-
-  CodecCount
-} codec_t;
-
-static const char *codecNames[] =
-{
-  "8 Bit                         ",
-  "8 Bit Short                   ",
-  "8 Bit Packed                  ",
-  "8 Bit 1LUT Short              ",
-  "8 Bit 3LUT                    ",
-  "8 Bit 3LUT Short              ",
-  "8 Bit 7LUT                    ",
-  "8 Bit 7LUT Short              ",
-  "8 Bit Single                  ",
-  "8 Bit Single Short            ",
-  "8 Bit Single Packed           ",
-  "16 Bit (Symbol)               ",
-  "16 Bit Short (Symbol)         ",
-  "16 Bit Packed (Symbol)        ",
-  "16 Bit 1LUT Short (Symbol)    ",
-  "16 Bit 3LUT (Symbol)          ",
-  "16 Bit 3LUT Short (Symbol)    ",
-  "16 Bit 7LUT (Symbol)          ",
-  "16 Bit 7LUT Short (Symbol)    ",
-  "16 Bit (Byte)                 ",
-  "16 Bit Short (Byte)           ",
-  "16 Bit Packed (Byte)          ",
-  "16 Bit 1LUT Short (Byte)      ",
-  "16 Bit 1LUT Short Grdy (Byte) ",
-  "16 Bit 3LUT (Byte)            ",
-  "16 Bit 3LUT Short (Byte)      ",
-  "16 Bit 3LUT Short Grdy (Byte) ",
-  "16 Bit 7LUT (Byte)            ",
-  "16 Bit 7LUT Short (Byte)      ",
-  "16 Bit 7LUT Short Grdy (Byte) ",
-  "24 Bit (Symbol)               ",
-  "24 Bit Short (Symbol)         ",
-  "24 Bit Packed (Symbol)        ",
-  "24 Bit 1LUT Short (Symbol)    ",
-  "24 Bit 3LUT (Symbol)          ",
-  "24 Bit 3LUT Short (Symbol)    ",
-  "24 Bit 7LUT (Symbol)          ",
-  "24 Bit 7LUT Short (Symbol)    ",
-  "24 Bit (Byte)                 ",
-  "24 Bit Short (Byte)           ",
-  "24 Bit Packed (Byte)          ",
-  "24 Bit 1LUT Short (Byte)      ",
-  "24 Bit 1LUT Short Grdy (Byte) ",
-  "24 Bit 3LUT (Byte)            ",
-  "24 Bit 3LUT Short (Byte)      ",
-  "24 Bit 3LUT Short Grdy (Byte) ",
-  "24 Bit 7LUT (Byte)            ",
-  "24 Bit 7LUT Short (Byte)      ",
-  "24 Bit 7LUT Short Grdy (Byte) ",
-  "32 Bit (Symbol)               ",
-  "32 Bit Short (Symbol)         ",
-  "32 Bit Packed (Symbol)        ",
-  "32 Bit 1LUT Short (Symbol)    ",
-  "32 Bit 3LUT (Symbol)          ",
-  "32 Bit 3LUT Short (Symbol)    ",
-  "32 Bit 7LUT (Symbol)          ",
-  "32 Bit 7LUT Short (Symbol)    ",
-  "32 Bit (Byte)                 ",
-  "32 Bit Short (Byte)           ",
-  "32 Bit Packed (Byte)          ",
-  "32 Bit 1LUT Short (Byte)      ",
-  "32 Bit 1LUT Short Grdy (Byte) ",
-  "32 Bit 3LUT (Byte)            ",
-  "32 Bit 3LUT Short (Byte)      ",
-  "32 Bit 3LUT Short Grdy (Byte) ",
-  "32 Bit 7LUT (Byte)            ",
-  "32 Bit 7LUT Short (Byte)      ",
-  "32 Bit 7LUT Short Grdy (Byte) ",
-  "48 Bit (Symbol)               ",
-  "48 Bit Short (Symbol)         ",
-  "48 Bit Packed (Symbol)        ",
-  "48 Bit 1LUT Short (Symbol)    ",
-  "48 Bit 3LUT (Symbol)          ",
-  "48 Bit 3LUT Short (Symbol)    ",
-  "48 Bit 7LUT (Symbol)          ",
-  "48 Bit 7LUT Short (Symbol)    ",
-  "48 Bit (Byte)                 ",
-  "48 Bit Short (Byte)           ",
-  "48 Bit Packed (Byte)          ",
-  "48 Bit 1LUT Short (Byte)      ",
-  "48 Bit 1LUT Short Grdy (Byte) ",
-  "48 Bit 3LUT (Byte)            ",
-  "48 Bit 3LUT Short (Byte)      ",
-  "48 Bit 3LUT Short Grdy (Byte) ",
-  "48 Bit 7LUT (Byte)            ",
-  "48 Bit 7LUT Short (Byte)      ",
-  "48 Bit 7LUT Short Grdy (Byte) ",
-  "64 Bit (Symbol)               ",
-  "64 Bit Short (Symbol)         ",
-  "64 Bit Packed (Symbol)        ",
-  "64 Bit 1LUT Short (Symbol)    ",
-  "64 Bit 3LUT (Symbol)          ",
-  "64 Bit 3LUT Short (Symbol)    ",
-  "64 Bit 7LUT (Symbol)          ",
-  "64 Bit 7LUT Short (Symbol)    ",
-  "64 Bit (Byte)                 ",
-  "64 Bit Short (Byte)           ",
-  "64 Bit Packed (Byte)          ",
-  "64 Bit 1LUT Short (Byte)      ",
-  "64 Bit 1LUT Short Grdy (Byte) ",
-  "64 Bit 3LUT (Byte)            ",
-  "64 Bit 3LUT Short (Byte)      ",
-  "64 Bit 3LUT Short Grdy (Byte) ",
-  "64 Bit 7LUT (Byte)            ",
-  "64 Bit 7LUT Short (Byte)      ",
-  "64 Bit 7LUT Short Grdy (Byte) ",
-  "128 Bit (Symbol)              ",
-  "128 Bit Packed (Symbol)       ",
-  "128 Bit (Byte)                ",
-  "128 Bit Packed (Byte)         ",
-  "8 Bit RLE + Huffman-esque     ",
-  "8 Bit MMTF 128                ",
-  "Low Entropy                   ",
-  "Low Entropy Single            ",
-  "Low Entropy Short             ",
-  "Low Entropy Short Single      ",
-  "Multi MTF 128 Bit (Transform) ",
-  "Multi MTF 256 Bit (Transform) ",
-  "Bit MMTF 8 Bit (Transform)    ",
-  "Bit MMTF 16 Bit (Transform)   ",
-  "memcpy                        ",
-};
-
-_STATIC_ASSERT(ARRAYSIZE(codecNames) == CodecCount);
 
 struct
 {
@@ -362,6 +106,8 @@ int main(int argc, char **pArgv)
     printf("\n\t[%s <%s / %s / %s / %s / %s / %s / %s / %s>]\n", ArgumentMaxSimd, ArgumentMaxSimdAVX512F, ArgumentMaxSimdAVX2, ArgumentMaxSimdAVX, ArgumentMaxSimdSSE42, ArgumentMaxSimdSSE41, ArgumentMaxSimdSSSE3, ArgumentMaxSimdSSE3, ArgumentMaxSimdSSE2);
     printf("\n\t[%s (fail on simgle compression/decompression/validation failure)]\n", ArgumentTest);
     printf("\n\n\tOR: (for debugging purposes only)\n\n");
+    printf("\t%s\n", ArgumentFuzz);
+    printf("\n\n\tOR: (for debugging purposes only)\n\n");
     printf("\t[%s <Output File Name>]\n\n", ArgumentTo);
     printf("\t[%s]\n\t\tif '%s': [%s (8 | 16 | 24 | 32 | 48 | 64 | 128)] (symbol size)\n\t\tif '%s': [%s] (include unaligned repeats, capacity vs. accuracy tradeoff)\n\t\tif '%s': [%s] (preferable if many rle-symbol-repeats)\n\n", ArgumentExtreme, ArgumentExtreme, ArgumentExtremeSize, ArgumentExtreme, ArgumentExtremeByteGran, ArgumentExtreme, ArgumentExtremePacked);
     printf("\t[%s (try to preserve symbol frequencies)]\n\t\tif '%s': [%s <Sub Section Count>] \n\n", ArgumentNormal, ArgumentNormal, ArgumentSubSections);
@@ -390,6 +136,7 @@ int main(int argc, char **pArgv)
   bool analyzeFileContents = false;
   bool noDelays = false;
   bool isTestRun = false;
+  bool fuzzing = false;
 
 #ifdef _WIN32
   size_t cpuCoreIndex = 0;
@@ -413,6 +160,12 @@ int main(int argc, char **pArgv)
       {
         isTestRun = true;
         noDelays = true;
+        argIndex++;
+        argsRemaining--;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentFuzz, sizeof(ArgumentFuzz)) == 0)
+      {
+        fuzzing = true;
         argIndex++;
         argsRemaining--;
       }
@@ -980,61 +733,79 @@ int main(int argc, char **pArgv)
   uint8_t *pDecompressedData = NULL;
   uint8_t *pCompressedData = NULL;
 
-  FILE *pFile = fopen(pArgv[1], "rb");
+  FILE *pFile = NULL;
 
-  if (!pFile)
+  if (!fuzzing)
   {
-    puts("Failed to read file.");
-    goto epilogue;
-  }
+    pFile = fopen(pArgv[1], "rb");
 
-  fseek(pFile, 0, SEEK_END);
-  fileSize = ftell(pFile);
+    if (!pFile)
+    {
+      puts("Failed to read file.");
+      goto epilogue;
+    }
 
-  if (fileSize <= 0)
-  {
-    puts("Invalid File size / failed to read file.");
-    goto epilogue;
-  }
+    fseek(pFile, 0, SEEK_END);
+    fileSize = ftell(pFile);
 
-  fseek(pFile, 0, SEEK_SET);
+    if (fileSize <= 0)
+    {
+      puts("Invalid File size / failed to read file.");
+      goto epilogue;
+    }
 
-  compressedBufferSize = rle_compress_bounds((uint32_t)fileSize);
+    fseek(pFile, 0, SEEK_SET);
 
-  compressedBufferSize = max(compressedBufferSize, mmtf_bounds((uint32_t)fileSize));
-  compressedBufferSize = max(compressedBufferSize, rle8_sh_bounds((uint32_t)fileSize));
-  compressedBufferSize = max(compressedBufferSize, rle8_mmtf128_compress_bounds((uint32_t)fileSize));
-  compressedBufferSize = max(compressedBufferSize, rle8_mmtf256_compress_bounds((uint32_t)fileSize));
-  compressedBufferSize = max(compressedBufferSize, rle8_low_entropy_compress_bounds((uint32_t)fileSize));
-  compressedBufferSize = max(compressedBufferSize, rle8_low_entropy_short_compress_bounds((uint32_t)fileSize));
-  
-  if (subSections != 0)
-    compressedBufferSize = max(compressedBufferSize, rle8m_compress_bounds((uint32_t)subSections, (uint32_t)fileSize));
+    compressedBufferSize = rle_compress_bounds((uint32_t)fileSize);
 
-  pUncompressedData = (uint8_t *)ALIGNED_ALLOC(32, fileSize);
-  pDecompressedData = (uint8_t *)ALIGNED_ALLOC(32, fileSize + rle_decompress_additional_size());
-  pCompressedData = (uint8_t *)ALIGNED_ALLOC(32, compressedBufferSize);
+    compressedBufferSize = max(compressedBufferSize, mmtf_bounds((uint32_t)fileSize));
+    compressedBufferSize = max(compressedBufferSize, rle8_sh_bounds((uint32_t)fileSize));
+    compressedBufferSize = max(compressedBufferSize, rle8_mmtf128_compress_bounds((uint32_t)fileSize));
+    compressedBufferSize = max(compressedBufferSize, rle8_mmtf256_compress_bounds((uint32_t)fileSize));
+    compressedBufferSize = max(compressedBufferSize, rle8_low_entropy_compress_bounds((uint32_t)fileSize));
+    compressedBufferSize = max(compressedBufferSize, rle8_low_entropy_short_compress_bounds((uint32_t)fileSize));
 
-  if (!pUncompressedData || !pDecompressedData || !pCompressedData)
-  {
-    puts("Failed to allocate memory.");
-    goto epilogue;
-  }
+    if (subSections != 0)
+      compressedBufferSize = max(compressedBufferSize, rle8m_compress_bounds((uint32_t)subSections, (uint32_t)fileSize));
 
-  if (fileSize != fread(pUncompressedData, 1, (size_t)fileSize, pFile))
-  {
-    puts("Failed to read file.");
-    goto epilogue;
+    pUncompressedData = (uint8_t *)ALIGNED_ALLOC(32, fileSize);
+    pDecompressedData = (uint8_t *)ALIGNED_ALLOC(32, fileSize + rle_decompress_additional_size());
+    pCompressedData = (uint8_t *)ALIGNED_ALLOC(32, compressedBufferSize);
+
+    if (!pUncompressedData || !pDecompressedData || !pCompressedData)
+    {
+      puts("Failed to allocate memory.");
+      goto epilogue;
+    }
+
+    if (fileSize != fread(pUncompressedData, 1, (size_t)fileSize, pFile))
+    {
+      puts("Failed to read file.");
+      goto epilogue;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+
+    if (analyzeFileContents)
+      AnalyzeData(pUncompressedData, fileSize);
   }
 
   //////////////////////////////////////////////////////////////////////////
-  
-  if (analyzeFileContents)
-    AnalyzeData(pUncompressedData, fileSize);
 
-  //////////////////////////////////////////////////////////////////////////
+  if (fuzzing)
+  {
+    bool fuzz(const size_t sectionCount);
 
-  if (benchmarkAll || matchBenchmarks)
+    const bool success = fuzz(6);
+
+    if (success)
+      puts("Fuzzer Completed!");
+    else
+      puts("Fuzzer Failed!");
+
+    return success ? 0 : 1;
+  }
+  else if (benchmarkAll || matchBenchmarks)
   {
     codec_t currentCodec = 0;
 
