@@ -163,7 +163,7 @@ uint32_t mmtf128_encode_aligned_sse41(IN const uint8_t *pIn, const uint32_t inSi
     const uint8_t symbol = *pIn;
     pIn++;
 
-    for (size_t d = 0; d < 255; d++)
+    for (size_t d = 0; d < 256; d++)
     {
       if (history[d * 16 + i] == symbol)
       {
@@ -231,7 +231,7 @@ uint32_t mmtf128_encode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, 
     const uint8_t symbol = *pIn;
     pIn++;
 
-    for (size_t d = 0; d < 255; d++)
+    for (size_t d = 0; d < 256; d++)
     {
       if (history[d * 16 + i] == symbol)
       {
@@ -433,7 +433,7 @@ uint32_t mmtf256_encode_aligned(IN const uint8_t *pIn, const uint32_t inSize, OU
     const uint8_t symbol = *pIn;
     pIn++;
 
-    for (size_t d = 0; d < 255; d++)
+    for (size_t d = 0; d < 256; d++)
     {
       if (history[d * 32 + i] == symbol)
       {
@@ -504,7 +504,7 @@ uint32_t mmtf256_encode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, 
     const uint8_t symbol = *pIn;
     pIn++;
 
-    for (size_t d = 0; d < 255; d++)
+    for (size_t d = 0; d < 256; d++)
     {
       if (history[d * 32 + i] == symbol)
       {
@@ -591,7 +591,7 @@ uint32_t mmtf256_encode_unaligned_sse2(IN const uint8_t *pIn, const uint32_t inS
     const uint8_t symbol = *pIn;
     pIn++;
 
-    for (size_t d = 0; d < 255; d++)
+    for (size_t d = 0; d < 256; d++)
     {
       if (history[d * 32 + i] == symbol)
       {

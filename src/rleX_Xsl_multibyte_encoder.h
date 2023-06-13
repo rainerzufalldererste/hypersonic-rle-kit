@@ -119,7 +119,7 @@ uint32_t CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, FUNC_NAME)(IN const uint8_t 
 #endif
 #endif
 
-    while (i < inSizeSimd)
+    while ((int64_t)i < inSizeSimd)
     {
 #if defined(IMPL_SSE2) || defined(IMPL_SSSE3)
       const __m128i current = _mm_loadu_si128((const __m128i *)(pIn + i));
@@ -251,7 +251,7 @@ uint32_t CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, FUNC_NAME)(IN const uint8_t 
       CONCAT3(CONCAT3(_rle, TYPE_SIZE, _), CODEC, process_symbol)(pIn, pOut, i, &state);
 
 #if defined(IMPL_SSE2) || defined(IMPL_SSSE3) || defined(IMPL_AVX2)
-      while (i < inSizeSimd)
+      while ((int64_t)i < inSizeSimd)
       {
 #if defined(IMPL_SSE2) || defined(IMPL_SSSE3)
         const __m128i current = _mm_loadu_si128((const __m128i *)(pIn + i));

@@ -796,7 +796,7 @@ int main(int argc, char **pArgv)
   {
     bool fuzz(const size_t sectionCount);
 
-    const bool success = fuzz(6);
+    const bool success = fuzz(4);
 
     if (success)
       puts("Fuzzer Completed!");
@@ -2141,7 +2141,7 @@ int main(int argc, char **pArgv)
             break;
 
           //case 256:
-          //  compressedSize = rle8_mmtf256_compress(pUncompressedData, (uint32_t)fileSize, pCompressedData, compressedBufferSize);
+          //  compressedSize = rle8_mmtf256_compress(pUncompressedData, (uint32_t)size, pCompressedData, compressedBufferSize);
           //  break;
           }
         }
@@ -2388,7 +2388,7 @@ int main(int argc, char **pArgv)
             break;
 
           //case 256:
-          //  decompressedSize = rle8_mmtf256_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)fileSize);
+          //  decompressedSize = rle8_mmtf256_decompress(pCompressedData, compressedSize, pDecompressedData, (uint32_t)size);
           //  break;
           }
         }
@@ -2529,20 +2529,20 @@ void SleepNs(const uint64_t sleepNs)
 #endif
 }
 
-bool Validate(const uint8_t *pUncompressedData, const uint8_t *pDecompressedData, const size_t fileSize)
+bool Validate(const uint8_t *pUncompressedData, const uint8_t *pDecompressedData, const size_t size)
 {
-  if (memcmp(pUncompressedData, pDecompressedData, (size_t)fileSize) != 0)
+  if (memcmp(pUncompressedData, pDecompressedData, (size_t)size) != 0)
   {
     puts("Validation Failed.");
 
-    for (size_t i = 0; i < fileSize; i++)
+    for (size_t i = 0; i < size; i++)
     {
       if (pUncompressedData[i] != pDecompressedData[i])
       {
         printf("First invalid char at %" PRIu64 " [0x%" PRIX64 "] (0x%" PRIX8 " != 0x%" PRIX8 ").\n", i, i, pUncompressedData[i], pDecompressedData[i]);
 
         const int64_t start = max(0, (int64_t)i - 64);
-        const int64_t end = min((int64_t)fileSize, (int64_t)(i + 64));
+        const int64_t end = min((int64_t)size, (int64_t)(i + 64));
 
         printf("\nContext: (%" PRIi64 " to %" PRIi64 ")\n\n   Expected:                                        |  Actual Output:\n\n", start, end);
 

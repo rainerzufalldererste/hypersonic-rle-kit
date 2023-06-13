@@ -631,7 +631,7 @@ uint32_t rle8_mmtf128_compress(IN const uint8_t *pIn, const uint32_t inSize, OUT
       const uint8_t sym = *pIn;
       pIn++;
 
-      for (size_t d = 0; d < 255; d++)
+      for (size_t d = 0; d < 256; d++)
       {
         if (history[d * 16 + i] == sym)
         {

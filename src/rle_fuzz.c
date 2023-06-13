@@ -302,6 +302,7 @@ bool fuzz(const size_t sectionCount)
   bool result = false;
   fuzz_state_t *pState = NULL;
   uint8_t *pInputBuffer = NULL;
+  uint8_t *pInputBufferCopy = NULL;
   uint8_t *pCompressed = NULL;
   uint8_t *pDecompressed = NULL;
   
@@ -309,9 +310,15 @@ bool fuzz(const size_t sectionCount)
     goto epilogue;
 
   const size_t inputSize = fuzz_sub_state_get_required_buffer_capacity(pState);
+
   pInputBuffer = malloc(inputSize);
   
   if (pInputBuffer == NULL)
+    goto epilogue;
+  
+  pInputBufferCopy = malloc(inputSize);
+  
+  if (pInputBufferCopy == NULL)
     goto epilogue;
 
   pDecompressed = (uint8_t *)malloc(inputSize + rle_decompress_additional_size());
@@ -337,15 +344,17 @@ bool fuzz(const size_t sectionCount)
   
   do
   {
-    if (iteration % 1000 == 0 && iteration > 0)
+    if (iteration % 100 == 0 && iteration > 0)
     {
       const uint64_t elapsedNs = TicksToNs(GetCurrentTimeTicks() - startTicks);
-      printf("\rFuzz %" PRIu64 ": %5.2f fuzzes/s (%" PRIu64 " byte symbols (%saligned), %" PRIu64 " sections starting with %scompressible (%" PRIu64 " units))", iteration, iteration / (elapsedNs * 1e-9), pState->symbolLength, pState->symbolBound ? "" : "un", pState->stateCount, pState->startSectionType == fst_random_data ? "un" : "", pState->states[0].currentLength);
+      printf("\rInput %" PRIu64 ": ~%5.2f codecs fuzzed/s, (%" PRIu64 " byte symbols (%saligned), %" PRIu64 " sections starting with %scompressible (%" PRIu64 " units))", iteration, (iteration * MemCopy) / (elapsedNs * 1e-9), pState->symbolLength, pState->symbolBound ? "" : "un", pState->stateCount, pState->startSectionType == fst_random_data ? "un" : "", pState->states[0].currentLength);
     }
 
     iteration++;
 
     const size_t inputSize = fuzz_fill_buffer(pState, pInputBuffer);
+
+    memcpy(pInputBufferCopy, pInputBuffer, inputSize);
 
     for (codec_t codec = 0; codec < MemCopy; codec++)
     {
@@ -353,6 +362,12 @@ bool fuzz(const size_t sectionCount)
 
       if (compressedSize == 0)
         __debugbreak();
+
+      if (memcmp(pInputBuffer, pInputBufferCopy, inputSize) != 0)
+      {
+        puts("Input Buffer Corrupted!");
+        __debugbreak();
+      }
 
       for (size_t i = compressedSize; i < compressedBufferSize; i++)
         pCompressed[i] = ~pCompressed[i];
@@ -364,8 +379,89 @@ bool fuzz(const size_t sectionCount)
       if (decompressedSize != inputSize)
         __debugbreak();
 
-      if (memcmp(pInputBuffer, pDecompressed, inputSize) != 0)
+      if (memcmp(pInputBuffer, pDecompressed, (size_t)inputSize) != 0)
+      {
+        printf("Validation Failed for codec '%s':\n", codecNames[codec]);
+
+        for (size_t i = 0; i < inputSize; i++)
+        {
+          if (pInputBuffer[i] != pDecompressed[i])
+          {
+            printf("First invalid char at %" PRIu64 " [0x%" PRIX64 "] (0x%" PRIX8 " != 0x%" PRIX8 ").\n", i, i, pInputBuffer[i], pDecompressed[i]);
+
+            const int64_t start = max(0, (int64_t)i - 64);
+            const int64_t end = min((int64_t)inputSize, (int64_t)(i + 64));
+
+            printf("\nContext: (%" PRIi64 " to %" PRIi64 ")\n\n   Expected:                                        |  Actual Output:\n\n", start, end);
+
+            for (int64_t context = start; context < end; context += 16)
+            {
+              const int64_t context_end = min(end, context + 16);
+
+              bool different = false;
+
+              for (int64_t j = context; j < context_end; j++)
+              {
+                if (pInputBuffer[j] != pDecompressed[j])
+                {
+                  different = true;
+                  break;
+                }
+              }
+
+              if (different)
+                fputs("!! ", stdout);
+              else
+                fputs("   ", stdout);
+
+              for (int64_t j = context; j < context_end; j++)
+                printf("%02" PRIX8 " ", pInputBuffer[j]);
+
+              for (int64_t j = context_end; j < context + 16; j++)
+                fputs("   ", stdout);
+
+              fputs(" |  ", stdout);
+
+              for (int64_t j = context; j < context_end; j++)
+                printf("%02" PRIX8 " ", pDecompressed[j]);
+
+              puts("");
+
+              if (different)
+              {
+                fputs("   ", stdout);
+
+                for (int64_t j = context; j < context_end; j++)
+                {
+                  if (pInputBuffer[j] != pDecompressed[j])
+                    fputs("~~ ", stdout);
+                  else
+                    fputs("   ", stdout);
+                }
+
+                for (int64_t j = context_end; j < context + 16; j++)
+                  fputs("   ", stdout);
+
+                fputs("    ", stdout);
+
+                for (int64_t j = context; j < context_end; j++)
+                {
+                  if (pInputBuffer[j] != pDecompressed[j])
+                    fputs("~~ ", stdout);
+                  else
+                    fputs("   ", stdout);
+                }
+              }
+
+              puts("");
+            }
+
+            break;
+          }
+        }
+
         __debugbreak();
+      }
     }
 
   } while (fuzz_state_increment(pState));
