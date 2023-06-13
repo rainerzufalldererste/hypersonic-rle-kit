@@ -347,7 +347,7 @@ bool fuzz(const size_t sectionCount)
     if (iteration % 100 == 0 && iteration > 0)
     {
       const uint64_t elapsedNs = TicksToNs(GetCurrentTimeTicks() - startTicks);
-      printf("\rInput %" PRIu64 ": ~%5.2f codecs fuzzed/s, (%" PRIu64 " byte symbols (%saligned), %" PRIu64 " sections starting with %scompressible (%" PRIu64 " units))", iteration, (iteration * MemCopy) / (elapsedNs * 1e-9), pState->symbolLength, pState->symbolBound ? "" : "un", pState->stateCount, pState->startSectionType == fst_random_data ? "un" : "", pState->states[0].currentLength);
+      printf("\rInput %" PRIu64 ": ~%3.0fk codecs fuzzed/s, (%" PRIu64 " byte symbols (%saligned), %" PRIu64 " sections starting with %scompressible (%" PRIu64 " units))", iteration, (iteration * MemCopy * 1e-3) / (elapsedNs * 1e-9), pState->symbolLength, pState->symbolBound ? "" : "un", pState->stateCount, pState->startSectionType == fst_random_data ? "un" : "", pState->states[0].currentLength);
     }
 
     iteration++;
@@ -369,8 +369,13 @@ bool fuzz(const size_t sectionCount)
         __debugbreak();
       }
 
-      for (size_t i = compressedSize; i < compressedBufferSize; i++)
-        pCompressed[i] = ~pCompressed[i];
+      // Scramble End to ensure we actually _fit_.
+      {
+        const size_t end = min(compressedBufferSize, inputSize + 64);
+
+        for (size_t i = compressedSize; i < end; i++)
+          pCompressed[i] = ~pCompressed[i];
+      }
 
       memset(pDecompressed, 0, inputSize);
 
