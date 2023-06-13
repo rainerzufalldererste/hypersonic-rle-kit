@@ -13,6 +13,7 @@
 
 //////////////////////////////////////////////////////////////////////////
 
+extern bool _CpuFeaturesDetected;
 extern bool sseSupported;
 extern bool sse2Supported;
 extern bool sse3Supported;
@@ -37,6 +38,7 @@ extern bool avx512POPCNTDQSupported;
 extern bool avx512BITALGSupported;
 extern bool avx5124VNNIWSupported;
 extern bool avx5124FMAPSSupported;
+extern bool aesNiSupported;
 
 void _DetectCPUFeatures();
 

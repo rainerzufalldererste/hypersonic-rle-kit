@@ -59,7 +59,8 @@ const char ArgumentMaxSimdSSE3[] = "sse3";
 const char ArgumentMaxSimdSSE2[] = "sse2";
 const char ArgumentMaxSimdNone[] = "none";
 const char ArgumentTest[] = "--test";
-const char ArgumentFuzz[] = "--fuzz";
+const char ArgumentFuzzIterative[] = "--fuzz-iterative";
+const char ArgumentFuzzRandom[] = "--fuzz-random";
 
 #ifdef _WIN32
 const char ArgumentCpuCore[] = "--cpu-core";
@@ -106,7 +107,7 @@ int main(int argc, char **pArgv)
     printf("\n\t[%s <%s / %s / %s / %s / %s / %s / %s / %s>]\n", ArgumentMaxSimd, ArgumentMaxSimdAVX512F, ArgumentMaxSimdAVX2, ArgumentMaxSimdAVX, ArgumentMaxSimdSSE42, ArgumentMaxSimdSSE41, ArgumentMaxSimdSSSE3, ArgumentMaxSimdSSE3, ArgumentMaxSimdSSE2);
     printf("\n\t[%s (fail on simgle compression/decompression/validation failure)]\n", ArgumentTest);
     printf("\n\n\tOR: (for debugging purposes only)\n\n");
-    printf("\t%s\n", ArgumentFuzz);
+    printf("\t%s / %s\t\input file name will be ignored\n", ArgumentFuzzIterative, ArgumentFuzzRandom);
     printf("\n\n\tOR: (for debugging purposes only)\n\n");
     printf("\t[%s <Output File Name>]\n\n", ArgumentTo);
     printf("\t[%s]\n\t\tif '%s': [%s (8 | 16 | 24 | 32 | 48 | 64 | 128)] (symbol size)\n\t\tif '%s': [%s] (include unaligned repeats, capacity vs. accuracy tradeoff)\n\t\tif '%s': [%s] (preferable if many rle-symbol-repeats)\n\n", ArgumentExtreme, ArgumentExtreme, ArgumentExtremeSize, ArgumentExtreme, ArgumentExtremeByteGran, ArgumentExtreme, ArgumentExtremePacked);
@@ -137,6 +138,7 @@ int main(int argc, char **pArgv)
   bool noDelays = false;
   bool isTestRun = false;
   bool fuzzing = false;
+  bool fuzzingIterative = false;
 
 #ifdef _WIN32
   size_t cpuCoreIndex = 0;
@@ -163,9 +165,17 @@ int main(int argc, char **pArgv)
         argIndex++;
         argsRemaining--;
       }
-      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentFuzz, sizeof(ArgumentFuzz)) == 0)
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentFuzzIterative, sizeof(ArgumentFuzzIterative)) == 0)
       {
         fuzzing = true;
+        fuzzingIterative = true;
+        argIndex++;
+        argsRemaining--;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentFuzzRandom, sizeof(ArgumentFuzzRandom)) == 0)
+      {
+        fuzzing = true;
+        fuzzingIterative = false;
         argIndex++;
         argsRemaining--;
       }
@@ -794,9 +804,14 @@ int main(int argc, char **pArgv)
 
   if (fuzzing)
   {
-    bool fuzz(const size_t sectionCount);
+    bool fuzz(const size_t sectionCount, const bool iterative);
 
-    const bool success = fuzz(4);
+    bool success;
+    
+    if (fuzzingIterative)
+      success = fuzz(4, true);
+    else
+      success = fuzz(8, false);
 
     if (success)
       puts("Fuzzer Completed!");

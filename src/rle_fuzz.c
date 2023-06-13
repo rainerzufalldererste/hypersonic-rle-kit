@@ -2,6 +2,10 @@
 #include "codec_funcs.h"
 #include "simd_platform.h"
 
+// From other files:
+uint64_t GetCurrentTimeTicks();
+uint64_t TicksToNs(const uint64_t ticks);
+
 typedef enum
 {
   fst_random_data,
@@ -31,6 +35,8 @@ enum
   flt_16_bit_limit_max_value = (1 << 16) + 24,
 
   fuzz_max_symbol_length = 16, // must be divisible by 4.
+
+  fuzz_symbol_count = 16,
 };
 
 typedef struct
@@ -38,19 +44,22 @@ typedef struct
   fuzz_section_type type;
   fuzz_length_type lengthType;
   size_t currentLength;
+  size_t symbolIndex;
 } fuzz_sub_state_t;
 
 typedef struct
 {
-  uint8_t symbol[fuzz_max_symbol_length];
+  uint8_t symbol[fuzz_symbol_count][fuzz_max_symbol_length];
   size_t symbolLength;
   bool symbolBound;
+  bool iterativeMode;
+  size_t relevantStateCount; // if `!iteativeMode`.
   fuzz_section_type startSectionType;
   size_t stateCount;
   fuzz_sub_state_t states[];
 } fuzz_state_t;
 
-inline uint32_t fuzz_read_rand_predictable()
+uint32_t fuzz_read_rand_predictable()
 {
   static uint64_t last = 0xF824558383B00C0CULL;
 
@@ -65,10 +74,43 @@ inline uint32_t fuzz_read_rand_predictable()
   return hi;
 }
 
+#ifndef _MSC_VER
+__attribute__((target("aes")))
+#endif
+void fuzz_read_rand(__m128i *pOut)
+{
+  // This function assumes that AES-NI is supported.
+  
+  static __m128i last[2];
+  static bool initialized = false;
+
+  if (!initialized)
+  {
+    last[0] = _mm_set_epi64x(GetCurrentTimeTicks(), __rdtsc());
+    last[1] = _mm_set_epi64x(~__rdtsc(), ~GetCurrentTimeTicks());
+  }
+
+  const __m128i r = _mm_aesdec_si128(last[0], last[1]);
+
+  last[0] = last[1];
+  last[1] = r;
+
+  _mm_storeu_si128(pOut, last[0]);
+}
+
+uint64_t fuzz_rand_between(const uint64_t min, const uint64_t max)
+{
+  uint64_t buffer[2];
+  fuzz_read_rand((__m128i *)&buffer);
+
+  return (buffer[0] % (max - min)) + min;
+}
+
 void fuzz_sub_state_reset(fuzz_sub_state_t *pSubState)
 {
   pSubState->lengthType = flt_small;
   pSubState->currentLength = flt_small_min_value;
+  pSubState->symbolIndex = 0;
 }
 
 void fuzz_sub_state_init(fuzz_sub_state_t *pSubState, const fuzz_section_type sectionType)
@@ -76,6 +118,28 @@ void fuzz_sub_state_init(fuzz_sub_state_t *pSubState, const fuzz_section_type se
   pSubState->type = sectionType;
 
   fuzz_sub_state_reset(pSubState);
+}
+
+void fuzz_sub_state_set_random_with_same_type(fuzz_sub_state_t *pSubState)
+{
+  pSubState->symbolIndex = fuzz_rand_between(0, fuzz_symbol_count);
+  const uint64_t discriminator = fuzz_rand_between(0, 0x100);
+
+  if (discriminator < 0xD0)
+  {
+    pSubState->lengthType = flt_small;
+    pSubState->currentLength = fuzz_rand_between(flt_small_min_value, flt_small_max_value);
+  }
+  else if (discriminator < 0xF8)
+  {
+    pSubState->lengthType = flt_medium;
+    pSubState->currentLength = fuzz_rand_between(flt_medium_min_value, flt_medium_max_value);
+  }
+  else
+  {
+    pSubState->lengthType = flt_16_bit_limit;
+    pSubState->currentLength = fuzz_rand_between(flt_16_bit_limit_min_value, flt_16_bit_limit_max_value);
+  }
 }
 
 bool fuzz_sub_state_try_increment(fuzz_sub_state_t *pSubState)
@@ -169,7 +233,7 @@ bool fuzz_state_increment_symbol_length(fuzz_state_t *pState)
 {
   pState->symbolLength++;
 
-  if (pState->symbolLength >= fuzz_max_symbol_length)
+  if (pState->symbolLength > fuzz_max_symbol_length)
     return false;
 
   pState->symbolBound = false;
@@ -200,12 +264,36 @@ bool fuzz_state_increment(fuzz_state_t *pState)
   return false;
 }
 
+bool fuzz_state_advance(fuzz_state_t *pState)
+{
+  if (pState->iterativeMode)
+    return fuzz_state_increment(pState);
+
+  const uint64_t discriminator = fuzz_rand_between(0, 0x10);
+  const uint64_t reasonableSymbolLengths[] = { 1, 2, 3, 4, 6, 8, 16 };
+
+  if (discriminator < 0xD)
+    pState->symbolLength = reasonableSymbolLengths[fuzz_rand_between(1, sizeof(reasonableSymbolLengths) / sizeof(reasonableSymbolLengths[0]))];
+  else
+    pState->symbolLength = fuzz_rand_between(1, fuzz_max_symbol_length + 1);
+
+  pState->symbolBound = !!fuzz_rand_between(0, 2);
+  pState->startSectionType = fuzz_rand_between(0, _fst_count);
+  pState->relevantStateCount = fuzz_rand_between(1, pState->stateCount);
+
+  for (size_t i = 0; i < pState->relevantStateCount; i++)
+  {
+    fuzz_sub_state_init(&pState->states[i], (i + pState->startSectionType) % _fst_count);
+    fuzz_sub_state_set_random_with_same_type(&pState->states[i]);
+  }
+}
+
 size_t fuzz_sub_state_get_required_buffer_capacity(fuzz_state_t *pState)
 {
   return pState->stateCount * flt_16_bit_limit_max_value * fuzz_max_symbol_length;
 }
 
-bool fuzz_create(OUT fuzz_state_t **ppFuzzState, const size_t internalStates)
+bool fuzz_create(OUT fuzz_state_t **ppFuzzState, const size_t internalStates, const bool iterative)
 {
   if (ppFuzzState == NULL)
     return false;
@@ -215,15 +303,19 @@ bool fuzz_create(OUT fuzz_state_t **ppFuzzState, const size_t internalStates)
   if (*ppFuzzState == NULL)
     return false;
 
-  (*ppFuzzState)->stateCount = internalStates;
+  (*ppFuzzState)->relevantStateCount = (*ppFuzzState)->stateCount = internalStates;
   (*ppFuzzState)->symbolLength = 1;
   (*ppFuzzState)->symbolBound = false;
   (*ppFuzzState)->startSectionType = fst_random_data;
+  (*ppFuzzState)->iterativeMode = iterative;
 
-  for (size_t i = 0; i < sizeof((*ppFuzzState)->symbol); i += sizeof(uint32_t))
+  for (size_t i = 0; i < fuzz_symbol_count; i++)
   {
-    const uint32_t value = fuzz_read_rand_predictable();
-    memcpy((*ppFuzzState)->symbol + i, &value, sizeof(value));
+    for (size_t j = 0; j < fuzz_max_symbol_length; j += sizeof(uint32_t))
+    {
+      const uint32_t value = fuzz_read_rand_predictable();
+      memcpy(&(*ppFuzzState)->symbol[i][j], &value, sizeof(value));
+    }
   }
 
   for (size_t i = 0; i < (*ppFuzzState)->stateCount; i++)
@@ -245,25 +337,50 @@ size_t fuzz_fill_buffer(fuzz_state_t *pState, uint8_t *pBuffer)
 {
   uint8_t *pBufferStart = pBuffer;
 
-  for (size_t i = 0; i < pState->stateCount; i++)
+  for (size_t i = 0; i < pState->relevantStateCount; i++)
   {
     switch (pState->states[i].type)
     {
     case fst_random_data:
     {
-      const int64_t length32 = pState->states[i].currentLength - sizeof(uint32_t);
-      int64_t j = 0;
-
-      for (; j <= length32; j += sizeof(uint32_t))
+      if (pState->iterativeMode)
       {
-        const uint32_t value = fuzz_read_rand_predictable();
-        memcpy(pBuffer + j, &value, sizeof(value));
+        const int64_t length32 = pState->states[i].currentLength - sizeof(uint32_t);
+        int64_t j = 0;
+
+        for (; j <= length32; j += sizeof(uint32_t))
+        {
+          const uint32_t value = fuzz_read_rand_predictable();
+          memcpy(pBuffer + j, &value, sizeof(value));
+        }
+
+        for (; j < pState->states[i].currentLength; j++)
+          pBuffer[j] = (uint8_t)fuzz_read_rand_predictable();
+
+        pBuffer += pState->states[i].currentLength;
       }
+      else
+      {
+        __m128i value;
+        const int64_t length128 = pState->states[i].currentLength - sizeof(__m128i);
+        int64_t j = 0;
 
-      for (; j < pState->states[i].currentLength; j++)
-        pBuffer[j] = (uint8_t)fuzz_read_rand_predictable();
+        for (; j <= length128; j += sizeof(uint32_t))
+        {
+          fuzz_read_rand(&value);
+          _mm_storeu_si128(pBuffer + j, value);
+        }
 
-      pBuffer += pState->states[i].currentLength;
+        fuzz_read_rand(&value);
+        uint8_t values8[sizeof(value)];
+        _mm_storeu_si128(values8, value);
+        size_t index = 0;
+
+        for (; j < pState->states[i].currentLength; j++)
+          pBuffer[j] = values8[index++];
+
+        pBuffer += pState->states[i].currentLength;
+      }
 
       break;
     }
@@ -280,10 +397,10 @@ size_t fuzz_fill_buffer(fuzz_state_t *pState, uint8_t *pBuffer)
       int64_t j = 0;
 
       for (; j <= lengthInSymbol; j += pState->symbolLength)
-        memcpy(pBuffer + j, pState->symbol, pState->symbolLength);
+        memcpy(pBuffer + j, pState->symbol[pState->states[i].symbolIndex], pState->symbolLength);
 
       if (j < length)
-        memcpy(pBuffer + j, pState->symbol, length - j);
+        memcpy(pBuffer + j, pState->symbol[pState->states[i].symbolIndex], length - j);
 
       pBuffer += length;
 
@@ -295,14 +412,15 @@ size_t fuzz_fill_buffer(fuzz_state_t *pState, uint8_t *pBuffer)
   return pBuffer - pBufferStart;
 }
 
-uint64_t GetCurrentTimeTicks();
-uint64_t TicksToNs(const uint64_t ticks);
-
 #ifdef _MSC_VER
-inline 
+inline
+#else
+__attribute__((target("avx2")))
 #endif
 bool MemoryEquals(const uint8_t *pBufferA, const uint8_t *pBufferB, const size_t length)
 {
+  // This function assumes that AVX2 is supported.
+
   size_t offset = 0;
   const size_t endInSimd = (size_t)max(0LL, (int64_t)length - (int64_t)sizeof(__m256));
 
@@ -386,7 +504,7 @@ static FILE *_pFuzzInputBufferFile = NULL;
 static size_t _inputBufferSize = 0;
 static uint8_t *_pInputBuffer = NULL;
 
-bool fuzz(const size_t sectionCount)
+bool fuzz(const size_t sectionCount, const bool iterative)
 {
   bool result = false;
   fuzz_state_t *pState = NULL;
@@ -395,7 +513,7 @@ bool fuzz(const size_t sectionCount)
   uint8_t *pCompressed = NULL;
   uint8_t *pDecompressed = NULL;
   
-  if (!fuzz_create(&pState, sectionCount))
+  if (!fuzz_create(&pState, sectionCount, iterative))
     goto epilogue;
 
   const size_t inputBufferCapacity = fuzz_sub_state_get_required_buffer_capacity(pState);
@@ -441,9 +559,9 @@ bool fuzz(const size_t sectionCount)
     if ((iteration & 255) == 0 && iteration > 0)
     {
       const uint64_t elapsedNs = TicksToNs(GetCurrentTimeTicks() - startTicks);
-      printf("\rInput %" PRIu64 ": ~%3.0fk codecs fuzzed/s, (%" PRIu64 " byte symbols (%saligned))", iteration, (iteration * MemCopy * 1e-3) / (elapsedNs * 1e-9), pState->symbolLength, pState->symbolBound ? "" : "un");
+      printf("\33[2K\rInput %" PRIu64 ": ~%3.0fk codecs fuzzed/s, (%" PRIu64 " byte symbols (%saligned))", iteration, (iteration * MemCopy * 1e-3) / (elapsedNs * 1e-9), pState->symbolLength, pState->symbolBound ? "" : "un");
 
-      for (size_t i = 0; i < pState->stateCount; i++)
+      for (size_t i = 0; i < pState->relevantStateCount; i++)
         printf(" [%c: T%" PRIu64 "/%" PRIu64 "]", pState->states[i].type == fst_random_data ? '?' : 'X', (uint64_t)pState->states[i].lengthType, pState->states[i].currentLength);
     }
 
@@ -474,7 +592,7 @@ bool fuzz(const size_t sectionCount)
       }
 #endif
 
-      // Scramble End to ensure we actually _fit_.
+      // Scramble End to ensure we actually _fit_ into the size we claimed to inhabit.
       {
         const size_t end = min(compressedBufferSize, inputSize + 64);
 
@@ -593,7 +711,7 @@ bool fuzz(const size_t sectionCount)
       }
     }
 
-  } while (fuzz_state_increment(pState));
+  } while (fuzz_state_advance(pState));
 
   result = true;
 
