@@ -551,8 +551,10 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, ENCODE_FUNC_NAME))(IN const u
       *((uint32_t *)&pOut[index]) = 0;
       index += sizeof(uint32_t);
 #else
-      pOut[index] = 1;
+      pOut[index] = 0b10000000;
       index++;
+      *((uint32_t *)&pOut[index]) = 0;
+      index += sizeof(uint32_t);
 #endif
 
 #ifdef PREFER_7_BIT_OR_4_BYTE_COPY

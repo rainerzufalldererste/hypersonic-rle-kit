@@ -22,13 +22,13 @@ typedef enum
 enum
 {
   flt_small_min_value = 1,
-  flt_small_max_value = 256 + 64,
+  flt_small_max_value = 256 + 24,
 
   flt_medium_min_value = 768,
   flt_medium_max_value = 8192,
 
-  flt_16_bit_limit_min_value = (1 << 16) - 64,
-  flt_16_bit_limit_max_value = (1 << 16) + 64,
+  flt_16_bit_limit_min_value = (1 << 16) - 8,
+  flt_16_bit_limit_max_value = (1 << 16) + 24,
 
   fuzz_max_symbol_length = 16, // must be divisible by 4.
 };
@@ -97,7 +97,7 @@ bool fuzz_sub_state_try_increment(fuzz_sub_state_t *pSubState)
 
   case flt_medium:
   {
-    pSubState->currentLength = pSubState->currentLength * 33 / 32;
+    pSubState->currentLength = pSubState->currentLength * 17 / 16;
 
     if (pSubState->currentLength > flt_medium_max_value)
     {
@@ -381,6 +381,11 @@ bool MemoryEquals(const uint8_t *pBufferA, const uint8_t *pBufferB, const size_t
   return true;
 }
 
+// To be more accessible in a debugger.
+static FILE *_pFuzzInputBufferFile = NULL;
+static size_t _inputBufferSize = 0;
+static uint8_t *_pInputBuffer = NULL;
+
 bool fuzz(const size_t sectionCount)
 {
   bool result = false;
@@ -393,30 +398,31 @@ bool fuzz(const size_t sectionCount)
   if (!fuzz_create(&pState, sectionCount))
     goto epilogue;
 
-  const size_t inputSize = fuzz_sub_state_get_required_buffer_capacity(pState);
+  const size_t inputBufferCapacity = fuzz_sub_state_get_required_buffer_capacity(pState);
 
-  pInputBuffer = malloc(inputSize);
+  pInputBuffer = malloc(inputBufferCapacity);
+  _pInputBuffer = pInputBuffer;
   
   if (pInputBuffer == NULL)
     goto epilogue;
   
-  pInputBufferCopy = malloc(inputSize);
+  pInputBufferCopy = malloc(inputBufferCapacity);
   
   if (pInputBufferCopy == NULL)
     goto epilogue;
 
-  pDecompressed = (uint8_t *)malloc(inputSize + rle_decompress_additional_size());
+  pDecompressed = (uint8_t *)malloc(inputBufferCapacity + rle_decompress_additional_size());
 
   if (pDecompressed == NULL)
     goto epilogue;
 
-  size_t compressedBufferSize = rle_compress_bounds((uint32_t)inputSize);
-  compressedBufferSize = max(compressedBufferSize, mmtf_bounds((uint32_t)inputSize));
-  compressedBufferSize = max(compressedBufferSize, rle8_sh_bounds((uint32_t)inputSize));
-  compressedBufferSize = max(compressedBufferSize, rle8_mmtf128_compress_bounds((uint32_t)inputSize));
-  compressedBufferSize = max(compressedBufferSize, rle8_mmtf256_compress_bounds((uint32_t)inputSize));
-  compressedBufferSize = max(compressedBufferSize, rle8_low_entropy_compress_bounds((uint32_t)inputSize));
-  compressedBufferSize = max(compressedBufferSize, rle8_low_entropy_short_compress_bounds((uint32_t)inputSize));
+  size_t compressedBufferSize = rle_compress_bounds((uint32_t)inputBufferCapacity);
+  compressedBufferSize = max(compressedBufferSize, mmtf_bounds((uint32_t)inputBufferCapacity));
+  compressedBufferSize = max(compressedBufferSize, rle8_sh_bounds((uint32_t)inputBufferCapacity));
+  compressedBufferSize = max(compressedBufferSize, rle8_mmtf128_compress_bounds((uint32_t)inputBufferCapacity));
+  compressedBufferSize = max(compressedBufferSize, rle8_mmtf256_compress_bounds((uint32_t)inputBufferCapacity));
+  compressedBufferSize = max(compressedBufferSize, rle8_low_entropy_compress_bounds((uint32_t)inputBufferCapacity));
+  compressedBufferSize = max(compressedBufferSize, rle8_low_entropy_short_compress_bounds((uint32_t)inputBufferCapacity));
 
   pCompressed = (uint8_t *)malloc(compressedBufferSize);
 
@@ -425,20 +431,30 @@ bool fuzz(const size_t sectionCount)
 
   const uint64_t startTicks = GetCurrentTimeTicks();
   size_t iteration = 0;
+
+  // Let's have the file already open, in case we crash and may be able to use it in the debugger.
+  FILE *pFile = fopen("fuzz-failure.bin", "wb");
+  _pFuzzInputBufferFile = pFile;
   
   do
   {
-    if (iteration % 100 == 0 && iteration > 0)
+    if ((iteration & 255) == 0 && iteration > 0)
     {
       const uint64_t elapsedNs = TicksToNs(GetCurrentTimeTicks() - startTicks);
-      printf("\rInput %" PRIu64 ": ~%3.0fk codecs fuzzed/s, (%" PRIu64 " byte symbols (%saligned), %" PRIu64 " sections starting with %scompressible (%" PRIu64 " units))", iteration, (iteration * MemCopy * 1e-3) / (elapsedNs * 1e-9), pState->symbolLength, pState->symbolBound ? "" : "un", pState->stateCount, pState->startSectionType == fst_random_data ? "un" : "", pState->states[0].currentLength);
+      printf("\rInput %" PRIu64 ": ~%3.0fk codecs fuzzed/s, (%" PRIu64 " byte symbols (%saligned))", iteration, (iteration * MemCopy * 1e-3) / (elapsedNs * 1e-9), pState->symbolLength, pState->symbolBound ? "" : "un");
+
+      for (size_t i = 0; i < pState->stateCount; i++)
+        printf(" [%c: T%" PRIu64 "/%" PRIu64 "]", pState->states[i].type == fst_random_data ? '?' : 'X', (uint64_t)pState->states[i].lengthType, pState->states[i].currentLength);
     }
 
     iteration++;
 
     const size_t inputSize = fuzz_fill_buffer(pState, pInputBuffer);
+    _inputBufferSize = inputSize;
 
+#ifdef INPUT_BUFFER_VALIDATE
     memcpy(pInputBufferCopy, pInputBuffer, inputSize);
+#endif
 
     for (codec_t codec = 0; codec < MemCopy; codec++)
     {
@@ -450,11 +466,13 @@ bool fuzz(const size_t sectionCount)
         __debugbreak();
       }
 
+#ifdef INPUT_BUFFER_VALIDATE
       if (!MemoryEquals(pInputBuffer, pInputBufferCopy, inputSize))
       {
         puts("Input Buffer Corrupted!");
         __debugbreak();
       }
+#endif
 
       // Scramble End to ensure we actually _fit_.
       {
@@ -486,8 +504,6 @@ bool fuzz(const size_t sectionCount)
         // Try to write input buffer to file.
         {
           puts("\nAttempting to write input buffer to `fuzz-failure.bin`...\n");
-
-          FILE *pFile = fopen("fuzz-failure.bin", "wb");
 
           if (pFile != NULL)
           {
