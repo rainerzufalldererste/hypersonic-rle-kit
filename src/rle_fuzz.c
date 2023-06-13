@@ -549,6 +549,8 @@ bool fuzz(const size_t sectionCount, const bool iterative)
 
   const uint64_t startTicks = GetCurrentTimeTicks();
   size_t iteration = 0;
+  double fuzzedGB = 0;
+  size_t fuzzedBytesSinceLastStep = 0;
 
   // Let's have the file already open, in case we crash and may be able to use it in the debugger.
   FILE *pFile = fopen("fuzz-failure.bin", "wb");
@@ -558,8 +560,11 @@ bool fuzz(const size_t sectionCount, const bool iterative)
   {
     if ((iteration & 255) == 0 && iteration > 0)
     {
+      fuzzedGB += (fuzzedBytesSinceLastStep * MemCopy) / (double)(1024 * 1024 * 1024);
+      fuzzedBytesSinceLastStep = 0;
+
       const uint64_t elapsedNs = TicksToNs(GetCurrentTimeTicks() - startTicks);
-      printf("\33[2K\rInput %" PRIu64 ": ~%3.0fk codecs fuzzed/s, (%" PRIu64 " byte symbols (%saligned))", iteration, (iteration * MemCopy * 1e-3) / (elapsedNs * 1e-9), pState->symbolLength, pState->symbolBound ? "" : "un");
+      printf("\33[2K\rInput %" PRIu64 ": ~%1.0fk codecs fuzzed/s, %4.2f GiB/s (%4.2f TiB total), (%" PRIu64 " byte symbols (%saligned))", iteration, (iteration * MemCopy * 1e-3) / (elapsedNs * 1e-9), fuzzedGB / (elapsedNs * 1e-9), fuzzedGB / 1024.0, pState->symbolLength, pState->symbolBound ? "" : "un");
 
       for (size_t i = 0; i < pState->relevantStateCount; i++)
         printf(" [%c: T%" PRIu64 "/%" PRIu64 "]", pState->states[i].type == fst_random_data ? '?' : 'X', (uint64_t)pState->states[i].lengthType, pState->states[i].currentLength);
@@ -568,6 +573,7 @@ bool fuzz(const size_t sectionCount, const bool iterative)
     iteration++;
 
     const size_t inputSize = fuzz_fill_buffer(pState, pInputBuffer);
+    fuzzedBytesSinceLastStep += inputSize;
     _inputBufferSize = inputSize;
 
 #ifdef INPUT_BUFFER_VALIDATE
