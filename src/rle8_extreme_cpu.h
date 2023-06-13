@@ -320,17 +320,17 @@ uint32_t CONCAT3(rle8, CODEC, multi_compress)(IN const uint8_t *pIn, const uint3
       index += sizeof(uint32_t);
 #endif
 
+      const size_t copySize = i - lastRLE;
+
 #ifndef PREFER_7_BIT_OR_4_BYTE_COPY
       pOut[index] = 0;
       index++;
-      *((uint32_t *)&pOut[index]) = (uint32_t)range + 1;
+      *((uint32_t *)&pOut[index]) = (uint32_t)copySize + 1;
       index += sizeof(uint32_t);
 #else
-      *((uint32_t *)&pOut[index]) = (uint32_t)((range + 1) << 1) | (uint32_t)1;
+      *((uint32_t *)&pOut[index]) = (uint32_t)((copySize + 1) << 1) | (uint32_t)1;
       index += sizeof(uint32_t);
 #endif
-
-      const size_t copySize = i - lastRLE;
 
       memcpy(pOut + index, pIn + lastRLE, copySize);
       index += copySize;

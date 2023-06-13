@@ -1,5 +1,6 @@
 #include "rle.h"
 #include "codec_funcs.h"
+#include "simd_platform.h"
 
 typedef enum
 {
@@ -21,7 +22,7 @@ typedef enum
 enum
 {
   flt_small_min_value = 1,
-  flt_small_max_value = 512,
+  flt_small_max_value = 256 + 64,
 
   flt_medium_min_value = 768,
   flt_medium_max_value = 8192,
@@ -152,7 +153,7 @@ bool fuzz_state_increment_sub_state_order(fuzz_state_t *pState)
 
 bool fuzz_state_increment_symbol_alignment(fuzz_state_t *pState)
 {
-  if (pState->symbolBound)
+  if (pState->symbolBound || pState->symbolLength == 1)
     return false;
 
   pState->symbolBound = true;
@@ -251,16 +252,16 @@ size_t fuzz_fill_buffer(fuzz_state_t *pState, uint8_t *pBuffer)
     case fst_random_data:
     {
       const int64_t length32 = pState->states[i].currentLength - sizeof(uint32_t);
-      int64_t i = 0;
+      int64_t j = 0;
 
-      for (; i <= length32; i += sizeof(uint32_t))
+      for (; j <= length32; j += sizeof(uint32_t))
       {
         const uint32_t value = fuzz_read_rand_predictable();
-        memcpy(pBuffer + i, &value, sizeof(value));
+        memcpy(pBuffer + j, &value, sizeof(value));
       }
 
-      for (; i < pState->states[i].currentLength; i++)
-        pBuffer[i] = (uint8_t)fuzz_read_rand_predictable();
+      for (; j < pState->states[i].currentLength; j++)
+        pBuffer[j] = (uint8_t)fuzz_read_rand_predictable();
 
       pBuffer += pState->states[i].currentLength;
 
@@ -276,13 +277,13 @@ size_t fuzz_fill_buffer(fuzz_state_t *pState, uint8_t *pBuffer)
 
       const int64_t lengthInSymbol = length - pState->symbolLength;
 
-      int64_t i = 0;
+      int64_t j = 0;
 
-      for (; i <= lengthInSymbol; i += pState->symbolLength)
-        memcpy(pBuffer + i, pState->symbol, pState->symbolLength);
+      for (; j <= lengthInSymbol; j += pState->symbolLength)
+        memcpy(pBuffer + j, pState->symbol, pState->symbolLength);
 
-      if (i < length)
-        memcpy(pBuffer + i, pState->symbol, length - i);
+      if (j < length)
+        memcpy(pBuffer + j, pState->symbol, length - j);
 
       pBuffer += length;
 
@@ -296,6 +297,89 @@ size_t fuzz_fill_buffer(fuzz_state_t *pState, uint8_t *pBuffer)
 
 uint64_t GetCurrentTimeTicks();
 uint64_t TicksToNs(const uint64_t ticks);
+
+#ifdef _MSC_VER
+inline 
+#endif
+bool MemoryEquals(const uint8_t *pBufferA, const uint8_t *pBufferB, const size_t length)
+{
+  size_t offset = 0;
+  const size_t endInSimd = (size_t)max(0LL, (int64_t)length - (int64_t)sizeof(__m256));
+
+  if (endInSimd)
+  {
+    const size_t endInSimd4 = (size_t)max(0LL, (int64_t)length - (int64_t)sizeof(__m256) * 4);
+
+    __m256i cmp[4];
+
+    cmp[0] = _mm256_setzero_si256();
+
+    if (((size_t)pBufferA & (sizeof(__m256) - 1)) == 0 && ((size_t)pBufferB & (sizeof(__m256) - 1)) == 0) // if aligned.
+    {
+      if (endInSimd4)
+      {
+        for (size_t i = 1; i < 4; i++)
+          cmp[i] = _mm256_setzero_si256();
+
+        for (; offset < endInSimd4; offset += sizeof(__m256i) * 4)
+        {
+          cmp[0] = _mm256_or_si256(cmp[0], _mm256_xor_si256(_mm256_stream_load_si256(pBufferA + offset), _mm256_stream_load_si256(pBufferB + offset)));
+          cmp[1] = _mm256_or_si256(cmp[1], _mm256_xor_si256(_mm256_stream_load_si256(pBufferA + offset + sizeof(__m256i) * 1), _mm256_stream_load_si256(pBufferB + offset + sizeof(__m256i) * 1)));
+          cmp[2] = _mm256_or_si256(cmp[2], _mm256_xor_si256(_mm256_stream_load_si256(pBufferA + offset + sizeof(__m256i) * 2), _mm256_stream_load_si256(pBufferB + offset + sizeof(__m256i) * 2)));
+          cmp[3] = _mm256_or_si256(cmp[3], _mm256_xor_si256(_mm256_stream_load_si256(pBufferA + offset + sizeof(__m256i) * 3), _mm256_stream_load_si256(pBufferB + offset + sizeof(__m256i) * 3)));
+        }
+
+        cmp[0] = _mm256_or_si256(cmp[0], cmp[1]);
+        cmp[2] = _mm256_or_si256(cmp[2], cmp[3]);
+        cmp[0] = _mm256_or_si256(cmp[0], cmp[2]);
+      }
+
+      for (; offset < endInSimd; offset += sizeof(__m256i))
+        cmp[0] = _mm256_or_si256(cmp[0], _mm256_xor_si256(_mm256_load_si256(pBufferA + offset), _mm256_load_si256(pBufferB + offset)));
+
+      if (_mm256_movemask_epi8(cmp[0]) != 0)
+        return false;
+    }
+    else
+    {
+      if (endInSimd4)
+      {
+        for (size_t i = 1; i < 4; i++)
+          cmp[i] = _mm256_setzero_si256();
+
+        for (; offset < endInSimd4; offset += sizeof(__m256i) * 4)
+        {
+          cmp[0] = _mm256_or_si256(cmp[0], _mm256_xor_si256(_mm256_loadu_si256(pBufferA + offset), _mm256_loadu_si256(pBufferB + offset)));
+          cmp[1] = _mm256_or_si256(cmp[1], _mm256_xor_si256(_mm256_loadu_si256(pBufferA + offset + sizeof(__m256i) * 1), _mm256_loadu_si256(pBufferB + offset + sizeof(__m256i) * 1)));
+          cmp[2] = _mm256_or_si256(cmp[2], _mm256_xor_si256(_mm256_loadu_si256(pBufferA + offset + sizeof(__m256i) * 2), _mm256_loadu_si256(pBufferB + offset + sizeof(__m256i) * 2)));
+          cmp[3] = _mm256_or_si256(cmp[3], _mm256_xor_si256(_mm256_loadu_si256(pBufferA + offset + sizeof(__m256i) * 3), _mm256_loadu_si256(pBufferB + offset + sizeof(__m256i) * 3)));
+        }
+
+        cmp[0] = _mm256_or_si256(cmp[0], cmp[1]);
+        cmp[2] = _mm256_or_si256(cmp[2], cmp[3]);
+        cmp[0] = _mm256_or_si256(cmp[0], cmp[2]);
+      }
+
+      for (; offset < endInSimd; offset += sizeof(__m256i))
+        cmp[0] = _mm256_or_si256(cmp[0], _mm256_xor_si256(_mm256_loadu_si256(pBufferA + offset), _mm256_loadu_si256(pBufferB + offset)));
+
+      if (_mm256_movemask_epi8(cmp[0]) != 0)
+        return false;
+    }
+  }
+
+  const size_t endIn64 = (size_t)max(0LL, (int64_t)length - (int64_t)sizeof(uint64_t));
+
+  for (; offset < endIn64; offset += sizeof(uint64_t))
+    if (*(uint64_t *)(pBufferA + offset) != *(uint64_t *)(pBufferB + offset))
+      return false;
+
+  for (; offset < length; offset++)
+    if (pBufferA[offset] != pBufferB[offset])
+      return false;
+
+  return true;
+}
 
 bool fuzz(const size_t sectionCount)
 {
@@ -361,9 +445,12 @@ bool fuzz(const size_t sectionCount)
       const size_t compressedSize = codecCallbacks[codec].compress_func(pInputBuffer, inputSize, pCompressed, compressedBufferSize);
 
       if (compressedSize == 0)
+      {
+        puts("Failed to compress!");
         __debugbreak();
+      }
 
-      if (memcmp(pInputBuffer, pInputBufferCopy, inputSize) != 0)
+      if (!MemoryEquals(pInputBuffer, pInputBufferCopy, inputSize))
       {
         puts("Input Buffer Corrupted!");
         __debugbreak();
@@ -382,11 +469,32 @@ bool fuzz(const size_t sectionCount)
       const size_t decompressedSize = codecCallbacks[codec].decompress_func(pCompressed, compressedSize, pDecompressed, inputSize);
 
       if (decompressedSize != inputSize)
+      {
+        puts("Decompressed to incorrect size!");
         __debugbreak();
+      }
 
-      if (memcmp(pInputBuffer, pDecompressed, (size_t)inputSize) != 0)
+      if (!MemoryEquals(pInputBuffer, pDecompressed, (size_t)inputSize))
       {
         printf("Validation Failed for codec '%s':\n", codecNames[codec]);
+
+        printf("Fuzzer State:\nsymbol length %" PRIu64 " bytes (%saliugned), %" PRIu64 " sub states starting with %scompressible\n", pState->symbolLength, pState->symbolBound ? "" : "un", pState->stateCount, pState->startSectionType == fst_random_data ? "un" : "");
+
+        for (size_t i = 0; i < pState->stateCount; i++)
+          printf("  %" PRIu64 ": %scompressible, length mode: %" PRIu64 ", length: %" PRIu64 " unites\n", i + 1, pState->states[i].type == fst_random_data ? "un" : "", (uint64_t)pState->states[i].lengthType, pState->states[i].currentLength);
+
+        // Try to write input buffer to file.
+        {
+          puts("\nAttempting to write input buffer to `fuzz-failure.bin`...\n");
+
+          FILE *pFile = fopen("fuzz-failure.bin", "wb");
+
+          if (pFile != NULL)
+          {
+            fwrite(pInputBuffer, 1, inputSize, pFile);
+            fclose(pFile);
+          }
+        }
 
         for (size_t i = 0; i < inputSize; i++)
         {
