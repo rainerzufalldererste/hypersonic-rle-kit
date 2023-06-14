@@ -374,6 +374,10 @@ bool CONCAT3(_rle, TYPE_SIZE, CONCAT3(_, CODEC, process_symbol))(IN const uint8_
 //////////////////////////////////////////////////////////////////////////
 
 #if TYPE_SIZE == 8
+// from `rle8_extreme`:
+uint8_t rle8_single_compress_get_approx_optimal_symbol_sse2(IN const uint8_t *pIn, const size_t inSize);
+uint8_t rle8_single_compress_get_approx_optimal_symbol_avx2(IN const uint8_t *pIn, const size_t inSize);
+
 uint32_t CONCAT3(rle8_, CODEC, compress)(IN const uint8_t *pIn, const uint32_t inSize, OUT uint8_t *pOut, const uint32_t outSize)
 {
   if (pIn == NULL || inSize == 0 || pOut == NULL || outSize < rle_compress_bounds(inSize))
@@ -406,8 +410,6 @@ uint32_t CONCAT3(rle8_, CODEC, compress)(IN const uint8_t *pIn, const uint32_t i
 #ifndef SINGLE
   state.symbol = ~(*pIn);
 #else
-  uint8_t rle8_single_compress_get_approx_optimal_symbol_sse2(IN const uint8_t * pIn, const size_t inSize);
-  uint8_t rle8_single_compress_get_approx_optimal_symbol_avx2(IN const uint8_t * pIn, const size_t inSize);
 
   // The AVX2 variant appears to be slower, so we're just always calling the SSE2 version.
   //if (avx2Supported)
@@ -455,8 +457,6 @@ uint32_t CONCAT3(rle8_, CODEC, compress)(IN const uint8_t *pIn, const uint32_t i
 
   // Copy / Encode remaining bytes.
   {
-    const int64_t range = i - state.lastRLE - state.count + 2;
-
     if (CONCAT3(_rle, TYPE_SIZE, CONCAT3(_, CODEC, process_symbol))(pIn, pOut, i, &state))
     {
       pOut[state.index] = (RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID << RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED);
@@ -850,7 +850,9 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress_greedy))(IN const ui
       }
     }
 
-  not_a_full_match_but_a_match:
+#if TYPE_SIZE != 16
+    not_a_full_match_but_a_match:
+#endif
     {
       CONCAT3(_rle, TYPE_SIZE, CONCAT3(_, CODEC, process_symbol))(pIn, pOut, i, &state);
 
@@ -986,8 +988,6 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, compress_greedy))(IN const ui
 
   // Copy / Encode remaining bytes.
   {
-    const int64_t range = i - state.lastRLE - state.count + 2;
-
     if (CONCAT3(_rle, TYPE_SIZE, CONCAT3(_, CODEC, process_symbol))(pIn, pOut, i, &state))
     {
       pOut[state.index] = (RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID << RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED);

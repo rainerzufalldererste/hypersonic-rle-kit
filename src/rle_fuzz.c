@@ -2,6 +2,10 @@
 #include "codec_funcs.h"
 #include "simd_platform.h"
 
+#ifndef _MSC_VER
+#define __debugbreak() __builtin_trap()
+#endif
+
 // From other files:
 uint64_t GetCurrentTimeTicks();
 uint64_t TicksToNs(const uint64_t ticks);
@@ -57,7 +61,16 @@ typedef struct
   size_t lastIteratedStateIndex; // if `iteativeMode`.
   fuzz_section_type startSectionType;
   size_t stateCount;
-  fuzz_sub_state_t states[];
+
+#ifdef _MSC_VER
+  #pragma warning (push)
+  #pragma warning (disable: 4200)
+#endif
+  fuzz_sub_state_t states[]; // trailing array.
+#ifdef _MSC_VER
+  #pragma warning (pop)
+#endif
+
 } fuzz_state_t;
 
 uint32_t fuzz_read_rand_predictable()
@@ -289,6 +302,8 @@ bool fuzz_state_advance(fuzz_state_t *pState)
     fuzz_sub_state_init(&pState->states[i], (i + pState->startSectionType) % _fst_count);
     fuzz_sub_state_set_random_with_same_type(&pState->states[i]);
   }
+
+  return true;
 }
 
 size_t fuzz_sub_state_get_required_buffer_capacity(fuzz_state_t *pState)
@@ -361,7 +376,7 @@ size_t fuzz_fill_buffer(fuzz_state_t *pState, uint8_t *pBuffer)
           memcpy(pBuffer + j, &value, sizeof(value));
         }
 
-        for (; j < pState->states[i].currentLength; j++)
+        for (; j < (int64_t)pState->states[i].currentLength; j++)
           pBuffer[j] = (uint8_t)fuzz_read_rand_predictable();
 
         pBuffer += pState->states[i].currentLength;
@@ -375,15 +390,15 @@ size_t fuzz_fill_buffer(fuzz_state_t *pState, uint8_t *pBuffer)
         for (; j <= length128; j += sizeof(uint32_t))
         {
           fuzz_read_rand(&value);
-          _mm_storeu_si128(pBuffer + j, value);
+          _mm_storeu_si128((__m128i *)(pBuffer + j), value);
         }
 
         fuzz_read_rand(&value);
         uint8_t values8[sizeof(value)];
-        _mm_storeu_si128(values8, value);
+        _mm_storeu_si128((__m128i *)values8, value);
         size_t index = 0;
 
-        for (; j < pState->states[i].currentLength; j++)
+        for (; j < (int64_t)pState->states[i].currentLength; j++)
           pBuffer[j] = values8[index++];
 
         pBuffer += pState->states[i].currentLength;
@@ -427,6 +442,7 @@ __attribute__((target("avx2")))
 bool MemoryEquals(const uint8_t *pBufferA, const uint8_t *pBufferB, const size_t length)
 {
   // This function assumes that AVX2 is supported.
+  // Yes, we're _intentionally_ not early-exiting, because that's only beneficial in error cases which can be as slow as they want.
 
   size_t offset = 0;
   const size_t endInSimd = (size_t)max(0LL, (int64_t)length - (int64_t)sizeof(__m256));
@@ -448,10 +464,10 @@ bool MemoryEquals(const uint8_t *pBufferA, const uint8_t *pBufferB, const size_t
 
         for (; offset < endInSimd4; offset += sizeof(__m256i) * 4)
         {
-          cmp[0] = _mm256_or_si256(cmp[0], _mm256_xor_si256(_mm256_stream_load_si256(pBufferA + offset), _mm256_stream_load_si256(pBufferB + offset)));
-          cmp[1] = _mm256_or_si256(cmp[1], _mm256_xor_si256(_mm256_stream_load_si256(pBufferA + offset + sizeof(__m256i) * 1), _mm256_stream_load_si256(pBufferB + offset + sizeof(__m256i) * 1)));
-          cmp[2] = _mm256_or_si256(cmp[2], _mm256_xor_si256(_mm256_stream_load_si256(pBufferA + offset + sizeof(__m256i) * 2), _mm256_stream_load_si256(pBufferB + offset + sizeof(__m256i) * 2)));
-          cmp[3] = _mm256_or_si256(cmp[3], _mm256_xor_si256(_mm256_stream_load_si256(pBufferA + offset + sizeof(__m256i) * 3), _mm256_stream_load_si256(pBufferB + offset + sizeof(__m256i) * 3)));
+          cmp[0] = _mm256_or_si256(cmp[0], _mm256_xor_si256(_mm256_stream_load_si256((__m256i *)(pBufferA + offset)), _mm256_stream_load_si256((__m256i *)(pBufferB + offset))));
+          cmp[1] = _mm256_or_si256(cmp[1], _mm256_xor_si256(_mm256_stream_load_si256((__m256i *)(pBufferA + offset + sizeof(__m256i) * 1)), _mm256_stream_load_si256((__m256i *)(pBufferB + offset + sizeof(__m256i) * 1))));
+          cmp[2] = _mm256_or_si256(cmp[2], _mm256_xor_si256(_mm256_stream_load_si256((__m256i *)(pBufferA + offset + sizeof(__m256i) * 2)), _mm256_stream_load_si256((__m256i *)(pBufferB + offset + sizeof(__m256i) * 2))));
+          cmp[3] = _mm256_or_si256(cmp[3], _mm256_xor_si256(_mm256_stream_load_si256((__m256i *)(pBufferA + offset + sizeof(__m256i) * 3)), _mm256_stream_load_si256((__m256i *)(pBufferB + offset + sizeof(__m256i) * 3))));
         }
 
         cmp[0] = _mm256_or_si256(cmp[0], cmp[1]);
@@ -460,7 +476,7 @@ bool MemoryEquals(const uint8_t *pBufferA, const uint8_t *pBufferB, const size_t
       }
 
       for (; offset < endInSimd; offset += sizeof(__m256i))
-        cmp[0] = _mm256_or_si256(cmp[0], _mm256_xor_si256(_mm256_load_si256(pBufferA + offset), _mm256_load_si256(pBufferB + offset)));
+        cmp[0] = _mm256_or_si256(cmp[0], _mm256_xor_si256(_mm256_load_si256((__m256i *)(pBufferA + offset)), _mm256_load_si256((__m256i *)(pBufferB + offset))));
 
       if (_mm256_movemask_epi8(cmp[0]) != 0)
         return false;
@@ -474,10 +490,10 @@ bool MemoryEquals(const uint8_t *pBufferA, const uint8_t *pBufferB, const size_t
 
         for (; offset < endInSimd4; offset += sizeof(__m256i) * 4)
         {
-          cmp[0] = _mm256_or_si256(cmp[0], _mm256_xor_si256(_mm256_loadu_si256(pBufferA + offset), _mm256_loadu_si256(pBufferB + offset)));
-          cmp[1] = _mm256_or_si256(cmp[1], _mm256_xor_si256(_mm256_loadu_si256(pBufferA + offset + sizeof(__m256i) * 1), _mm256_loadu_si256(pBufferB + offset + sizeof(__m256i) * 1)));
-          cmp[2] = _mm256_or_si256(cmp[2], _mm256_xor_si256(_mm256_loadu_si256(pBufferA + offset + sizeof(__m256i) * 2), _mm256_loadu_si256(pBufferB + offset + sizeof(__m256i) * 2)));
-          cmp[3] = _mm256_or_si256(cmp[3], _mm256_xor_si256(_mm256_loadu_si256(pBufferA + offset + sizeof(__m256i) * 3), _mm256_loadu_si256(pBufferB + offset + sizeof(__m256i) * 3)));
+          cmp[0] = _mm256_or_si256(cmp[0], _mm256_xor_si256(_mm256_loadu_si256((__m256i *)(pBufferA + offset)), _mm256_loadu_si256((__m256i *)(pBufferB + offset))));
+          cmp[1] = _mm256_or_si256(cmp[1], _mm256_xor_si256(_mm256_loadu_si256((__m256i *)(pBufferA + offset + sizeof(__m256i) * 1)), _mm256_loadu_si256((__m256i *)(pBufferB + offset + sizeof(__m256i) * 1))));
+          cmp[2] = _mm256_or_si256(cmp[2], _mm256_xor_si256(_mm256_loadu_si256((__m256i *)(pBufferA + offset + sizeof(__m256i) * 2)), _mm256_loadu_si256((__m256i *)(pBufferB + offset + sizeof(__m256i) * 2))));
+          cmp[3] = _mm256_or_si256(cmp[3], _mm256_xor_si256(_mm256_loadu_si256((__m256i *)(pBufferA + offset + sizeof(__m256i) * 3)), _mm256_loadu_si256((__m256i *)(pBufferB + offset + sizeof(__m256i) * 3))));
         }
 
         cmp[0] = _mm256_or_si256(cmp[0], cmp[1]);
@@ -486,7 +502,7 @@ bool MemoryEquals(const uint8_t *pBufferA, const uint8_t *pBufferB, const size_t
       }
 
       for (; offset < endInSimd; offset += sizeof(__m256i))
-        cmp[0] = _mm256_or_si256(cmp[0], _mm256_xor_si256(_mm256_loadu_si256(pBufferA + offset), _mm256_loadu_si256(pBufferB + offset)));
+        cmp[0] = _mm256_or_si256(cmp[0], _mm256_xor_si256(_mm256_loadu_si256((__m256i *)(pBufferA + offset)), _mm256_loadu_si256((__m256i *)(pBufferB + offset))));
 
       if (_mm256_movemask_epi8(cmp[0]) != 0)
         return false;
@@ -589,7 +605,7 @@ bool fuzz(const size_t sectionCount, const bool iterative)
 
     for (codec_t codec = 0; codec < MemCopy; codec++)
     {
-      const size_t compressedSize = codecCallbacks[codec].compress_func(pInputBuffer, inputSize, pCompressed, compressedBufferSize);
+      const size_t compressedSize = codecCallbacks[codec].compress_func(pInputBuffer, (uint32_t)inputSize, pCompressed, (uint32_t)compressedBufferSize);
 
       if (compressedSize == 0)
       {
@@ -615,7 +631,7 @@ bool fuzz(const size_t sectionCount, const bool iterative)
 
       memset(pDecompressed, 0, inputSize);
 
-      const size_t decompressedSize = codecCallbacks[codec].decompress_func(pCompressed, compressedSize, pDecompressed, inputSize);
+      const size_t decompressedSize = codecCallbacks[codec].decompress_func(pCompressed, (uint32_t)compressedSize, pDecompressed, (uint32_t)inputSize);
 
       if (decompressedSize != inputSize)
       {

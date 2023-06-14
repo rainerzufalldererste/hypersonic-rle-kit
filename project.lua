@@ -57,6 +57,7 @@ filter {}
 configuration {}
 
 warnings "Extra"
+flags { "FatalWarnings" }
 
 filter {"configurations:Release"}
   targetname "%{prj.name}"

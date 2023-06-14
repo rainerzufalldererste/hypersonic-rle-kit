@@ -346,8 +346,6 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, FUNC_NAME))(IN const uint8_t 
 
   // Copy / Encode remaining bytes.
   {
-    const int64_t range = i - state.lastRLE - state.count + 2;
-
     if (CONCAT3(_rle, TYPE_SIZE, CONCAT3(_, CODEC, process_symbol))(pIn, pOut, i, &state))
     {
       pOut[state.index] = (RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID << RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED);

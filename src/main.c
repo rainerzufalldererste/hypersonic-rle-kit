@@ -24,6 +24,9 @@
 #include "simd_platform.h"
 #include "codec_funcs.h"
 
+// From fuzzer:
+bool fuzz(const size_t sectionCount, const bool iterative);
+
 const char ArgumentTo[] = "--to";
 const char ArgumentSubSections[] = "--sub-sections";
 const char ArgumentRuns[] = "--runs";
@@ -795,8 +798,6 @@ int main(int argc, char **pArgv)
 
   if (fuzzing)
   {
-    bool fuzz(const size_t sectionCount, const bool iterative);
-
     bool success;
     
     if (fuzzingIterative)
