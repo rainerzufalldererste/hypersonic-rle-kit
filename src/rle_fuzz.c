@@ -54,6 +54,7 @@ typedef struct
   bool symbolBound;
   bool iterativeMode;
   size_t relevantStateCount; // if `!iteativeMode`.
+  size_t lastIteratedStateIndex; // if `iteativeMode`.
   fuzz_section_type startSectionType;
   size_t stateCount;
   fuzz_sub_state_t states[];
@@ -191,7 +192,9 @@ bool fuzz_sub_state_try_increment(fuzz_sub_state_t *pSubState)
 
 bool fuzz_state_increment_sub_states(fuzz_state_t *pState)
 {
-  for (int64_t i = (int64_t)pState->stateCount - 1; i >= 0; i--)
+  const int64_t lastIteratedState = (int64_t)min(pState->stateCount - 1, pState->lastIteratedStateIndex);
+
+  for (int64_t i = lastIteratedState; i >= 0; i--)
   {
     if (fuzz_sub_state_try_increment(&pState->states[i]))
       return true;
@@ -293,6 +296,9 @@ size_t fuzz_sub_state_get_required_buffer_capacity(fuzz_state_t *pState)
   return pState->stateCount * flt_16_bit_limit_max_value * fuzz_max_symbol_length;
 }
 
+#ifdef _MSC_VER
+__declspec(noinline)
+#endif
 bool fuzz_create(OUT fuzz_state_t **ppFuzzState, const size_t internalStates, const bool iterative)
 {
   if (ppFuzzState == NULL)
@@ -304,6 +310,7 @@ bool fuzz_create(OUT fuzz_state_t **ppFuzzState, const size_t internalStates, co
     return false;
 
   (*ppFuzzState)->relevantStateCount = (*ppFuzzState)->stateCount = internalStates;
+  (*ppFuzzState)->lastIteratedStateIndex = (*ppFuzzState)->relevantStateCount - 1;
   (*ppFuzzState)->symbolLength = 1;
   (*ppFuzzState)->symbolBound = false;
   (*ppFuzzState)->startSectionType = fst_random_data;

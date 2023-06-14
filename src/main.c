@@ -809,7 +809,7 @@ int main(int argc, char **pArgv)
     bool success;
     
     if (fuzzingIterative)
-      success = fuzz(4, true);
+      success = fuzz(6, true);
     else
       success = fuzz(8, false);
 
