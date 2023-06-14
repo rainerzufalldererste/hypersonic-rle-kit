@@ -405,7 +405,7 @@ uint32_t mmtf256_encode_aligned(IN const uint8_t *pIn, const uint32_t inSize, OU
     __m256i lastHist;
     __m256i *pHistory = ((__m256i *)history) + 1;
 
-    while (0xFFFFFFFF != _mm256_movemask_epi8(prevMatched)) // We're gonna find that byte eventually.
+    while (0xFFFFFFFF != (uint32_t)_mm256_movemask_epi8(prevMatched)) // We're gonna find that byte eventually.
     {
       lastHist = currentHist;
       currentHist = _mm256_load_si256(pHistory);
@@ -476,7 +476,7 @@ uint32_t mmtf256_encode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, 
     __m256i lastHist;
     __m256i *pHistory = ((__m256i *)history) + 1;
 
-    while (0xFFFFFFFF != _mm256_movemask_epi8(prevMatched)) // We're gonna find that byte eventually.
+    while (0xFFFFFFFF != (uint32_t)_mm256_movemask_epi8(prevMatched)) // We're gonna find that byte eventually.
     {
       lastHist = currentHist;
       currentHist = _mm256_load_si256(pHistory);
@@ -636,7 +636,7 @@ uint32_t mmtf256_decode_aligned(IN const uint8_t *pIn, const uint32_t inSize, OU
     __m256i lastHist;
     __m256i *pHistory = ((__m256i *)history) + 1;
 
-    while (0xFFFFFFFF != _mm256_movemask_epi8(prevMatched)) // We're gonna find that byte eventually.
+    while (0xFFFFFFFF != (uint32_t)_mm256_movemask_epi8(prevMatched)) // We're gonna find that byte eventually.
     {
       lastHist = currentHist;
       index = _mm256_add_epi8(index, one);
@@ -701,7 +701,7 @@ uint32_t mmtf256_decode_unaligned(IN const uint8_t *pIn, const uint32_t inSize, 
     __m256i lastHist;
     __m256i *pHistory = ((__m256i *)history) + 1;
 
-    while (0xFFFFFFFF != _mm256_movemask_epi8(prevMatched)) // We're gonna find that byte eventually.
+    while (0xFFFFFFFF != (uint32_t)_mm256_movemask_epi8(prevMatched)) // We're gonna find that byte eventually.
     {
       lastHist = currentHist;
       index = _mm256_add_epi8(index, one);

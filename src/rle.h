@@ -37,7 +37,7 @@
   #define ALIGN(a) __attribute__((aligned(a)))
   
   #ifndef _STATIC_ASSERT
-    #define _STATIC_ASSERT(expr) typedef char __static_assert_t[(expr) != 0]
+    #define _STATIC_ASSERT(expr) _Static_assert(expr, "Assertion failed: '" #expr "'.")
   #endif
 #endif
 

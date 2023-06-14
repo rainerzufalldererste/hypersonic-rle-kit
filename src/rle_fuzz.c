@@ -160,6 +160,7 @@ bool fuzz_sub_state_try_increment(fuzz_sub_state_t *pSubState)
 {
   switch (pSubState->lengthType)
   {
+  default:
   case flt_small:
   {
     pSubState->currentLength++;
@@ -198,6 +199,7 @@ bool fuzz_sub_state_try_increment(fuzz_sub_state_t *pSubState)
 
     break;
   }
+
   }
 
   return pSubState->lengthType < _flt_count;
@@ -363,6 +365,7 @@ size_t fuzz_fill_buffer(fuzz_state_t *pState, uint8_t *pBuffer)
   {
     switch (pState->states[i].type)
     {
+    default:
     case fst_random_data:
     {
       if (pState->iterativeMode)

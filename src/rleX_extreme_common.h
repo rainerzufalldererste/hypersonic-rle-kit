@@ -216,35 +216,35 @@ else \
 
 #define MEMSET_AVX2 MEMSET_AVX
 
-//#define MEMSET_AVX2 \
-//if (symbolCount <= sizeof(__m256i)) \
-//{ _mm256_storeu_si256((__m256i *)pOut, symbol); \
-//  pOut += symbolCount; \
-//} \
-//else \
-//{ size_t unaligned = ((size_t)pOut & (sizeof(__m256i) - 1)); \
-//  uint8_t *pCOut = pOut; \
-//\
-//  if (unaligned != 0) \
-//  { _mm256_storeu_si256((__m256i *)pCOut, symbol); \
-//    pCOut = (uint8_t *)((size_t)pCOut & ~(size_t)(sizeof(__m256i) - 1)) + sizeof(__m256i); \
-//  } \
-//\
-//  pOut += symbolCount; \
-//\
-//  if (symbolCount >= 64) \
-//  { while (pCOut < pOut) \
-//    { MULTI(_mm256_stream_si256((__m256i *)pCOut, symbol); \
-//      pCOut += sizeof(__m256i);) \
-//    } \
-//  } \
-//  else \
-//  { while (pCOut < pOut) \
-//    { MULTI(_mm256_store_si256((__m256i *)pCOut, symbol); \
-//      pCOut += sizeof(__m256i);) \
-//    } \
-//  } \
-//}
+/*#define MEMSET_AVX2 \
+if (symbolCount <= sizeof(__m256i)) \
+{ _mm256_storeu_si256((__m256i *)pOut, symbol); \
+  pOut += symbolCount; \
+} \
+else \
+{ size_t unaligned = ((size_t)pOut & (sizeof(__m256i) - 1)); \
+  uint8_t *pCOut = pOut; \
+\
+  if (unaligned != 0) \
+  { _mm256_storeu_si256((__m256i *)pCOut, symbol); \
+    pCOut = (uint8_t *)((size_t)pCOut & ~(size_t)(sizeof(__m256i) - 1)) + sizeof(__m256i); \
+  } \
+\
+  pOut += symbolCount; \
+\
+  if (symbolCount >= 64) \
+  { while (pCOut < pOut) \
+    { MULTI(_mm256_stream_si256((__m256i *)pCOut, symbol); \
+      pCOut += sizeof(__m256i);) \
+    } \
+  } \
+  else \
+  { while (pCOut < pOut) \
+    { MULTI(_mm256_store_si256((__m256i *)pCOut, symbol); \
+      pCOut += sizeof(__m256i);) \
+    } \
+  } \
+}*/
 
 #define MEMSET_AVX512 \
 if (symbolCount <= sizeof(__m512i)) \

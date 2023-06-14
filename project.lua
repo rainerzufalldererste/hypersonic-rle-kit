@@ -54,7 +54,6 @@ project(ProjectName)
   debugdir "builds/bin"
   
 filter {}
-configuration {}
 
 warnings "Extra"
 flags { "FatalWarnings" }
@@ -65,7 +64,6 @@ filter {"configurations:Debug"}
   targetname "%{prj.name}D"
 
 filter {}
-configuration {}
 flags { "NoMinimalRebuild", "NoPCH" }
 exceptionhandling "Off"
 rtti "Off"
@@ -82,6 +80,9 @@ filter { "configurations:Release" }
 	flags { "NoBufferSecurityCheck", "NoIncrementalLink" }
 	omitframepointer "On"
   symbols "On"
+
+filter { "system:linux", "configurations:ReleaseClang" }
+  buildoptions { "-O3" }
 
 filter { "system:windows", "configurations:Release", "action:vs2012" }
 	buildoptions { "/d2Zi+" }

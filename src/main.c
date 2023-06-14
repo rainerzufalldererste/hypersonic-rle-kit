@@ -27,8 +27,6 @@
 // From fuzzer:
 bool fuzz(const size_t sectionCount, const bool iterative);
 
-const char ArgumentTo[] = "--to";
-const char ArgumentSubSections[] = "--sub-sections";
 const char ArgumentRuns[] = "--runs";
 const char ArgumentNormal[] = "--low-entropy";
 const char ArgumentSingle[] = "--single";
@@ -123,8 +121,6 @@ int main(int argc, char **pArgv)
 
   memset(&_Args, 0, sizeof(_Args));
 
-  const char *outputFileName = NULL;
-  int32_t subSections = 0;
   int32_t runs = 8;
   int32_t minSeconds = 2;
   bool analyzeFileContents = false;
@@ -146,13 +142,7 @@ int main(int argc, char **pArgv)
 
     while (argsRemaining)
     {
-      if (argsRemaining >= 2 && strncmp(pArgv[argIndex], ArgumentTo, sizeof(ArgumentTo)) == 0)
-      {
-        outputFileName = pArgv[argIndex + 1];
-        argIndex += 2;
-        argsRemaining -= 2;
-      }
-      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentTest, sizeof(ArgumentTest)) == 0)
+      if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentTest, sizeof(ArgumentTest)) == 0)
       {
         isTestRun = true;
         noDelays = true;
@@ -317,19 +307,6 @@ int main(int argc, char **pArgv)
           return 1;
 
         } while (false);
-
-        argIndex += 2;
-        argsRemaining -= 2;
-      }
-      else if (argsRemaining >= 2 && strncmp(pArgv[argIndex], ArgumentSubSections, sizeof(ArgumentSubSections)) == 0)
-      {
-        subSections = atoi(pArgv[argIndex + 1]);
-
-        if (subSections <= 0)
-        {
-          puts("Invalid Parameter.");
-          return 1;
-        }
 
         argIndex += 2;
         argsRemaining -= 2;
@@ -694,24 +671,6 @@ int main(int argc, char **pArgv)
 
   // Validate Parameters.
   {
-    if ((_Args.hasSingleMode && _Args.isSingleMode) && subSections != 0)
-    {
-      puts("Single Symbol Encoding is only available without sub sections.");
-      return 1;
-    }
-
-    if ((_Args.hasMode && _Args.isModeLowEntropy && _Args.hasShortMode && _Args.isShortMode) && subSections != 0)
-    {
-      puts("Ultra Mode Encoding is only available without sub sections.");
-      return 1;
-    }
-
-    if ((_Args.hasMode && _Args.isModeExtreme) && subSections != 0)
-    {
-      puts("Extreme Mode Encoding is only available without sub sections.");
-      return 1;
-    }
-
     if ((_Args.hasMode && _Args.isModeExtreme) && (_Args.hasSingleMode && _Args.isSingleMode) && (_Args.hasBitCount && _Args.bitCount != 8))
     {
       puts("Single Symbol in Extreme Mode is only supported for symbol size 8.");
@@ -768,9 +727,6 @@ int main(int argc, char **pArgv)
     compressedBufferSize = max(compressedBufferSize, rle8_mmtf256_compress_bounds((uint32_t)fileSize));
     compressedBufferSize = max(compressedBufferSize, rle8_low_entropy_compress_bounds((uint32_t)fileSize));
     compressedBufferSize = max(compressedBufferSize, rle8_low_entropy_short_compress_bounds((uint32_t)fileSize));
-
-    if (subSections != 0)
-      compressedBufferSize = max(compressedBufferSize, rle8m_compress_bounds((uint32_t)subSections, (uint32_t)fileSize));
 
     pUncompressedData = (uint8_t *)ALIGNED_ALLOC(32, fileSize);
     pDecompressedData = (uint8_t *)ALIGNED_ALLOC(32, fileSize + rle_decompress_additional_size());
@@ -1418,12 +1374,12 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
           const uint32_t lastNonLengthBits = 63 - __builtin_clz(pRLE->lastNonLength);
 #endif
 
-          pRLE->copyBitsVsRleLengthBits[(max(0, min(lastNonLengthBits - 1, 15))) * 16 + (max(0, min(index - 1, 15)))]++;
+          pRLE->copyBitsVsRleLengthBits[(max((int64_t)0, min((int64_t)lastNonLengthBits - 1, (int64_t)15))) * 16 + (max((int64_t)0, min((int64_t)index - 1, (int64_t)15)))]++;
 
           const int64_t copyLengthDiff = pRLE->lastNonLengthDiff;
           const int64_t lengthDiff = pRLE->currentLength - pRLE->lastLength;
 
-          pRLE->copyDiffVsCountDiff[(max(0, min(31, copyLengthDiff + 15))) * 32 + (max(0, min(31, lengthDiff + 15)))]++;
+          pRLE->copyDiffVsCountDiff[(max((int64_t)0, min((int64_t)31, (int64_t)copyLengthDiff + 15))) * 32 + (max((int64_t)0, min((int64_t)31, (int64_t)lengthDiff + 15)))]++;
 
           pRLE->lastLength = pRLE->currentLength;
           pRLE->currentLength = 0;
@@ -1509,12 +1465,12 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
             const uint32_t lastNonLengthBits = 63 - __builtin_clz(pRLE->alignedLastNonLength);
 #endif
 
-            pRLE->alignedCopyBitsVsRleLengthBits[(max(0, min(lastNonLengthBits - 1, 15))) * 16 + (max(0, min(index - 1, 15)))]++;
+            pRLE->alignedCopyBitsVsRleLengthBits[(max((int64_t)0, min((int64_t)lastNonLengthBits - 1, (int64_t)15))) * 16 + (max((int64_t)0, min((int64_t)index - 1, (int64_t)15)))]++;
 
             const int64_t copyLengthDiff = pRLE->alignedLastNonLengthDiff;
             const int64_t lengthDiff = pRLE->alignedCurrentLength - pRLE->alignedLastLength;
 
-            pRLE->alignedCopyDiffVsCountDiff[(max(0, min(31, copyLengthDiff + 15))) * 32 + (max(0, min(31, lengthDiff + 15)))]++;
+            pRLE->alignedCopyDiffVsCountDiff[(max((int64_t)0, min((int64_t)31, (int64_t)copyLengthDiff + 15))) * 32 + (max((int64_t)0, min((int64_t)31, (int64_t)lengthDiff + 15)))]++;
 
             pRLE->alignedLastLength = pRLE->alignedCurrentLength;
             pRLE->alignedCurrentLength = 0;

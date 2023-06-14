@@ -67,7 +67,7 @@ static int64_t CONCAT3(rle8, CODEC, compress_multi_sse2)(IN const uint8_t *pIn, 
 static int64_t CONCAT3(rle8, CODEC, compress_multi_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, IN OUT uint8_t *pSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE);
 
 static int64_t CONCAT3(rle8, CODEC, compress_single_sse2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, const uint8_t maxFreqSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE);
-static int64_t CONCAT3(rle8, CODEC, compress_single_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, const uint8_t maxFreqSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE);
+//static int64_t CONCAT3(rle8, CODEC, compress_single_avx2)(IN const uint8_t *pIn, const size_t inSize, OUT uint8_t *pOut, IN OUT size_t *pOutIndex, const uint8_t maxFreqSymbol, OUT int64_t *pCount, OUT int64_t *pLastRLE);
 
 static void CONCAT3(rle8, CODEC, decompress_multi_sse)(IN const uint8_t *pInStart, OUT uint8_t *pOut);
 static void CONCAT3(rle8, CODEC, decompress_multi_sse41)(IN const uint8_t *pInStart, OUT uint8_t *pOut);
@@ -1320,6 +1320,8 @@ static int64_t CONCAT3(rle8, CODEC, compress_single_sse2)(IN const uint8_t *pIn,
   return i;
 }
 
+// this is sadly slower than the sse2 version, so it's unused.
+/*
 #ifndef _MSC_VER
 __attribute__((target("avx2")))
 #endif
@@ -1539,6 +1541,7 @@ static int64_t CONCAT3(rle8, CODEC, compress_single_avx2)(IN const uint8_t *pIn,
 
   return i;
 }
+*/
 
 static void CONCAT3(rle8, CODEC, decompress_multi_sse)(IN const uint8_t *pInStart, OUT uint8_t *pOut)
 {

@@ -174,9 +174,9 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, ENCODE_FUNC_NAME))(IN const u
         const int64_t range = i - lastRLE - count + 1;
 
 #ifndef PACKED
-        if (range <= RLEX_EXTREME_MAX_COPY_RANGE && count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT)
+        if (range <= RLEX_EXTREME_MAX_COPY_RANGE && count >= (int64_t)RLEX_EXTREME_MULTI_MIN_RANGE_SHORT)
 #else
-        if (range <= RLEX_EXTREME_MAX_COPY_RANGE && ((count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT && symbol == lastSymbol) || (count >= RLEX_EXTREME_MULTI_MIN_RANGE_MEDIUM)))
+        if (range <= RLEX_EXTREME_MAX_COPY_RANGE && ((count >= (int64_t)RLEX_EXTREME_MULTI_MIN_RANGE_SHORT && symbol == lastSymbol) || (count >= (int64_t)RLEX_EXTREME_MULTI_MIN_RANGE_MEDIUM)))
 #endif
         {
 #ifndef PACKED
@@ -241,7 +241,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, ENCODE_FUNC_NAME))(IN const u
 
           lastRLE = i;
         }
-        else if (count >= RLEX_EXTREME_MULTI_MIN_RANGE_LONG)
+        else if (count >= (int64_t)RLEX_EXTREME_MULTI_MIN_RANGE_LONG)
         {
 #ifndef PACKED
           *(symbol_t *)(&pOut[index]) = symbol;
@@ -385,9 +385,9 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, ENCODE_FUNC_NAME))(IN const u
     const int64_t range = i - lastRLE - count + 1;
 
 #ifndef PACKED
-    if (range <= RLEX_EXTREME_MAX_COPY_RANGE && count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT)
+    if (range <= RLEX_EXTREME_MAX_COPY_RANGE && count >= (int64_t)RLEX_EXTREME_MULTI_MIN_RANGE_SHORT)
 #else
-    if (range <= RLEX_EXTREME_MAX_COPY_RANGE && ((count >= RLEX_EXTREME_MULTI_MIN_RANGE_SHORT && symbol == lastSymbol) || (count >= RLEX_EXTREME_MULTI_MIN_RANGE_MEDIUM)))
+    if (range <= RLEX_EXTREME_MAX_COPY_RANGE && ((count >= (int64_t)RLEX_EXTREME_MULTI_MIN_RANGE_SHORT && symbol == lastSymbol) || (count >= (int64_t)RLEX_EXTREME_MULTI_MIN_RANGE_MEDIUM)))
 #endif
     {
 #ifndef PACKED
@@ -477,7 +477,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, ENCODE_FUNC_NAME))(IN const u
 
       lastRLE = i;
     }
-    else if (count >= RLEX_EXTREME_MULTI_MIN_RANGE_LONG)
+    else if (count >= (int64_t)RLEX_EXTREME_MULTI_MIN_RANGE_LONG)
     {
 #ifndef PACKED
       *(symbol_t *)(&pOut[index]) = symbol;

@@ -533,13 +533,13 @@ static void CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, decompress_sse)(IN const 
   __m128i symbol = _mm_setzero_si128();
   __m128i other[SYMBOL_COUNT - 1];
 
-  other[0] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x7F * VALUE_BROADCAST);
-  other[1] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0xFF * VALUE_BROADCAST);
+  other[0] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x7F * VALUE_BROADCAST));
+  other[1] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0xFF * VALUE_BROADCAST));
 #if SYMBOL_COUNT == 7
-  other[2] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x01 * VALUE_BROADCAST);
-  other[3] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x7E * VALUE_BROADCAST);
-  other[4] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x80 * VALUE_BROADCAST);
-  other[5] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0xFE * VALUE_BROADCAST);
+  other[2] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x01 * VALUE_BROADCAST));
+  other[3] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x7E * VALUE_BROADCAST));
+  other[4] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x80 * VALUE_BROADCAST));
+  other[5] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0xFE * VALUE_BROADCAST));
 #endif
 
 #if TYPE_SIZE == 24
@@ -794,13 +794,13 @@ static void CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, decompress_ssse3)(IN cons
   __m128i symbol = _mm_setzero_si128();
   __m128i other[SYMBOL_COUNT - 1];
 
-  other[0] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x7F * VALUE_BROADCAST);
-  other[1] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0xFF * VALUE_BROADCAST);
+  other[0] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x7F * VALUE_BROADCAST));
+  other[1] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0xFF * VALUE_BROADCAST));
 #if SYMBOL_COUNT == 7
-  other[2] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x01 * VALUE_BROADCAST);
-  other[3] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x7E * VALUE_BROADCAST);
-  other[4] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x80 * VALUE_BROADCAST);
-  other[5] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0xFE * VALUE_BROADCAST);
+  other[2] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x01 * VALUE_BROADCAST));
+  other[3] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x7E * VALUE_BROADCAST));
+  other[4] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x80 * VALUE_BROADCAST));
+  other[5] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0xFE * VALUE_BROADCAST));
 #endif
 
 #if TYPE_SIZE == 24
@@ -1009,13 +1009,13 @@ static void CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, decompress_sse41)(IN cons
   __m128i symbol = _mm_setzero_si128();
   __m128i other[SYMBOL_COUNT - 1];
 
-  other[0] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x7F * VALUE_BROADCAST);
-  other[1] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0xFF * VALUE_BROADCAST);
+  other[0] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x7F * VALUE_BROADCAST));
+  other[1] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0xFF * VALUE_BROADCAST));
 #if SYMBOL_COUNT == 7
-  other[2] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x01 * VALUE_BROADCAST);
-  other[3] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x7E * VALUE_BROADCAST);
-  other[4] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x80 * VALUE_BROADCAST);
-  other[5] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0xFE * VALUE_BROADCAST);
+  other[2] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x01 * VALUE_BROADCAST));
+  other[3] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x7E * VALUE_BROADCAST));
+  other[4] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x80 * VALUE_BROADCAST));
+  other[5] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0xFE * VALUE_BROADCAST));
 #endif
 
 #if TYPE_SIZE == 24
@@ -1227,13 +1227,13 @@ static void CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, decompress_avx)(IN const 
   __m256i symbol = _mm256_setzero_si256();
   __m256i other[SYMBOL_COUNT - 1];
 
-  other[0] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0x7F * VALUE_BROADCAST);
-  other[1] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0xFF * VALUE_BROADCAST);
+  other[0] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x7F * VALUE_BROADCAST));
+  other[1] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0xFF * VALUE_BROADCAST));
   #if SYMBOL_COUNT == 7
-  other[2] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0x01 * VALUE_BROADCAST);
-  other[3] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0x7E * VALUE_BROADCAST);
-  other[4] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0x80 * VALUE_BROADCAST);
-  other[5] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0xFE * VALUE_BROADCAST);
+  other[2] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x01 * VALUE_BROADCAST));
+  other[3] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x7E * VALUE_BROADCAST));
+  other[4] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x80 * VALUE_BROADCAST));
+  other[5] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0xFE * VALUE_BROADCAST));
   #endif
 #else
   typedef __m128i simd_t;
@@ -1241,13 +1241,13 @@ static void CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, decompress_avx)(IN const 
   __m128i symbol = _mm_setzero_si128();
   __m128i other[SYMBOL_COUNT - 1];
 
-  other[0] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x7F * VALUE_BROADCAST);
-  other[1] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0xFF * VALUE_BROADCAST);
+  other[0] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x7F * VALUE_BROADCAST));
+  other[1] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0xFF * VALUE_BROADCAST));
   #if SYMBOL_COUNT == 7
-  other[2] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x01 * VALUE_BROADCAST);
-  other[3] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x7E * VALUE_BROADCAST);
-  other[4] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0x80 * VALUE_BROADCAST);
-  other[5] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)(0xFE * VALUE_BROADCAST);
+  other[2] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x01 * VALUE_BROADCAST));
+  other[3] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x7E * VALUE_BROADCAST));
+  other[4] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x80 * VALUE_BROADCAST));
+  other[5] = CONCAT2(_mm_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0xFE * VALUE_BROADCAST));
   #endif
 #endif
 
@@ -1464,13 +1464,13 @@ static void CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, decompress_avx2)(IN const
   __m256i symbol = _mm256_setzero_si256();
   __m256i other[SYMBOL_COUNT - 1];
 
-  other[0] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0x7F * VALUE_BROADCAST);
-  other[1] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0xFF * VALUE_BROADCAST);
+  other[0] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x7F * VALUE_BROADCAST));
+  other[1] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0xFF * VALUE_BROADCAST));
 #if SYMBOL_COUNT == 7
-  other[2] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0x01 * VALUE_BROADCAST);
-  other[3] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0x7E * VALUE_BROADCAST);
-  other[4] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0x80 * VALUE_BROADCAST);
-  other[5] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)(0xFE * VALUE_BROADCAST);
+  other[2] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x01 * VALUE_BROADCAST));
+  other[3] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x7E * VALUE_BROADCAST));
+  other[4] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x80 * VALUE_BROADCAST));
+  other[5] = CONCAT2(_mm256_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0xFE * VALUE_BROADCAST));
 #endif
 
 #if TYPE_SIZE == 24
@@ -1679,13 +1679,13 @@ static void CONCAT3(CONCAT3(rle, TYPE_SIZE, _), CODEC, decompress_avx512f)(IN co
   __m512i symbol = _mm512_setzero_si512();
   __m512i other[SYMBOL_COUNT - 1];
 
-  other[0] = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)(0x7F * VALUE_BROADCAST);
-  other[1] = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)(0xFF * VALUE_BROADCAST);
+  other[0] = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x7F * VALUE_BROADCAST));
+  other[1] = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0xFF * VALUE_BROADCAST));
 #if SYMBOL_COUNT == 7
-  other[2] = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)(0x01 * VALUE_BROADCAST);
-  other[3] = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)(0x7E * VALUE_BROADCAST);
-  other[4] = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)(0x80 * VALUE_BROADCAST);
-  other[5] = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)(0xFE * VALUE_BROADCAST);
+  other[2] = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x01 * VALUE_BROADCAST));
+  other[3] = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x7E * VALUE_BROADCAST));
+  other[4] = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0x80 * VALUE_BROADCAST));
+  other[5] = CONCAT2(_mm512_set1_epi, SIMD_TYPE_SIZE)((uintXX_t)(0xFE * VALUE_BROADCAST));
 #endif
 
   while (true)
