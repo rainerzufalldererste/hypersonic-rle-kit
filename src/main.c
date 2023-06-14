@@ -58,6 +58,7 @@ const char ArgumentMaxSimdSSE3[] = "sse3";
 const char ArgumentMaxSimdSSE2[] = "sse2";
 const char ArgumentMaxSimdNone[] = "none";
 const char ArgumentTest[] = "--test";
+const char ArgumentStdDev[] = "--sd";
 const char ArgumentFuzzIterative[] = "--fuzz-iterative";
 const char ArgumentFuzzRandom[] = "--fuzz-random";
 
@@ -104,6 +105,7 @@ int main(int argc, char **pArgv)
     printf("\t  [%s / %s]\n", ArgumentShort, ArgumentNotShort);
     printf("\t[%s 0 / 1 / 3 / 7]\n", ArgumentExtremeLutSize);
     printf("\n\t[%s %s / %s / %s / %s / %s / %s / %s / %s]\n", ArgumentMaxSimd, ArgumentMaxSimdAVX512F, ArgumentMaxSimdAVX2, ArgumentMaxSimdAVX, ArgumentMaxSimdSSE42, ArgumentMaxSimdSSE41, ArgumentMaxSimdSSSE3, ArgumentMaxSimdSSE3, ArgumentMaxSimdSSE2);
+    printf("\t[%s (show std deviation)]\n", ArgumentStdDev);
     printf("\n\t[%s (fail on simgle compression/decompression/validation failure)]\n", ArgumentTest);
 
 #ifdef _WIN32
@@ -127,6 +129,7 @@ int main(int argc, char **pArgv)
   bool isTestRun = false;
   bool fuzzing = false;
   bool fuzzingIterative = false;
+  bool showStdDev = false;
 
 #ifdef _WIN32
   size_t cpuCoreIndex = 0;
@@ -150,6 +153,12 @@ int main(int argc, char **pArgv)
       {
         isTestRun = true;
         noDelays = true;
+        argIndex++;
+        argsRemaining--;
+      }
+      else if (argsRemaining >= 1 && strncmp(pArgv[argIndex], ArgumentStdDev, sizeof(ArgumentStdDev)) == 0)
+      {
+        showStdDev = true;
         argIndex++;
         argsRemaining--;
       }
@@ -808,9 +817,31 @@ int main(int argc, char **pArgv)
 
     uint32_t fileSize32 = (uint32_t)fileSize;
 
-    printf("\nBenchmarking File '%s' (%" PRIu64 " Bytes)\n\n"
-      "Codec                           Ratio      Encoder Throughput (Maximum)    Decoder Throughput (Maximum)    R*H/log2(|S|)\n"
-      "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n", pArgv[1], fileSize);
+    size_t individualRunsCount = 0;
+    size_t individualRunsCapacity = 0;
+    size_t *pIndividualRuns = NULL;
+
+    printf("\nBenchmarking File '%s' (%" PRIu64 " Bytes)\n\n", pArgv[1], fileSize);
+
+    if (!showStdDev)
+    {
+      puts("Codec                           Ratio      Encoder Throughput (Maximum)    Decoder Throughput (Maximum)    R*H/log2(|S|)\n"
+           "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+    }
+    else
+    {
+      puts("Codec                           Ratio      Encoder Throughput (Maximum)    -StdDev ~ +StdDev     Decoder Throughput (Maximum)    -StdDev ~ +StdDev     R*H/log2(|S|)\n"
+           "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+
+      individualRunsCapacity = 1024;
+      pIndividualRuns = (size_t *)malloc(sizeof(size_t) * individualRunsCapacity);
+
+      if (pIndividualRuns == NULL)
+      {
+        puts("Memory Allocation Failure");
+        return 1;
+      }
+    }
 
     for (; currentCodec < CodecCount; currentCodec++)
     {
@@ -826,6 +857,10 @@ int main(int argc, char **pArgv)
       uint64_t fastestCompresionTime = UINT64_MAX;
       int64_t compressionRuns = -1;
       uint32_t compressedSize = 0;
+      double encodeMinusStdDevMiBs = 0;
+      double encodePlusStdDevMiBs = 0;
+
+      individualRunsCount = 0;
 
       if (noDelays)
         compressionRuns = 0; // Skip dry run.
@@ -860,10 +895,27 @@ int main(int argc, char **pArgv)
         if (runTime < fastestCompresionTime)
           fastestCompresionTime = runTime;
 
+        if (showStdDev && compressionRuns > 0)
+        {
+          if (individualRunsCapacity <= individualRunsCount)
+          {
+            individualRunsCapacity *= 2;
+            pIndividualRuns = (size_t *)realloc(pIndividualRuns, sizeof(size_t) * individualRunsCapacity);
+
+            if (pIndividualRuns == NULL)
+            {
+              puts("Memory Allocation Failure");
+              return 1;
+            }
+          }
+
+          pIndividualRuns[individualRunsCount++] = runTime;
+        }
+
         compressionRuns++;
 
         if (compressionRuns > 0)
-          printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
+          printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1e9), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1e9));
 
         if (!noDelays)
         {
@@ -875,6 +927,25 @@ int main(int argc, char **pArgv)
             lastSleepTicks = GetCurrentTimeTicks();
           }
         }
+      }
+
+      if (showStdDev)
+      {
+        const double meanNs = compressionTime / (double)compressionRuns;
+        double stdDevNs = 0;
+
+        for (size_t i = 0; i < individualRunsCount; i++)
+        {
+          const double diff = pIndividualRuns[i] - meanNs;
+          stdDevNs += diff * diff;
+        }
+
+        stdDevNs = sqrt(stdDevNs / (double)(individualRunsCount - 1));
+
+        encodePlusStdDevMiBs = (fileSize / (double)(1024 * 1024)) / ((meanNs + stdDevNs) / 1e9);
+        encodeMinusStdDevMiBs = (fileSize / (double)(1024 * 1024)) / ((meanNs - stdDevNs) / 1e9);
+
+        printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | %5.0f ~ %5.0f MiB/s", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1e9), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1e9), encodePlusStdDevMiBs, encodeMinusStdDevMiBs);
       }
 
       if (compressedSize == 0)
@@ -906,6 +977,10 @@ int main(int argc, char **pArgv)
       uint64_t decompressionTime = 0;
       uint64_t fastestDecompresionTime = UINT64_MAX;
       uint32_t decompressedSize = 0;
+      double decodeMinusStdDevMiBs = 0;
+      double decodePlusStdDevMiBs = 0;
+
+      individualRunsCount = 0;
 
       if (isTestRun || (!isTestRun & !noDelays))
       {
@@ -918,7 +993,10 @@ int main(int argc, char **pArgv)
       if (noDelays)
         decompressionRuns = 0; // Skip dry run.
 
-      printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | (dry run)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
+      if (showStdDev)
+        printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | %5.0f ~ %5.0f MiB/s | (dry run)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1e9), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1e9), encodePlusStdDevMiBs, encodeMinusStdDevMiBs);
+      else
+        printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | (dry run)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1e9), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1e9));
 
       if (!noDelays)
         SleepNs(500 * 1000 * 1000);
@@ -952,10 +1030,32 @@ int main(int argc, char **pArgv)
         if (runTime < fastestDecompresionTime)
           fastestDecompresionTime = runTime;
 
+        if (showStdDev && decompressionRuns > 0)
+        {
+          if (individualRunsCapacity <= individualRunsCount)
+          {
+            individualRunsCapacity *= 2;
+            pIndividualRuns = (size_t *)realloc(pIndividualRuns, sizeof(size_t) * individualRunsCapacity);
+
+            if (pIndividualRuns == NULL)
+            {
+              puts("Memory Allocation Failure");
+              return 1;
+            }
+          }
+
+          pIndividualRuns[individualRunsCount++] = runTime;
+        }
+
         decompressionRuns++;
 
         if (decompressionRuns > 0)
-          printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | %7.1f MiB/s (%7.1f MiB/s)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0), (fileSize * (double)decompressionRuns / (double)(1024 * 1024)) / (decompressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestDecompresionTime / 1000000000.0));
+        {
+          if (showStdDev)
+            printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | %5.0f ~ %5.0f MiB/s | %7.1f MiB/s (%7.1f MiB/s)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1e9), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1e9), encodePlusStdDevMiBs, encodeMinusStdDevMiBs, (fileSize * (double)decompressionRuns / (double)(1024 * 1024)) / (decompressionTime / 1e9), (fileSize / (double)(1024 * 1024)) / (fastestDecompresionTime / 1e9));
+          else
+            printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | %7.1f MiB/s (%7.1f MiB/s)", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1e9), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1e9), (fileSize * (double)decompressionRuns / (double)(1024 * 1024)) / (decompressionTime / 1e9), (fileSize / (double)(1024 * 1024)) / (fastestDecompresionTime / 1e9));
+        }
 
         if (!noDelays)
         {
@@ -971,7 +1071,10 @@ int main(int argc, char **pArgv)
 
       if (decompressedSize == 0)
       {
-        printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | <FAILED TO DECOMRPESS>\n", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0));
+        if (showStdDev)
+          printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | %5.0f ~ %5.0f MiB/s | <FAILED TO DECOMRPESS>", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1e9), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1e9), encodePlusStdDevMiBs, encodeMinusStdDevMiBs);
+        else
+          printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | <FAILED TO DECOMRPESS>", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1e9), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1e9));
 
         if (isTestRun)
         {
@@ -984,7 +1087,27 @@ int main(int argc, char **pArgv)
         continue;
       }
 
-      printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | %7.1f MiB/s (%7.1f MiB/s) | %11.7f %%", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1000000000.0), (fileSize * (double)decompressionRuns / (double)(1024 * 1024)) / (decompressionTime / 1000000000.0), (fileSize / (double)(1024 * 1024)) / (fastestDecompresionTime / 1000000000.0), ((compressedSize / (double)fileSize) * (GetInformationRatio(pCompressedData, compressedSize))) * 100.0f);
+      if (showStdDev)
+      {
+        const double meanNs = decompressionTime / (double)decompressionRuns;
+        double stdDevNs = 0;
+
+        for (size_t i = 0; i < individualRunsCount; i++)
+        {
+          const double diff = pIndividualRuns[i] - meanNs;
+          stdDevNs += diff * diff;
+        }
+
+        stdDevNs = sqrt(stdDevNs / (double)(individualRunsCount - 1));
+
+        decodePlusStdDevMiBs = (fileSize / (double)(1024 * 1024)) / ((meanNs + stdDevNs) / 1e9);
+        decodeMinusStdDevMiBs = (fileSize / (double)(1024 * 1024)) / ((meanNs - stdDevNs) / 1e9);
+      }
+
+      if (showStdDev)
+        printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | %5.0f ~ %5.0f MiB/s | %7.1f MiB/s (%7.1f MiB/s) | %5.0f ~ %5.0f MiB/s | %11.7f %%", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1e9), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1e9), encodePlusStdDevMiBs, encodeMinusStdDevMiBs, (fileSize * (double)decompressionRuns / (double)(1024 * 1024)) / (decompressionTime / 1e9), (fileSize / (double)(1024 * 1024)) / (fastestDecompresionTime / 1e9), decodePlusStdDevMiBs, decodeMinusStdDevMiBs, ((compressedSize / (double)fileSize) * (GetInformationRatio(pCompressedData, compressedSize))) * 100.0f);
+      else
+        printf("\r%s| %6.2f %% | %7.1f MiB/s (%7.1f MiB/s) | %7.1f MiB/s (%7.1f MiB/s) | %11.7f %%", codecNames[currentCodec], compressedSize / (double)fileSize * 100.0, (fileSize * (double)compressionRuns / (double)(1024 * 1024)) / (compressionTime / 1e9), (fileSize / (double)(1024 * 1024)) / (fastestCompresionTime / 1e9), (fileSize * (double)decompressionRuns / (double)(1024 * 1024)) / (decompressionTime / 1e9), (fileSize / (double)(1024 * 1024)) / (fastestDecompresionTime / 1e9), ((compressedSize / (double)fileSize) * (GetInformationRatio(pCompressedData, compressedSize))) * 100.0f);
 
       puts("");
 
