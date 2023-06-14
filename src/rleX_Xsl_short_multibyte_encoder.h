@@ -125,7 +125,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, FUNC_NAME))(IN const uint8_t 
 #endif
 #endif
 
-    while (i < inSizeSimd)
+    while ((int64_t)i < inSizeSimd)
     {
 #if defined(IMPL_SSE2) || defined(IMPL_SSSE3)
       const __m128i current = _mm_loadu_si128((const __m128i *)(pIn + i));
@@ -257,7 +257,7 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, FUNC_NAME))(IN const uint8_t 
       CONCAT3(_rle, TYPE_SIZE, CONCAT3(_, CODEC, process_symbol))(pIn, pOut, i, &state);
 
 #if defined(IMPL_SSE2) || defined(IMPL_SSSE3) || defined(IMPL_AVX2)
-      while (i < inSizeSimd)
+      while ((int64_t)i < inSizeSimd)
       {
 #if defined(IMPL_SSE2) || defined(IMPL_SSSE3)
         const __m128i current = _mm_loadu_si128((const __m128i *)(pIn + i));
@@ -346,8 +346,6 @@ uint32_t CONCAT3(rle, TYPE_SIZE, CONCAT3(_, CODEC, FUNC_NAME))(IN const uint8_t 
 
   // Copy / Encode remaining bytes.
   {
-    const int64_t range = i - state.lastRLE - state.count + 2;
-
     if (CONCAT3(_rle, TYPE_SIZE, CONCAT3(_, CODEC, process_symbol))(pIn, pOut, i, &state))
     {
       pOut[state.index] = (RLE8_XSYMLUT_SHORT_PACKED_COUNT_INVALID << RLE8_XSYMLUT_SHORT_RANGE_BITS_PACKED);

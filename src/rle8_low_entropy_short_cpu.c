@@ -204,7 +204,7 @@ const uint8_t * rle8_low_entropy_short_decompress_single_sse(IN const uint8_t *p
 #define SIMD_SIZE 16
   _STATIC_ASSERT(SIMD_SIZE == sizeof(simd_t));
 
-  simd_t interestingSymbol;
+  simd_t interestingSymbol = _mm_setzero_si128(); // doesn't need to be initialized, but msvc seems to ignore the corresponding `#pragma warning(supress)` for some reason...
 
   for (size_t i = 0; i < 256; i++)
   {
@@ -265,7 +265,7 @@ const uint8_t * rle8_low_entropy_short_decompress_single_avx2(IN const uint8_t *
 #define SIMD_SIZE 32
   _STATIC_ASSERT(SIMD_SIZE == sizeof(simd_t));
 
-  simd_t interestingSymbol;
+  simd_t interestingSymbol = _mm256_setzero_si256(); // doesn't need to be initialized, but msvc seems to ignore the corresponding `#pragma warning(supress)` for some reason...
 
   for (size_t i = 0; i < 256; i++)
   {

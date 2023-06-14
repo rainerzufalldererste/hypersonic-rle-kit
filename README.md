@@ -2,7 +2,7 @@
   <br>
 
 ### What is it?
-- A collection of 100+ RLE and related codecs optimized for all kinds of different inputs and scenarios.
+- A collection of 120+ RLE and related codecs optimized for all kinds of different inputs and scenarios.
 - Usually the fastest run length en/decoder by far. **Single Core Decompression Speeds > 34 GB/s and Compression Speeds > 28 GB/s have been observed with large files.** (small files can exceed 120 GB/s decode, 60 GB/s encode)
 - Written in C.
 - SIMD Variants for AVX-512F, AVX2, AVX, SSE4.1, SSSE3 and SSE2 variants are available for various decoders and encoders. Automatically picked at runtime based on the extensions available on the current platform.

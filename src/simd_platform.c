@@ -50,6 +50,7 @@ bool avx512POPCNTDQSupported = false;
 bool avx512BITALGSupported = false;
 bool avx5124VNNIWSupported = false;
 bool avx5124FMAPSSupported = false;
+bool aesNiSupported = false;
 
 void _DetectCPUFeatures()
 {
@@ -81,6 +82,7 @@ void _DetectCPUFeatures()
     sse41Supported = (cpuInfo[2] & (1 << 19)) != 0;
     sse42Supported = (cpuInfo[2] & (1 << 20)) != 0;
     fma3Supported = (cpuInfo[2] & (1 << 12)) != 0;
+    aesNiSupported = (cpuInfo[2] & (1 << 25)) != 0;
   }
 
   if (idCount >= 0x7)
