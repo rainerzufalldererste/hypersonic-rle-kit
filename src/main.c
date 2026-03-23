@@ -9,23 +9,15 @@
 #include <unistd.h>
 #endif
 
-#if defined(_MSC_VER)
-#define ALIGNED_ALLOC(b, a) _aligned_malloc(a, b)
-#define ALIGNED_FREE(a) _aligned_free(a)
-#elif !defined(__STDC_VERSION__) || __STDC_VERSION__ < 201112L
-#define ALIGNED_ALLOC(b, a) malloc(a)
-#define ALIGNED_FREE(a) free(a)
-#else
-#define ALIGNED_ALLOC(b, a) aligned_alloc(b, a)
-#define ALIGNED_FREE(a) free(a)
-#endif
-
 #include "rle.h"
 #include "simd_platform.h"
 #include "codec_funcs.h"
 
 // From fuzzer:
 bool fuzz(const size_t sectionCount, const bool iterative);
+
+void *AllocBuffer(const size_t size, const size_t alignment);
+void FreeBuffer(void *pBuffer);
 
 const char ArgumentRuns[] = "--runs";
 const char ArgumentNormal[] = "--low-entropy";
@@ -115,7 +107,7 @@ int main(int argc, char **pArgv)
 
     printf("\n\n  OR: (for debugging purposes only)\n\n");
     printf("\t%s / %s (input file name will be ignored)\n", ArgumentFuzzIterative, ArgumentFuzzRandom);
-    
+
     return 1;
   }
 
@@ -461,7 +453,7 @@ int main(int argc, char **pArgv)
         }
 
         _Args.hasBitCount = true;
-        
+
         switch (pArgv[argIndex + 1][0])
         {
         case '8':
@@ -531,21 +523,21 @@ int main(int argc, char **pArgv)
         }
 
         _Args.hasLutSize = true;
-        
+
         switch (pArgv[argIndex + 1][0])
         {
         case '0':
           _Args.lutSize = 0;
           break;
-          
+
         case '1':
           _Args.lutSize = 1;
           break;
-          
+
         case '3':
           _Args.lutSize = 3;
           break;
-          
+
         case '7':
           _Args.lutSize = 7;
           break;
@@ -728,9 +720,9 @@ int main(int argc, char **pArgv)
     compressedBufferSize = max(compressedBufferSize, rle8_low_entropy_compress_bounds((uint32_t)fileSize));
     compressedBufferSize = max(compressedBufferSize, rle8_low_entropy_short_compress_bounds((uint32_t)fileSize));
 
-    pUncompressedData = (uint8_t *)ALIGNED_ALLOC(32, fileSize);
-    pDecompressedData = (uint8_t *)ALIGNED_ALLOC(32, fileSize + rle_decompress_additional_size());
-    pCompressedData = (uint8_t *)ALIGNED_ALLOC(32, compressedBufferSize);
+    pUncompressedData = (uint8_t *)AllocBuffer(fileSize, 32);
+    pDecompressedData = (uint8_t *)AllocBuffer(fileSize + rle_decompress_additional_size(), 32);
+    pCompressedData = (uint8_t *)AllocBuffer(compressedBufferSize, 32);
 
     if (!pUncompressedData || !pDecompressedData || !pCompressedData)
     {
@@ -755,7 +747,7 @@ int main(int argc, char **pArgv)
   if (fuzzing)
   {
     bool success;
-    
+
     if (fuzzingIterative)
       success = fuzz(6, true);
     else
@@ -783,12 +775,12 @@ int main(int argc, char **pArgv)
     if (!showStdDev)
     {
       puts("Codec                           Ratio      Encoder Throughput (Maximum)    Decoder Throughput (Maximum)    R*H/log2(|S|)\n"
-           "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+        "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
     }
     else
     {
       puts("Codec                           Ratio      Encoder Throughput (Maximum)    -StdDev ~ +StdDev     Decoder Throughput (Maximum)    -StdDev ~ +StdDev     R*H/log2(|S|)\n"
-           "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+        "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
 
       individualRunsCapacity = 1024;
       pIndividualRuns = (size_t *)malloc(sizeof(size_t) * individualRunsCapacity);
@@ -1083,12 +1075,84 @@ int main(int argc, char **pArgv)
 epilogue:
   if (pFile)
     fclose(pFile);
-  
-  ALIGNED_FREE(pUncompressedData);
-  ALIGNED_FREE(pDecompressedData);
-  ALIGNED_FREE(pCompressedData);
+
+  FreeBuffer(pUncompressedData);
+  FreeBuffer(pDecompressedData);
+  FreeBuffer(pCompressedData);
 
   return 0;
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+static bool _AllowLargePages = false;
+static bool _AttemptedToUseLargePages = false;
+static size_t _LargePageMinimumSize = false;
+
+void *AllocBuffer(const size_t size, const size_t alignment)
+{
+#if defined(_MSC_VER)
+  // This is actually slower!
+  if (!_AttemptedToUseLargePages)
+  {
+    _AttemptedToUseLargePages = true;
+
+    do
+    {
+      HANDLE hToken;
+      if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
+        break;
+
+      const wchar_t *privilegeName = L"SeLockMemoryPrivilege";
+      LUID luid;
+
+      if (!LookupPrivilegeValue(NULL, privilegeName, &luid))
+        break;
+
+      TOKEN_PRIVILEGES privileges;
+      privileges.PrivilegeCount = 1;
+      privileges.Privileges[0].Luid = luid;
+      privileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+      if (!AdjustTokenPrivileges(hToken, FALSE, &privileges, 0, NULL, NULL))
+        break;
+
+      DWORD error = GetLastError();
+      if (error == ERROR_NOT_ALL_ASSIGNED)
+        break;
+
+      _LargePageMinimumSize = GetLargePageMinimum();
+
+      if (!_LargePageMinimumSize || __popcnt64(_LargePageMinimumSize) != 1)
+        break;
+
+      puts("Large Page Support Enabled!");
+
+      _AllowLargePages = true;
+    } while (false);
+  }
+
+  if (_AllowLargePages)
+    return VirtualAlloc(NULL, (size + (_LargePageMinimumSize - 1)) & ~(_LargePageMinimumSize - 1), MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
+  else
+    return _aligned_malloc(size, alignment);
+#elif !defined(__STDC_VERSION__) || __STDC_VERSION__ < 201112L
+  return malloc(size);
+#else
+  return aligned_alloc(alignment, size);
+#endif
+}
+
+void FreeBuffer(void *pBuffer)
+{
+#if defined(_MSC_VER)
+  if (_AllowLargePages)
+    VirtualFree(pBuffer, 0, MEM_RELEASE);
+  else
+    _aligned_free(pBuffer);
+#else
+  free(pBuffer);
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1271,7 +1335,7 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
     size_t copyDiffVsCountDiff[32 * 32];
     size_t alignedCopyDiffVsCountDiff[32 * 32];
   } rle_data_t;
-  
+
   static rle_data_t byRLE[16];
 
   memset(hist, 0, sizeof(hist));
@@ -1282,11 +1346,11 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
 
   const size_t percentStep = size / 100;
   size_t nextPercent = percentStep;
-  
+
   for (size_t i = 0; i < size; i++)
   {
     hist[pData[i]]++;
-    
+
     for (size_t j = 1; j <= 16; j++)
     {
       if (i < j)
@@ -1567,13 +1631,13 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
     printf("Non-Aligned: Repeating: %10" PRIu64 " (%15" PRIu64 " Bytes, %5.2f %%, %15" PRIu64 " Bytes Distinct)\n", pRLE->totalRleCount, pRLE->totalRleLength, pRLE->totalRleLength * 100.0 / size, pRLE->totalEmptyLength);
     printf("Aligned:     Repeating: %10" PRIu64 " (%15" PRIu64 " Bytes, %5.2f %%, %15" PRIu64 " Bytes Distinct)\n", pRLE->alignedTotalRleCount, pRLE->alignedTotalRleLength, pRLE->alignedTotalRleLength * 100.0 / size, pRLE->alignedTotalEmptyLength);
     puts("");
-    
+
     printf("AprxLen | Repeating    | Distinct     || ExactLen  | Repeating    | Distinct     || AprxCnt | AlgnRepeat   | AlgnDistinct || Exact Count | AlgnRepeat   | AlgnDistinct\n");
     printf("----------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
-    
+
     for (size_t j = 0; j < 64; j++)
       printf("%2" PRIu64 " Bit: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Bytes: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Bit: | %12" PRIu64 " | %12" PRIu64 " || %2" PRIu64 " Symbols: | %12" PRIu64 " | %12" PRIu64 "\n", j + 1, pRLE->rleLengthByBits[j], pRLE->emptyLengthByBits[j], j + 1, pRLE->rleLengthExact[j], pRLE->emptyLengthExact[j], j + 1, pRLE->alignedRleLengthByBits[j], pRLE->alignedEmptyLengthByBits[j], j + 1, pRLE->alignedRleLengthExact[j], pRLE->alignedEmptyLengthExact[j]);
-    
+
     puts("");
 
     printf("#  | References   (Of Total ) | Aligned Ref. (Of Total )\n");
@@ -1583,7 +1647,7 @@ void AnalyzeData(const uint8_t *pData, const size_t size)
       printf("%2" PRIu64 " | %12" PRIu64 " (%7.3f %%) | %12" PRIu64 " (%7.3f %%)\n", j + 1, pRLE->recurringLastSymbol[j], pRLE->recurringLastSymbol[j] / (double)pRLE->totalRleCount * 100.0, pRLE->alignedRecurringLastSymbol[j], pRLE->alignedRecurringLastSymbol[j] / (double)pRLE->alignedTotalRleCount * 100.0);
 
     puts("");
-    
+
     printf("   | Non-Aligned Copy Length vs RLE Length Bits                                      | Aligned Copy Length vs RLE Length Bits\n");
     printf("%%  | 1    2    3    4    5    6    7    8    9    10   11   12   13   14   15   >    | 1    2    3    4    5    6    7    8    9    10   11   12   13   14   15   > \n");
     printf("---------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
@@ -1711,115 +1775,115 @@ bool CodecMatchesArgs(const codec_t codec)
   {
     switch (codec)
     {
-      case Extreme16Sym:
-      case Extreme16SymShort:
-      case Extreme16SymPacked:
-      case Extreme16Sym_1SLShort:
-      case Extreme16Sym_3SL:
-      case Extreme16Sym_3SLShort:
-      case Extreme16Sym_7SL:
-      case Extreme16Sym_7SLShort:
-      case Extreme24Sym:
-      case Extreme24SymShort:
-      case Extreme24SymPacked:
-      case Extreme24Sym_1SLShort:
-      case Extreme24Sym_3SL:
-      case Extreme24Sym_3SLShort:
-      case Extreme24Sym_7SL:
-      case Extreme24Sym_7SLShort:
-      case Extreme32Sym:
-      case Extreme32SymShort:
-      case Extreme32SymPacked:
-      case Extreme32Sym_1SLShort:
-      case Extreme32Sym_3SL:
-      case Extreme32Sym_3SLShort:
-      case Extreme32Sym_7SL:
-      case Extreme32Sym_7SLShort:
-      case Extreme48Sym:
-      case Extreme48SymShort:
-      case Extreme48SymPacked:
-      case Extreme48Sym_1SLShort:
-      case Extreme48Sym_3SL:
-      case Extreme48Sym_3SLShort:
-      case Extreme48Sym_7SL:
-      case Extreme48Sym_7SLShort:
-      case Extreme64Sym:
-      case Extreme64SymShort:
-      case Extreme64SymPacked:
-      case Extreme64Sym_1SLShort:
-      case Extreme64Sym_3SL:
-      case Extreme64Sym_3SLShort:
-      case Extreme64Sym_7SL:
-      case Extreme64Sym_7SLShort:
-      case Extreme128Sym:
-      case Extreme128SymPacked:
-        if (_Args.isAlignmentByte)
-          return false;
-        break;
-
-      case Extreme16Byte:
-      case Extreme16ByteShort:
-      case Extreme16BytePacked:
-      case Extreme16Byte_1SLShort:
-      case Extreme16Byte_1SLShortGreedy:
-      case Extreme16Byte_3SL:
-      case Extreme16Byte_3SLShort:
-      case Extreme16Byte_3SLShortGreedy:
-      case Extreme16Byte_7SL:
-      case Extreme16Byte_7SLShort:
-      case Extreme16Byte_7SLShortGreedy:
-      case Extreme24Byte:
-      case Extreme24ByteShort:
-      case Extreme24BytePacked:
-      case Extreme24Byte_1SLShort:
-      case Extreme24Byte_1SLShortGreedy:
-      case Extreme24Byte_3SL:
-      case Extreme24Byte_3SLShort:
-      case Extreme24Byte_3SLShortGreedy:
-      case Extreme24Byte_7SL:
-      case Extreme24Byte_7SLShort:
-      case Extreme24Byte_7SLShortGreedy:
-      case Extreme32Byte:
-      case Extreme32ByteShort:
-      case Extreme32BytePacked:
-      case Extreme32Byte_1SLShort:
-      case Extreme32Byte_1SLShortGreedy:
-      case Extreme32Byte_3SL:
-      case Extreme32Byte_3SLShort:
-      case Extreme32Byte_3SLShortGreedy:
-      case Extreme32Byte_7SL:
-      case Extreme32Byte_7SLShort:
-      case Extreme32Byte_7SLShortGreedy:
-      case Extreme48Byte:
-      case Extreme48ByteShort:
-      case Extreme48BytePacked:
-      case Extreme48Byte_1SLShort:
-      case Extreme48Byte_1SLShortGreedy:
-      case Extreme48Byte_3SL:
-      case Extreme48Byte_3SLShort:
-      case Extreme48Byte_3SLShortGreedy:
-      case Extreme48Byte_7SL:
-      case Extreme48Byte_7SLShort:
-      case Extreme48Byte_7SLShortGreedy:
-      case Extreme64Byte:
-      case Extreme64ByteShort:
-      case Extreme64BytePacked:
-      case Extreme64Byte_1SLShort:
-      case Extreme64Byte_1SLShortGreedy:
-      case Extreme64Byte_3SL:
-      case Extreme64Byte_3SLShort:
-      case Extreme64Byte_3SLShortGreedy:
-      case Extreme64Byte_7SL:
-      case Extreme64Byte_7SLShort:
-      case Extreme64Byte_7SLShortGreedy:
-      case Extreme128Byte:
-      case Extreme128BytePacked:
-        if (!_Args.isAlignmentByte)
-          return false;
-        break;
-
-      default:
+    case Extreme16Sym:
+    case Extreme16SymShort:
+    case Extreme16SymPacked:
+    case Extreme16Sym_1SLShort:
+    case Extreme16Sym_3SL:
+    case Extreme16Sym_3SLShort:
+    case Extreme16Sym_7SL:
+    case Extreme16Sym_7SLShort:
+    case Extreme24Sym:
+    case Extreme24SymShort:
+    case Extreme24SymPacked:
+    case Extreme24Sym_1SLShort:
+    case Extreme24Sym_3SL:
+    case Extreme24Sym_3SLShort:
+    case Extreme24Sym_7SL:
+    case Extreme24Sym_7SLShort:
+    case Extreme32Sym:
+    case Extreme32SymShort:
+    case Extreme32SymPacked:
+    case Extreme32Sym_1SLShort:
+    case Extreme32Sym_3SL:
+    case Extreme32Sym_3SLShort:
+    case Extreme32Sym_7SL:
+    case Extreme32Sym_7SLShort:
+    case Extreme48Sym:
+    case Extreme48SymShort:
+    case Extreme48SymPacked:
+    case Extreme48Sym_1SLShort:
+    case Extreme48Sym_3SL:
+    case Extreme48Sym_3SLShort:
+    case Extreme48Sym_7SL:
+    case Extreme48Sym_7SLShort:
+    case Extreme64Sym:
+    case Extreme64SymShort:
+    case Extreme64SymPacked:
+    case Extreme64Sym_1SLShort:
+    case Extreme64Sym_3SL:
+    case Extreme64Sym_3SLShort:
+    case Extreme64Sym_7SL:
+    case Extreme64Sym_7SLShort:
+    case Extreme128Sym:
+    case Extreme128SymPacked:
+      if (_Args.isAlignmentByte)
         return false;
+      break;
+
+    case Extreme16Byte:
+    case Extreme16ByteShort:
+    case Extreme16BytePacked:
+    case Extreme16Byte_1SLShort:
+    case Extreme16Byte_1SLShortGreedy:
+    case Extreme16Byte_3SL:
+    case Extreme16Byte_3SLShort:
+    case Extreme16Byte_3SLShortGreedy:
+    case Extreme16Byte_7SL:
+    case Extreme16Byte_7SLShort:
+    case Extreme16Byte_7SLShortGreedy:
+    case Extreme24Byte:
+    case Extreme24ByteShort:
+    case Extreme24BytePacked:
+    case Extreme24Byte_1SLShort:
+    case Extreme24Byte_1SLShortGreedy:
+    case Extreme24Byte_3SL:
+    case Extreme24Byte_3SLShort:
+    case Extreme24Byte_3SLShortGreedy:
+    case Extreme24Byte_7SL:
+    case Extreme24Byte_7SLShort:
+    case Extreme24Byte_7SLShortGreedy:
+    case Extreme32Byte:
+    case Extreme32ByteShort:
+    case Extreme32BytePacked:
+    case Extreme32Byte_1SLShort:
+    case Extreme32Byte_1SLShortGreedy:
+    case Extreme32Byte_3SL:
+    case Extreme32Byte_3SLShort:
+    case Extreme32Byte_3SLShortGreedy:
+    case Extreme32Byte_7SL:
+    case Extreme32Byte_7SLShort:
+    case Extreme32Byte_7SLShortGreedy:
+    case Extreme48Byte:
+    case Extreme48ByteShort:
+    case Extreme48BytePacked:
+    case Extreme48Byte_1SLShort:
+    case Extreme48Byte_1SLShortGreedy:
+    case Extreme48Byte_3SL:
+    case Extreme48Byte_3SLShort:
+    case Extreme48Byte_3SLShortGreedy:
+    case Extreme48Byte_7SL:
+    case Extreme48Byte_7SLShort:
+    case Extreme48Byte_7SLShortGreedy:
+    case Extreme64Byte:
+    case Extreme64ByteShort:
+    case Extreme64BytePacked:
+    case Extreme64Byte_1SLShort:
+    case Extreme64Byte_1SLShortGreedy:
+    case Extreme64Byte_3SL:
+    case Extreme64Byte_3SLShort:
+    case Extreme64Byte_3SLShortGreedy:
+    case Extreme64Byte_7SL:
+    case Extreme64Byte_7SLShort:
+    case Extreme64Byte_7SLShortGreedy:
+    case Extreme128Byte:
+    case Extreme128BytePacked:
+      if (!_Args.isAlignmentByte)
+        return false;
+      break;
+
+    default:
+      return false;
     }
   }
 
@@ -2053,7 +2117,7 @@ bool CodecMatchesArgs(const codec_t codec)
       if (_Args.lutSize != 3)
         return false;
       break;
-    
+
     case Extreme8_7SL:
     case Extreme8_7SLShort:
     case Extreme16Sym_7SL:
@@ -2252,6 +2316,6 @@ bool CodecMatchesArgs(const codec_t codec)
       return false;
     }
   }
-  
+
   return true;
 }
